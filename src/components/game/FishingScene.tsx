@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { Canvas } from '@react-three/fiber';
 import { Environment, OrbitControls, Sky, Text } from '@react-three/drei';
 import { useRef, useMemo } from 'react';

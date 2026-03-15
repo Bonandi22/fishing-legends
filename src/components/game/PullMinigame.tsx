@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { Fish, RARITY_CONFIG } from '@/game/types';
+import { Button } from '@/components/ui/button';
 
 interface Props {
   fish: Fish;
@@ -13,13 +14,11 @@ export default function PullMinigame({ fish, onWin, onLose }: Props) {
   const greenSize = config.greenZoneSize;
   const speed = config.speed;
 
-  // Green zone position (centered)
   const greenStart = (1 - greenSize) / 2;
 
   const [linePos, setLinePos] = useState(0.5);
   const [greenTime, setGreenTime] = useState(0);
   const [redTime, setRedTime] = useState(0);
-  const [direction, setDirection] = useState(1);
   const frameRef = useRef<number>(0);
   const lastTimeRef = useRef<number>(0);
   const greenTimeRef = useRef(0);
@@ -31,6 +30,13 @@ export default function PullMinigame({ fish, onWin, onLose }: Props) {
     return pos >= greenStart && pos <= greenStart + greenSize;
   }, [greenStart, greenSize]);
 
+  const handlePull = useCallback(() => {
+    if (isInGreen(linePosRef.current)) {
+      cancelAnimationFrame(frameRef.current);
+      onWin();
+    }
+  }, [isInGreen, onWin]);
+
   useEffect(() => {
     lastTimeRef.current = performance.now();
 
@@ -38,13 +44,11 @@ export default function PullMinigame({ fish, onWin, onLose }: Props) {
       const dt = (now - lastTimeRef.current) / 1000;
       lastTimeRef.current = now;
 
-      // Move the line
       let newPos = linePosRef.current + dirRef.current * speed * dt * 0.8;
       if (newPos >= 1) { newPos = 1; dirRef.current = -1; }
       if (newPos <= 0) { newPos = 0; dirRef.current = 1; }
       linePosRef.current = newPos;
 
-      // Count time in zones
       if (isInGreen(newPos)) {
         greenTimeRef.current += dt;
         redTimeRef.current = Math.max(0, redTimeRef.current - dt * 0.3);
@@ -93,23 +97,31 @@ export default function PullMinigame({ fish, onWin, onLose }: Props) {
           <p className={`text-sm font-semibold text-rarity-${fish.rarity}`}>
             {RARITY_CONFIG[fish.rarity].label}
           </p>
-          <p className="text-muted-foreground text-sm mt-1">Mantenha na zona verde!</p>
+          <p className="text-muted-foreground text-sm mt-1">Clique em PUXAR quando a linha estiver no verde!</p>
         </motion.div>
 
         {/* The bar */}
         <div className="relative h-14 rounded-xl overflow-hidden border-2 border-border bg-secondary mb-6">
-          {/* Red zone (full bar background) */}
           <div className="absolute inset-0 bg-destructive/80" />
-          {/* Green zone */}
           <div
             className="absolute top-0 bottom-0 bg-accent"
             style={{ left: `${greenStart * 100}%`, width: `${greenSize * 100}%` }}
           />
-          {/* White line (cursor) */}
           <motion.div
             className="absolute top-0 bottom-0 w-1 bg-foreground shadow-lg shadow-foreground/50"
             style={{ left: `${linePos * 100}%` }}
           />
+        </div>
+
+        {/* Pull button */}
+        <div className="text-center mb-6">
+          <Button
+            onClick={handlePull}
+            size="lg"
+            className="bg-accent text-accent-foreground hover:bg-accent/90 font-bold text-xl px-10 py-6 animate-pulse"
+          >
+            🎣 PUXAR!
+          </Button>
         </div>
 
         {/* Progress indicators */}
