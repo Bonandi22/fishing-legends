@@ -31,6 +31,13 @@ export default function PullMinigame({ fish, onWin, onLose }: Props) {
     return pos >= greenStart && pos <= greenStart + greenSize;
   }, [greenStart, greenSize]);
 
+  const handlePull = useCallback(() => {
+    if (isInGreen(linePosRef.current)) {
+      cancelAnimationFrame(frameRef.current);
+      onWin();
+    }
+  }, [isInGreen, onWin]);
+
   useEffect(() => {
     lastTimeRef.current = performance.now();
 
