@@ -156,11 +156,19 @@ export default function FishingScreen({ location, player, onCatch, onBack }: Pro
               transition={{ type: 'spring', damping: 15 }}
             >
               <motion.div
-                className="text-7xl mb-4"
+                className="mb-4"
                 animate={{ rotate: [0, -15, 15, 0] }}
                 transition={{ duration: 0.5 }}
               >
-                {currentFish.emoji}
+                {FISH_IMAGES[currentFish.id] ? (
+                  <img
+                    src={FISH_IMAGES[currentFish.id]}
+                    alt={currentFish.name}
+                    className="w-40 h-40 object-contain mx-auto drop-shadow-lg"
+                  />
+                ) : (
+                  <span className="text-7xl">{currentFish.emoji}</span>
+                )}
               </motion.div>
               <h2 className="text-3xl font-bold text-foreground mb-1">Capturado!</h2>
               <h3 className="text-xl font-bold text-foreground">{currentFish.name}</h3>
