@@ -70,4 +70,12 @@ export const FISH_IMAGES: Record<string, string> = {
   'peixe-lua': peixeLua,
   'tamboril': tamboril,
   'marlim-azul': marlimAzul,
+  'arapaima': arapaima,
+  'dourado-real': douradoReal,
+  'pirarara': pirarara,
+  'matrinxa': matrinxa,
+  'barracuda': barracuda,
+  'wahoo': wahoo,
+  'olhete': olhete,
+  'dourado-do-mar': douradoDoMar,
 };
