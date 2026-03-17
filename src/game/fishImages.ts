@@ -29,6 +29,14 @@ import celacanto from '@/assets/fish/celacanto.png';
 import peixeLua from '@/assets/fish/peixe-lua.png';
 import tamboril from '@/assets/fish/tamboril.png';
 import marlimAzul from '@/assets/fish/marlim-azul.png';
+import arapaima from '@/assets/fish/arapaima.png';
+import douradoReal from '@/assets/fish/dourado-real.png';
+import pirarara from '@/assets/fish/pirarara.png';
+import matrinxa from '@/assets/fish/matrinxa.png';
+import barracuda from '@/assets/fish/barracuda.png';
+import wahoo from '@/assets/fish/wahoo.png';
+import olhete from '@/assets/fish/olhete.png';
+import douradoDoMar from '@/assets/fish/dourado-do-mar.png';
 
 export const FISH_IMAGES: Record<string, string> = {
   'tilapia': tilapia,
