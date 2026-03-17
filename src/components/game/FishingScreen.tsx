@@ -77,7 +77,7 @@ export default function FishingScreen({ location, player, onCatch, onBack }: Pro
       {/* 3D Scene */}
       <FishingScene3D
         location={location}
-        bobberVisible={phase === 'waiting' || phase === 'hooked'}
+        bobberVisible={phase === 'casting' || phase === 'waiting' || phase === 'hooked'}
         bobberPosition={bobberPos}
         onWaterClick={handleWaterClick}
       />
