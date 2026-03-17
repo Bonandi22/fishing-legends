@@ -1,6 +1,6 @@
 export type WaterType = 'saltwater' | 'freshwater';
 export type LocationType = 'ocean' | 'river' | 'lake';
-export type Rarity = 'common' | 'uncommon' | 'legendary' | 'abyssal';
+export type Rarity = 'common' | 'uncommon' | 'mythic' | 'legendary' | 'abyssal';
 
 export interface Fish {
   id: string;
