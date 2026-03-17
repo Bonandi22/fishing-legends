@@ -88,7 +88,7 @@ export const LOCATIONS: FishingLocation[] = [
     id: 'pacific', name: 'Oceano Pacífico', type: 'ocean', waterType: 'saltwater',
     description: 'O maior oceano do planeta, águas imensas.', requiredLevel: 8,
     waterColor: '#1d4ed8', skyColor: '#60a5fa', ambientColor: '#93c5fd',
-    fishIds: ['tainha', 'cavala', 'garoupa', 'atum', 'espadarte', 'salmao-rei', 'peixe-lua', 'marlim-azul'],
+    fishIds: ['tainha', 'cavala', 'garoupa', 'barracuda', 'wahoo', 'atum', 'espadarte', 'salmao-rei', 'peixe-lua', 'marlim-azul'],
     emoji: '🌏'
   },
 
