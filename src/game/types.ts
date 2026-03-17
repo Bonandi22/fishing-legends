@@ -56,9 +56,10 @@ export interface PullGameState {
 }
 
 export const RARITY_CONFIG: Record<Rarity, { label: string; color: string; chance: number; greenZoneSize: number; speed: number }> = {
-  common: { label: 'Comum', color: '#22c55e', chance: 0.60, greenZoneSize: 0.55, speed: 1 },
-  uncommon: { label: 'Incomum', color: '#3b82f6', chance: 0.25, greenZoneSize: 0.42, speed: 1.4 },
-  legendary: { label: 'Lendário', color: '#f59e0b', chance: 0.12, greenZoneSize: 0.30, speed: 1.4 },
+  common: { label: 'Comum', color: '#22c55e', chance: 0.50, greenZoneSize: 0.55, speed: 1 },
+  uncommon: { label: 'Incomum', color: '#3b82f6', chance: 0.22, greenZoneSize: 0.42, speed: 1.4 },
+  mythic: { label: 'Mítico', color: '#ec4899', chance: 0.15, greenZoneSize: 0.35, speed: 1.5 },
+  legendary: { label: 'Lendário', color: '#f59e0b', chance: 0.10, greenZoneSize: 0.30, speed: 1.6 },
   abyssal: { label: 'Abissal', color: '#a855f7', chance: 0.03, greenZoneSize: 0.20, speed: 1.9 },
 };
 
