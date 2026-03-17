@@ -134,7 +134,7 @@ export const LOCATIONS: FishingLocation[] = [
     id: 'baikal', name: 'Lago Baikal', type: 'lake', waterType: 'freshwater',
     description: 'O lago mais profundo do mundo, na Sibéria.', requiredLevel: 7,
     waterColor: '#164e63', skyColor: '#cffafe', ambientColor: '#ecfeff',
-    fishIds: ['carpa', 'truta', 'bagre', 'dourado', 'pintado', 'jaú', 'esturjao'],
+    fishIds: ['carpa', 'truta', 'bagre', 'dourado', 'pintado', 'arapaima', 'jaú', 'esturjao'],
     emoji: '❄️'
   },
   {
