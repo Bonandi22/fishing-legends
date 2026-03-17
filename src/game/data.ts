@@ -67,7 +67,7 @@ export const LOCATIONS: FishingLocation[] = [
     id: 'atlantic', name: 'Oceano Atlântico', type: 'ocean', waterType: 'saltwater',
     description: 'Águas profundas e azuis do Atlântico.', requiredLevel: 1,
     waterColor: '#1e40af', skyColor: '#7dd3fc', ambientColor: '#bfdbfe',
-    fishIds: ['sardinha', 'tainha', 'corvina', 'anchova', 'robalo', 'garoupa', 'atum', 'celacanto'],
+    fishIds: ['sardinha', 'tainha', 'corvina', 'anchova', 'robalo', 'garoupa', 'barracuda', 'atum', 'celacanto'],
     emoji: '🌊'
   },
   {
