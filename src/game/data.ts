@@ -97,7 +97,7 @@ export const LOCATIONS: FishingLocation[] = [
     id: 'amazon', name: 'Rio Amazonas', type: 'river', waterType: 'freshwater',
     description: 'O maior rio do mundo, coração da Amazônia.', requiredLevel: 1,
     waterColor: '#854d0e', skyColor: '#86efac', ambientColor: '#bbf7d0',
-    fishIds: ['tilapia', 'piranha', 'lambari', 'tucunare', 'pacu', 'pirarucu', 'peixe-lua-doce'],
+    fishIds: ['tilapia', 'piranha', 'lambari', 'tucunare', 'pacu', 'arapaima', 'pirarara', 'pirarucu', 'peixe-lua-doce'],
     emoji: '🌿'
   },
   {
