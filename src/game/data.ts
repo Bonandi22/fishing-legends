@@ -141,7 +141,7 @@ export const LOCATIONS: FishingLocation[] = [
     id: 'victoria', name: 'Lago Vitória', type: 'lake', waterType: 'freshwater',
     description: 'O maior lago da África.', requiredLevel: 9,
     waterColor: '#059669', skyColor: '#a7f3d0', ambientColor: '#d1fae5',
-    fishIds: ['tilapia', 'piranha', 'bagre', 'tucunare', 'pintado', 'pirarucu', 'peixe-lua-doce'],
+    fishIds: ['tilapia', 'piranha', 'bagre', 'tucunare', 'pintado', 'pirarara', 'pirarucu', 'peixe-lua-doce'],
     emoji: '🌍'
   },
   {
