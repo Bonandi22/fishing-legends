@@ -10,7 +10,7 @@ export function rollFish(location: FishingLocation, playerLevel: number): Fish {
   const levelBonus = (playerLevel - 1) * 0.005;
 
   let cumulative = 0;
-  const rarityOrder: Rarity[] = ['abyssal', 'legendary', 'uncommon', 'common'];
+  const rarityOrder: Rarity[] = ['abyssal', 'legendary', 'mythic', 'uncommon', 'common'];
 
   let targetRarity: Rarity = 'common';
   for (const r of rarityOrder) {

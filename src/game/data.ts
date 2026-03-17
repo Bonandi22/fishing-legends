@@ -27,6 +27,18 @@ export const FISH: Fish[] = [
   { id: 'pargo', name: 'Pargo', rarity: 'uncommon', waterType: 'saltwater', minWeight: 1, maxWeight: 8, xp: 30, description: 'Peixe vermelho de águas profundas.', emoji: '🐠' },
   { id: 'cavala', name: 'Cavala', rarity: 'uncommon', waterType: 'saltwater', minWeight: 2, maxWeight: 10, xp: 33, description: 'Rápida nadadora de mar aberto.', emoji: '🐠' },
 
+  // === FRESHWATER MYTHIC ===
+  { id: 'arapaima', name: 'Arapaima', rarity: 'mythic', waterType: 'freshwater', minWeight: 40, maxWeight: 150, xp: 70, description: 'Predador ancestral dos rios amazônicos.', emoji: '✨' },
+  { id: 'dourado-real', name: 'Dourado Real', rarity: 'mythic', waterType: 'freshwater', minWeight: 8, maxWeight: 35, xp: 65, description: 'Variante rara do Dourado com escamas brilhantes.', emoji: '✨' },
+  { id: 'pirarara', name: 'Pirarara', rarity: 'mythic', waterType: 'freshwater', minWeight: 15, maxWeight: 60, xp: 60, description: 'Bagre gigante de cauda vermelha.', emoji: '✨' },
+  { id: 'matrinxa', name: 'Matrinxã', rarity: 'mythic', waterType: 'freshwater', minWeight: 2, maxWeight: 8, xp: 55, description: 'Peixe acrobático que salta fora da água.', emoji: '✨' },
+
+  // === SALTWATER MYTHIC ===
+  { id: 'barracuda', name: 'Barracuda', rarity: 'mythic', waterType: 'saltwater', minWeight: 5, maxWeight: 30, xp: 65, description: 'Torpedo prateado dos recifes tropicais.', emoji: '✨' },
+  { id: 'wahoo', name: 'Wahoo', rarity: 'mythic', waterType: 'saltwater', minWeight: 8, maxWeight: 45, xp: 70, description: 'Um dos peixes mais rápidos do oceano.', emoji: '✨' },
+  { id: 'olhete', name: 'Olhete', rarity: 'mythic', waterType: 'saltwater', minWeight: 5, maxWeight: 25, xp: 58, description: 'Lutador feroz das águas costeiras.', emoji: '✨' },
+  { id: 'dourado-do-mar', name: 'Dourado-do-mar', rarity: 'mythic', waterType: 'saltwater', minWeight: 4, maxWeight: 20, xp: 62, description: 'Brilha como ouro sob o sol tropical.', emoji: '✨' },
+
   // === FRESHWATER LEGENDARY ===
   { id: 'pirarucu', name: 'Pirarucu', rarity: 'legendary', waterType: 'freshwater', minWeight: 50, maxWeight: 200, xp: 150, description: 'O gigante da Amazônia, um dos maiores peixes de água doce.', emoji: '🏆' },
   { id: 'jaú', name: 'Jaú', rarity: 'legendary', waterType: 'freshwater', minWeight: 30, maxWeight: 120, xp: 120, description: 'Gigante silencioso das profundezas dos rios.', emoji: '🏆' },
@@ -55,28 +67,28 @@ export const LOCATIONS: FishingLocation[] = [
     id: 'atlantic', name: 'Oceano Atlântico', type: 'ocean', waterType: 'saltwater',
     description: 'Águas profundas e azuis do Atlântico.', requiredLevel: 1,
     waterColor: '#1e40af', skyColor: '#7dd3fc', ambientColor: '#bfdbfe',
-    fishIds: ['sardinha', 'tainha', 'corvina', 'anchova', 'robalo', 'garoupa', 'atum', 'celacanto'],
+    fishIds: ['sardinha', 'tainha', 'corvina', 'anchova', 'robalo', 'garoupa', 'barracuda', 'atum', 'celacanto'],
     emoji: '🌊'
   },
   {
     id: 'caribbean', name: 'Mar do Caribe', type: 'ocean', waterType: 'saltwater',
     description: 'Águas cristalinas e tropicais do Caribe.', requiredLevel: 3,
     waterColor: '#06b6d4', skyColor: '#a5f3fc', ambientColor: '#cffafe',
-    fishIds: ['sardinha', 'corvina', 'robalo', 'garoupa', 'pargo', 'espadarte', 'marlim-azul'],
+    fishIds: ['sardinha', 'corvina', 'robalo', 'garoupa', 'pargo', 'olhete', 'dourado-do-mar', 'espadarte', 'marlim-azul'],
     emoji: '🏝️'
   },
   {
     id: 'mediterranean', name: 'Mar Mediterrâneo', type: 'ocean', waterType: 'saltwater',
     description: 'Berço da civilização, águas históricas.', requiredLevel: 5,
     waterColor: '#2563eb', skyColor: '#93c5fd', ambientColor: '#dbeafe',
-    fishIds: ['sardinha', 'anchova', 'corvina', 'cavala', 'pargo', 'salmao-rei', 'mero', 'tamboril'],
+    fishIds: ['sardinha', 'anchova', 'corvina', 'cavala', 'pargo', 'wahoo', 'salmao-rei', 'mero', 'tamboril'],
     emoji: '⚓'
   },
   {
     id: 'pacific', name: 'Oceano Pacífico', type: 'ocean', waterType: 'saltwater',
     description: 'O maior oceano do planeta, águas imensas.', requiredLevel: 8,
     waterColor: '#1d4ed8', skyColor: '#60a5fa', ambientColor: '#93c5fd',
-    fishIds: ['tainha', 'cavala', 'garoupa', 'atum', 'espadarte', 'salmao-rei', 'peixe-lua', 'marlim-azul'],
+    fishIds: ['tainha', 'cavala', 'garoupa', 'barracuda', 'wahoo', 'atum', 'espadarte', 'salmao-rei', 'peixe-lua', 'marlim-azul'],
     emoji: '🌏'
   },
 
@@ -85,28 +97,28 @@ export const LOCATIONS: FishingLocation[] = [
     id: 'amazon', name: 'Rio Amazonas', type: 'river', waterType: 'freshwater',
     description: 'O maior rio do mundo, coração da Amazônia.', requiredLevel: 1,
     waterColor: '#854d0e', skyColor: '#86efac', ambientColor: '#bbf7d0',
-    fishIds: ['tilapia', 'piranha', 'lambari', 'tucunare', 'pacu', 'pirarucu', 'peixe-lua-doce'],
+    fishIds: ['tilapia', 'piranha', 'lambari', 'tucunare', 'pacu', 'arapaima', 'pirarara', 'pirarucu', 'peixe-lua-doce'],
     emoji: '🌿'
   },
   {
     id: 'nile', name: 'Rio Nilo', type: 'river', waterType: 'freshwater',
     description: 'O rio dos faraós, berço do Egito antigo.', requiredLevel: 4,
     waterColor: '#a16207', skyColor: '#fde68a', ambientColor: '#fef3c7',
-    fishIds: ['tilapia', 'bagre', 'carpa', 'tucunare', 'pintado', 'jaú', 'esturjao'],
+    fishIds: ['tilapia', 'bagre', 'carpa', 'tucunare', 'pintado', 'matrinxa', 'jaú', 'esturjao'],
     emoji: '🏛️'
   },
   {
     id: 'mississippi', name: 'Rio Mississippi', type: 'river', waterType: 'freshwater',
     description: 'O grande rio da América do Norte.', requiredLevel: 6,
     waterColor: '#78716c', skyColor: '#d6d3d1', ambientColor: '#e7e5e4',
-    fishIds: ['bagre', 'carpa', 'lambari', 'truta', 'dourado', 'surubim', 'esturjao'],
+    fishIds: ['bagre', 'carpa', 'lambari', 'truta', 'dourado', 'dourado-real', 'surubim', 'esturjao'],
     emoji: '🦅'
   },
   {
     id: 'danube', name: 'Rio Danúbio', type: 'river', waterType: 'freshwater',
     description: 'O rio azul da Europa, atravessa 10 países.', requiredLevel: 10,
     waterColor: '#4338ca', skyColor: '#c7d2fe', ambientColor: '#e0e7ff',
-    fishIds: ['carpa', 'truta', 'bagre', 'dourado', 'pintado', 'jaú', 'peixe-lua-doce'],
+    fishIds: ['carpa', 'truta', 'bagre', 'dourado', 'pintado', 'pirarara', 'dourado-real', 'jaú', 'peixe-lua-doce'],
     emoji: '🏰'
   },
 
@@ -115,28 +127,28 @@ export const LOCATIONS: FishingLocation[] = [
     id: 'titicaca', name: 'Lago Titicaca', type: 'lake', waterType: 'freshwater',
     description: 'O lago navegável mais alto do mundo.', requiredLevel: 2,
     waterColor: '#0284c7', skyColor: '#e0f2fe', ambientColor: '#f0f9ff',
-    fishIds: ['tilapia', 'carpa', 'lambari', 'truta', 'pacu', 'surubim'],
+    fishIds: ['tilapia', 'carpa', 'lambari', 'truta', 'pacu', 'matrinxa', 'surubim'],
     emoji: '⛰️'
   },
   {
     id: 'baikal', name: 'Lago Baikal', type: 'lake', waterType: 'freshwater',
     description: 'O lago mais profundo do mundo, na Sibéria.', requiredLevel: 7,
     waterColor: '#164e63', skyColor: '#cffafe', ambientColor: '#ecfeff',
-    fishIds: ['carpa', 'truta', 'bagre', 'dourado', 'pintado', 'jaú', 'esturjao'],
+    fishIds: ['carpa', 'truta', 'bagre', 'dourado', 'pintado', 'arapaima', 'jaú', 'esturjao'],
     emoji: '❄️'
   },
   {
     id: 'victoria', name: 'Lago Vitória', type: 'lake', waterType: 'freshwater',
     description: 'O maior lago da África.', requiredLevel: 9,
     waterColor: '#059669', skyColor: '#a7f3d0', ambientColor: '#d1fae5',
-    fishIds: ['tilapia', 'piranha', 'bagre', 'tucunare', 'pintado', 'pirarucu', 'peixe-lua-doce'],
+    fishIds: ['tilapia', 'piranha', 'bagre', 'tucunare', 'pintado', 'pirarara', 'pirarucu', 'peixe-lua-doce'],
     emoji: '🌍'
   },
   {
     id: 'como', name: 'Lago de Como', type: 'lake', waterType: 'freshwater',
     description: 'O romântico lago italiano nos Alpes.', requiredLevel: 12,
     waterColor: '#0e7490', skyColor: '#bae6fd', ambientColor: '#e0f2fe',
-    fishIds: ['carpa', 'truta', 'lambari', 'dourado', 'surubim', 'jaú', 'esturjao'],
+    fishIds: ['carpa', 'truta', 'lambari', 'dourado', 'surubim', 'dourado-real', 'matrinxa', 'jaú', 'esturjao'],
     emoji: '🇮🇹'
   },
 ];
