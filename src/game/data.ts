@@ -81,7 +81,7 @@ export const LOCATIONS: FishingLocation[] = [
     id: 'mediterranean', name: 'Mar Mediterrâneo', type: 'ocean', waterType: 'saltwater',
     description: 'Berço da civilização, águas históricas.', requiredLevel: 5,
     waterColor: '#2563eb', skyColor: '#93c5fd', ambientColor: '#dbeafe',
-    fishIds: ['sardinha', 'anchova', 'corvina', 'cavala', 'pargo', 'salmao-rei', 'mero', 'tamboril'],
+    fishIds: ['sardinha', 'anchova', 'corvina', 'cavala', 'pargo', 'wahoo', 'salmao-rei', 'mero', 'tamboril'],
     emoji: '⚓'
   },
   {
