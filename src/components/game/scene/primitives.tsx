@@ -236,42 +236,103 @@ export function Cloud({ position, scale = 1, speed = 0.3 }: {
   );
 }
 
-/* ═══════ Animated bird / seagull ═══════ */
+/* ═══════ Realistic Seagull ═══════ */
 export function Bird({ position, speed = 1 }: { position: [number, number, number]; speed?: number }) {
   const ref = useRef<THREE.Group>(null);
-  const wingRef1 = useRef<THREE.Mesh>(null);
-  const wingRef2 = useRef<THREE.Mesh>(null);
+  const leftWingRef = useRef<THREE.Group>(null);
+  const rightWingRef = useRef<THREE.Group>(null);
   const offset = useMemo(() => Math.random() * Math.PI * 2, []);
   const radius = useMemo(() => 8 + Math.random() * 15, []);
+  const glidePhase = useMemo(() => Math.random() * Math.PI * 2, []);
 
   useFrame(({ clock }) => {
     if (!ref.current) return;
     const t = clock.getElapsedTime() * speed * 0.3 + offset;
     ref.current.position.x = position[0] + Math.cos(t) * radius;
     ref.current.position.z = position[2] + Math.sin(t) * radius;
-    ref.current.position.y = position[1] + Math.sin(t * 2) * 0.5;
+    ref.current.position.y = position[1] + Math.sin(t * 2) * 0.5 + Math.sin(t * 0.7) * 0.3;
     ref.current.rotation.y = -t + Math.PI / 2;
+    // Slight banking on turns
+    ref.current.rotation.z = Math.cos(t) * 0.15;
 
-    // Wing flapping
-    if (wingRef1.current) wingRef1.current.rotation.z = Math.sin(clock.getElapsedTime() * 6 + offset) * 0.4;
-    if (wingRef2.current) wingRef2.current.rotation.z = -Math.sin(clock.getElapsedTime() * 6 + offset) * 0.4;
+    const elapsed = clock.getElapsedTime();
+    // Realistic wing flap: fast flaps + glide phases
+    const glide = Math.sin(elapsed * 0.8 + glidePhase);
+    const flapIntensity = glide > 0.3 ? 0.05 : 0.55; // glide vs flap
+    const flapSpeed = glide > 0.3 ? 2 : 8;
+    const wingAngle = Math.sin(elapsed * flapSpeed + offset) * flapIntensity;
+
+    if (leftWingRef.current) {
+      leftWingRef.current.rotation.z = wingAngle + 0.1;
+    }
+    if (rightWingRef.current) {
+      rightWingRef.current.rotation.z = -wingAngle - 0.1;
+    }
   });
 
   return (
     <group ref={ref} position={position}>
-      {/* Body */}
-      <mesh>
-        <sphereGeometry args={[0.12, 6, 4]} />
-        <meshStandardMaterial color="#e8e8e8" />
+      {/* Body - elongated */}
+      <mesh rotation={[0, 0, 0]}>
+        <capsuleGeometry args={[0.08, 0.35, 6, 8]} />
+        <meshStandardMaterial color="#f0ece6" roughness={0.7} />
       </mesh>
-      {/* Wings */}
-      <mesh ref={wingRef1} position={[0.25, 0, 0]}>
-        <boxGeometry args={[0.5, 0.02, 0.15]} />
-        <meshStandardMaterial color="#d8d8d8" />
+      {/* Head */}
+      <mesh position={[0, 0.06, -0.25]}>
+        <sphereGeometry args={[0.07, 8, 6]} />
+        <meshStandardMaterial color="#f5f5f0" roughness={0.6} />
       </mesh>
-      <mesh ref={wingRef2} position={[-0.25, 0, 0]}>
-        <boxGeometry args={[0.5, 0.02, 0.15]} />
-        <meshStandardMaterial color="#d8d8d8" />
+      {/* Beak - yellow/orange */}
+      <mesh position={[0, 0.03, -0.35]} rotation={[0.15, 0, 0]}>
+        <coneGeometry args={[0.02, 0.12, 4]} />
+        <meshStandardMaterial color="#e8a020" roughness={0.5} />
+      </mesh>
+      {/* Eyes */}
+      <mesh position={[0.045, 0.08, -0.26]}>
+        <sphereGeometry args={[0.012, 6, 6]} />
+        <meshStandardMaterial color="#111111" />
+      </mesh>
+      <mesh position={[-0.045, 0.08, -0.26]}>
+        <sphereGeometry args={[0.012, 6, 6]} />
+        <meshStandardMaterial color="#111111" />
+      </mesh>
+      {/* Tail */}
+      <mesh position={[0, 0.02, 0.25]} rotation={[-0.2, 0, 0]}>
+        <boxGeometry args={[0.06, 0.015, 0.18]} />
+        <meshStandardMaterial color="#d8d4cc" roughness={0.8} />
+      </mesh>
+      {/* Left Wing (articulated) */}
+      <group ref={leftWingRef} position={[0.09, 0.03, 0]}>
+        {/* Inner wing */}
+        <mesh position={[0.18, 0, 0.02]}>
+          <boxGeometry args={[0.35, 0.015, 0.2]} />
+          <meshStandardMaterial color="#e8e4dc" roughness={0.75} />
+        </mesh>
+        {/* Outer wing (darker tips) */}
+        <mesh position={[0.42, 0.01, 0.02]}>
+          <boxGeometry args={[0.18, 0.012, 0.14]} />
+          <meshStandardMaterial color="#2a2a2a" roughness={0.8} />
+        </mesh>
+      </group>
+      {/* Right Wing (articulated) */}
+      <group ref={rightWingRef} position={[-0.09, 0.03, 0]}>
+        <mesh position={[-0.18, 0, 0.02]}>
+          <boxGeometry args={[0.35, 0.015, 0.2]} />
+          <meshStandardMaterial color="#e8e4dc" roughness={0.75} />
+        </mesh>
+        <mesh position={[-0.42, 0.01, 0.02]}>
+          <boxGeometry args={[0.18, 0.012, 0.14]} />
+          <meshStandardMaterial color="#2a2a2a" roughness={0.8} />
+        </mesh>
+      </group>
+      {/* Feet (tucked underneath) */}
+      <mesh position={[0.03, -0.08, 0.05]}>
+        <boxGeometry args={[0.01, 0.06, 0.01]} />
+        <meshStandardMaterial color="#e8a020" />
+      </mesh>
+      <mesh position={[-0.03, -0.08, 0.05]}>
+        <boxGeometry args={[0.01, 0.06, 0.01]} />
+        <meshStandardMaterial color="#e8a020" />
       </mesh>
     </group>
   );

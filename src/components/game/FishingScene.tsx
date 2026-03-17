@@ -2,7 +2,7 @@
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls, Sky } from '@react-three/drei';
 import { useRef, useMemo } from 'react';
-import { useFrame } from '@react-three/fiber';
+import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { FishingLocation, LocationType } from '@/game/types';
 import OceanScene from './scene/OceanScene';
@@ -104,6 +104,138 @@ function FishingBobber({ visible, position }: { visible: boolean; position: [num
   );
 }
 
+/* ═══════ FISHING ROD (follows camera) ═══════ */
+function FishingRod({ bobberVisible, bobberPosition }: { bobberVisible: boolean; bobberPosition: [number, number, number] }) {
+  const ref = useRef<THREE.Group>(null);
+  const tipRef = useRef<THREE.Group>(null);
+  const { camera } = useThree();
+
+  useFrame(({ clock }) => {
+    if (!ref.current) return;
+    // Position rod relative to camera (lower-right of view)
+    const offset = new THREE.Vector3(0.8, -0.6, -1.5);
+    offset.applyQuaternion(camera.quaternion);
+    ref.current.position.copy(camera.position).add(offset);
+
+    // Rod points forward-ish with slight angle
+    ref.current.quaternion.copy(camera.quaternion);
+    ref.current.rotateX(-0.3);
+    ref.current.rotateY(0.15);
+    ref.current.rotateZ(0.05);
+
+    // Subtle idle sway
+    const t = clock.getElapsedTime();
+    ref.current.rotateZ(Math.sin(t * 1.2) * 0.008);
+    ref.current.rotateX(Math.sin(t * 0.9) * 0.005);
+  });
+
+  return (
+    <group ref={ref}>
+      {/* Handle / grip - cork */}
+      <mesh position={[0, 0, 0.35]} rotation={[Math.PI / 2, 0, 0]}>
+        <cylinderGeometry args={[0.025, 0.03, 0.7, 8]} />
+        <meshStandardMaterial color="#c4a066" roughness={0.9} />
+      </mesh>
+      {/* Handle grip rings */}
+      {[0.1, 0.2, 0.3, 0.55, 0.65].map((z, i) => (
+        <mesh key={i} position={[0, 0, 0.35 - z * 0.7 + 0.35]} rotation={[Math.PI / 2, 0, 0]}>
+          <torusGeometry args={[0.028, 0.004, 6, 12]} />
+          <meshStandardMaterial color="#333333" metalness={0.6} roughness={0.4} />
+        </mesh>
+      ))}
+      {/* Reel seat */}
+      <mesh position={[0, -0.03, 0.25]} rotation={[Math.PI / 2, 0, 0]}>
+        <cylinderGeometry args={[0.035, 0.035, 0.12, 8]} />
+        <meshStandardMaterial color="#444444" metalness={0.7} roughness={0.3} />
+      </mesh>
+      {/* Reel body */}
+      <group position={[0, -0.06, 0.25]}>
+        <mesh rotation={[0, 0, Math.PI / 2]}>
+          <cylinderGeometry args={[0.04, 0.04, 0.06, 12]} />
+          <meshStandardMaterial color="#555555" metalness={0.8} roughness={0.2} />
+        </mesh>
+        {/* Reel handle */}
+        <mesh position={[0.05, 0, 0]} rotation={[0, 0, Math.PI / 2]}>
+          <cylinderGeometry args={[0.005, 0.005, 0.04, 6]} />
+          <meshStandardMaterial color="#777777" metalness={0.7} />
+        </mesh>
+        <mesh position={[0.07, 0, 0]}>
+          <sphereGeometry args={[0.012, 6, 6]} />
+          <meshStandardMaterial color="#222222" roughness={0.5} />
+        </mesh>
+      </group>
+      {/* Rod sections (increasingly thinner) */}
+      <mesh position={[0, 0, -0.35]} rotation={[Math.PI / 2, 0, 0]}>
+        <cylinderGeometry args={[0.018, 0.022, 1.0, 8]} />
+        <meshStandardMaterial color="#1a1a2e" roughness={0.4} metalness={0.2} />
+      </mesh>
+      <mesh position={[0, 0, -1.1]} rotation={[Math.PI / 2, 0, 0]}>
+        <cylinderGeometry args={[0.012, 0.018, 0.9, 8]} />
+        <meshStandardMaterial color="#1a1a2e" roughness={0.4} metalness={0.2} />
+      </mesh>
+      <mesh position={[0, 0, -1.75]} rotation={[Math.PI / 2, 0, 0]}>
+        <cylinderGeometry args={[0.006, 0.012, 0.8, 6]} />
+        <meshStandardMaterial color="#222240" roughness={0.35} metalness={0.3} />
+      </mesh>
+      {/* Rod tip */}
+      <group ref={tipRef}>
+        <mesh position={[0, 0, -2.25]} rotation={[Math.PI / 2, 0, 0]}>
+          <cylinderGeometry args={[0.003, 0.006, 0.5, 6]} />
+          <meshStandardMaterial color="#333355" roughness={0.3} metalness={0.4} />
+        </mesh>
+        {/* Tip ring */}
+        <mesh position={[0, 0, -2.5]}>
+          <torusGeometry args={[0.008, 0.002, 6, 8]} />
+          <meshStandardMaterial color="#888888" metalness={0.8} roughness={0.2} />
+        </mesh>
+      </group>
+      {/* Guide rings along the rod */}
+      {[-0.1, -0.55, -1.0, -1.45, -1.9].map((z, i) => (
+        <mesh key={i} position={[0, 0.02, z]}>
+          <torusGeometry args={[0.01 - i * 0.001, 0.002, 6, 8]} />
+          <meshStandardMaterial color="#999999" metalness={0.7} roughness={0.3} />
+        </mesh>
+      ))}
+      {/* Fishing line from rod tip to bobber (when visible) */}
+      {bobberVisible && <FishingLine tipOffset={[0, 0, -2.5]} bobberPosition={bobberPosition} />}
+    </group>
+  );
+}
+
+/* ═══════ FISHING LINE ═══════ */
+function FishingLine({ tipOffset, bobberPosition }: { tipOffset: [number, number, number]; bobberPosition: [number, number, number] }) {
+  const lineRef = useRef<THREE.Line>(null);
+  const { camera } = useThree();
+
+  useFrame(() => {
+    if (!lineRef.current) return;
+    // Calculate world position of rod tip
+    const rodOffset = new THREE.Vector3(0.8, -0.6, -1.5);
+    rodOffset.applyQuaternion(camera.quaternion);
+    const rodPos = camera.position.clone().add(rodOffset);
+
+    const tipWorld = new THREE.Vector3(...tipOffset);
+    tipWorld.applyQuaternion(camera.quaternion);
+    tipWorld.add(rodPos);
+
+    const bobber = new THREE.Vector3(...bobberPosition);
+    // Create curved line with midpoint sag
+    const mid = tipWorld.clone().lerp(bobber, 0.5);
+    mid.y -= 0.5;
+
+    const curve = new THREE.QuadraticBezierCurve3(tipWorld, mid, bobber);
+    const points = curve.getPoints(20);
+    lineRef.current.geometry.setFromPoints(points);
+  });
+
+  return (
+    <line ref={lineRef}>
+      <bufferGeometry />
+      <lineBasicMaterial color="#cccccc" transparent opacity={0.6} linewidth={1} />
+    </line>
+  );
+}
+
 /* ═══════ SCENE CONFIGS ═══════ */
 
 function SceneEnvironment({ locationType }: { locationType: LocationType }) {
@@ -161,7 +293,6 @@ export function FishingScene3D({ location, bobberVisible, bobberPosition, onWate
       <Sky sunPosition={sky.sunPosition} turbidity={sky.turbidity} rayleigh={sky.rayleigh} />
       <fog attach="fog" args={fog} />
 
-      {/* Rich lighting setup */}
       <ambientLight intensity={0.4} color={location.ambientColor} />
       <directionalLight
         position={[15, 20, 8]}
@@ -176,13 +307,11 @@ export function FishingScene3D({ location, bobberVisible, bobberPosition, onWate
       />
       <pointLight position={[-15, 8, -15]} intensity={0.25} color="#ffeedd" />
       <hemisphereLight args={['#87ceeb', '#3a6a2f', 0.5]} />
-      {/* Subtle warm fill */}
       <pointLight position={[0, 3, 10]} intensity={0.15} color="#ffcc88" />
 
       <Water color={location.waterColor} locationType={location.type} />
       <SceneEnvironment locationType={location.type} />
 
-      {/* Clickable plane for casting */}
       <mesh
         rotation={[-Math.PI / 2, 0, 0]}
         position={[0, -0.3, 0]}
@@ -193,6 +322,7 @@ export function FishingScene3D({ location, bobberVisible, bobberPosition, onWate
       </mesh>
 
       <FishingBobber visible={bobberVisible} position={bobberPosition} />
+      <FishingRod bobberVisible={bobberVisible} bobberPosition={bobberPosition} />
 
       <OrbitControls
         maxPolarAngle={Math.PI / 2.2}
