@@ -127,7 +127,7 @@ export const LOCATIONS: FishingLocation[] = [
     id: 'titicaca', name: 'Lago Titicaca', type: 'lake', waterType: 'freshwater',
     description: 'O lago navegável mais alto do mundo.', requiredLevel: 2,
     waterColor: '#0284c7', skyColor: '#e0f2fe', ambientColor: '#f0f9ff',
-    fishIds: ['tilapia', 'carpa', 'lambari', 'truta', 'pacu', 'surubim'],
+    fishIds: ['tilapia', 'carpa', 'lambari', 'truta', 'pacu', 'matrinxa', 'surubim'],
     emoji: '⛰️'
   },
   {
