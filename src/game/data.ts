@@ -27,6 +27,18 @@ export const FISH: Fish[] = [
   { id: 'pargo', name: 'Pargo', rarity: 'uncommon', waterType: 'saltwater', minWeight: 1, maxWeight: 8, xp: 30, description: 'Peixe vermelho de águas profundas.', emoji: '🐠' },
   { id: 'cavala', name: 'Cavala', rarity: 'uncommon', waterType: 'saltwater', minWeight: 2, maxWeight: 10, xp: 33, description: 'Rápida nadadora de mar aberto.', emoji: '🐠' },
 
+  // === FRESHWATER MYTHIC ===
+  { id: 'arapaima', name: 'Arapaima', rarity: 'mythic', waterType: 'freshwater', minWeight: 40, maxWeight: 150, xp: 70, description: 'Predador ancestral dos rios amazônicos.', emoji: '✨' },
+  { id: 'dourado-real', name: 'Dourado Real', rarity: 'mythic', waterType: 'freshwater', minWeight: 8, maxWeight: 35, xp: 65, description: 'Variante rara do Dourado com escamas brilhantes.', emoji: '✨' },
+  { id: 'pirarara', name: 'Pirarara', rarity: 'mythic', waterType: 'freshwater', minWeight: 15, maxWeight: 60, xp: 60, description: 'Bagre gigante de cauda vermelha.', emoji: '✨' },
+  { id: 'matrinxa', name: 'Matrinxã', rarity: 'mythic', waterType: 'freshwater', minWeight: 2, maxWeight: 8, xp: 55, description: 'Peixe acrobático que salta fora da água.', emoji: '✨' },
+
+  // === SALTWATER MYTHIC ===
+  { id: 'barracuda', name: 'Barracuda', rarity: 'mythic', waterType: 'saltwater', minWeight: 5, maxWeight: 30, xp: 65, description: 'Torpedo prateado dos recifes tropicais.', emoji: '✨' },
+  { id: 'wahoo', name: 'Wahoo', rarity: 'mythic', waterType: 'saltwater', minWeight: 8, maxWeight: 45, xp: 70, description: 'Um dos peixes mais rápidos do oceano.', emoji: '✨' },
+  { id: 'olhete', name: 'Olhete', rarity: 'mythic', waterType: 'saltwater', minWeight: 5, maxWeight: 25, xp: 58, description: 'Lutador feroz das águas costeiras.', emoji: '✨' },
+  { id: 'dourado-do-mar', name: 'Dourado-do-mar', rarity: 'mythic', waterType: 'saltwater', minWeight: 4, maxWeight: 20, xp: 62, description: 'Brilha como ouro sob o sol tropical.', emoji: '✨' },
+
   // === FRESHWATER LEGENDARY ===
   { id: 'pirarucu', name: 'Pirarucu', rarity: 'legendary', waterType: 'freshwater', minWeight: 50, maxWeight: 200, xp: 150, description: 'O gigante da Amazônia, um dos maiores peixes de água doce.', emoji: '🏆' },
   { id: 'jaú', name: 'Jaú', rarity: 'legendary', waterType: 'freshwater', minWeight: 30, maxWeight: 120, xp: 120, description: 'Gigante silencioso das profundezas dos rios.', emoji: '🏆' },
