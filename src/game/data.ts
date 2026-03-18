@@ -116,7 +116,7 @@ export const LOCATIONS: FishingLocation[] = [
     id: 'mississippi', name: 'Rio Mississippi', type: 'river', waterType: 'freshwater',
     description: 'O grande rio da América do Norte.', requiredLevel: 6,
     waterColor: '#78716c', skyColor: '#d6d3d1', ambientColor: '#e7e5e4',
-    fishIds: ['bagre', 'carpa', 'lambari', 'truta', 'dourado', 'dourado-real', 'surubim', 'esturjao'],
+    fishIds: ['bagre', 'carpa', 'lambari', 'truta', 'dourado', 'dourado-real', 'lucio', 'surubim', 'arraia-doce', 'esturjao'],
     emoji: '🦅'
   },
   {
