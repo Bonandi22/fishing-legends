@@ -52,6 +52,7 @@ export const FISH: Fish[] = [
   { id: 'espadarte', name: 'Espadarte', rarity: 'legendary', waterType: 'saltwater', minWeight: 50, maxWeight: 400, xp: 180, description: 'Guerreiro dos mares com sua espada.', emoji: '🏆' },
   { id: 'salmao-rei', name: 'Salmão-rei', rarity: 'legendary', waterType: 'saltwater', minWeight: 5, maxWeight: 30, xp: 110, description: 'O mais nobre dos salmões.', emoji: '🏆' },
   { id: 'mero', name: 'Mero', rarity: 'legendary', waterType: 'saltwater', minWeight: 30, maxWeight: 200, xp: 140, description: 'Gigante dos recifes, protegido e raro.', emoji: '🏆' },
+  { id: 'peixe-vela', name: 'Peixe-vela', rarity: 'legendary', waterType: 'saltwater', minWeight: 25, maxWeight: 100, xp: 170, description: 'O peixe mais rápido do oceano, com sua vela majestosa.', emoji: '🏆' },
 
   // === FRESHWATER ABYSSAL ===
   { id: 'peixe-lua-doce', name: 'Peixe-lua Gigante', rarity: 'abyssal', waterType: 'freshwater', minWeight: 100, maxWeight: 500, xp: 500, description: 'Criatura mítica das profundezas lacustres.', emoji: '🌟' },
