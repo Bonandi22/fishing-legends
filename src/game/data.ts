@@ -109,7 +109,7 @@ export const LOCATIONS: FishingLocation[] = [
     id: 'nile', name: 'Rio Nilo', type: 'river', waterType: 'freshwater',
     description: 'O rio dos faraós, berço do Egito antigo.', requiredLevel: 4,
     waterColor: '#a16207', skyColor: '#fde68a', ambientColor: '#fef3c7',
-    fishIds: ['tilapia', 'bagre', 'carpa', 'tucunare', 'pintado', 'matrinxa', 'jaú', 'esturjao'],
+    fishIds: ['tilapia', 'bagre', 'carpa', 'tucunare', 'pintado', 'matrinxa', 'lucio', 'jaú', 'arraia-doce', 'esturjao'],
     emoji: '🏛️'
   },
   {
