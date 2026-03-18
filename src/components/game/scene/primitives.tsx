@@ -239,175 +239,257 @@ export function Cloud({ position, scale = 1, speed = 0.3 }: {
 /* ═══════ Realistic Seagull ═══════ */
 export function Bird({ position, speed = 1 }: { position: [number, number, number]; speed?: number }) {
   const ref = useRef<THREE.Group>(null);
+  const bodyRef = useRef<THREE.Group>(null);
   const leftWingRef = useRef<THREE.Group>(null);
   const rightWingRef = useRef<THREE.Group>(null);
+  const leftOuterRef = useRef<THREE.Group>(null);
+  const rightOuterRef = useRef<THREE.Group>(null);
   const leftTipRef = useRef<THREE.Group>(null);
   const rightTipRef = useRef<THREE.Group>(null);
   const offset = useMemo(() => Math.random() * Math.PI * 2, []);
-  const radius = useMemo(() => 8 + Math.random() * 15, []);
-  const glidePhase = useMemo(() => Math.random() * Math.PI * 2, []);
-  const birdScale = useMemo(() => 0.9 + Math.random() * 0.4, []);
+  const radius = useMemo(() => 10 + Math.random() * 18, []);
+  const heightVar = useMemo(() => Math.random() * 2, []);
+  const birdScale = useMemo(() => 0.85 + Math.random() * 0.35, []);
+  const flapCycle = useMemo(() => Math.random() * 10, []);
 
   useFrame(({ clock }) => {
     if (!ref.current) return;
-    const t = clock.getElapsedTime() * speed * 0.25 + offset;
-    // Figure-8 flight path for more natural movement
-    ref.current.position.x = position[0] + Math.cos(t) * radius;
-    ref.current.position.z = position[2] + Math.sin(t * 2) * radius * 0.5;
-    ref.current.position.y = position[1] + Math.sin(t * 1.5) * 0.8 + Math.sin(t * 0.5) * 0.4;
-    // Face direction of movement
-    const dx = -Math.sin(t) * radius;
-    const dz = Math.cos(t * 2) * radius;
+    const t = clock.getElapsedTime() * speed * 0.2 + offset;
+
+    // Organic flight path with thermal-like circles and drift
+    const pathX = Math.cos(t) * radius + Math.sin(t * 0.3) * 3;
+    const pathZ = Math.sin(t * 1.7) * radius * 0.6 + Math.cos(t * 0.5) * 4;
+    ref.current.position.x = position[0] + pathX;
+    ref.current.position.z = position[2] + pathZ;
+    // Altitude varies - thermals and dips
+    ref.current.position.y = position[1] + heightVar + Math.sin(t * 0.8) * 1.2 + Math.sin(t * 2.1) * 0.3;
+
+    // Face direction of travel
+    const dx = -Math.sin(t) * radius + Math.cos(t * 0.3) * 3 * 0.3;
+    const dz = Math.cos(t * 1.7) * radius * 0.6 * 1.7 - Math.sin(t * 0.5) * 4 * 0.5;
     ref.current.rotation.y = Math.atan2(dx, dz);
-    // Banking on turns
-    ref.current.rotation.z = Math.cos(t) * 0.2;
-    // Slight pitch
-    ref.current.rotation.x = Math.sin(t * 1.5) * 0.05;
+    // Bank into turns
+    const turnRate = Math.cos(t) * radius;
+    ref.current.rotation.z = Math.atan2(turnRate, 40) * 0.4;
+    // Pitch with altitude changes
+    ref.current.rotation.x = Math.cos(t * 0.8) * 0.08;
 
-    const elapsed = clock.getElapsedTime();
-    // Alternating flap and glide phases
-    const glide = Math.sin(elapsed * 0.6 + glidePhase);
-    const isGliding = glide > 0.2;
-    const flapIntensity = isGliding ? 0.03 : 0.5;
-    const flapSpeed = isGliding ? 1.5 : 9;
-    const wingAngle = Math.sin(elapsed * flapSpeed + offset) * flapIntensity;
-    // Wingtip flex (secondary feathers bend more)
-    const tipAngle = Math.sin(elapsed * flapSpeed * 1.2 + offset) * flapIntensity * 0.6;
+    // Body bob
+    if (bodyRef.current) {
+      bodyRef.current.rotation.x = Math.sin(clock.getElapsedTime() * 2 + offset) * 0.02;
+    }
 
-    if (leftWingRef.current) {
-      leftWingRef.current.rotation.z = wingAngle + (isGliding ? 0.15 : 0.08);
+    const elapsed = clock.getElapsedTime() + flapCycle;
+    // Realistic flap cycle: rapid flaps then long glide
+    const cyclePos = (elapsed * 0.4) % 1;
+    const isGliding = cyclePos > 0.35 && cyclePos < 0.85;
+    
+    let wingAngle: number, outerAngle: number, tipAngle: number;
+    
+    if (isGliding) {
+      // Gliding - wings held steady with slight dihedral
+      const glideT = (cyclePos - 0.35) / 0.5;
+      const glideLift = Math.sin(glideT * Math.PI) * 0.02;
+      wingAngle = 0.18 + glideLift;
+      outerAngle = 0.05 + glideLift * 0.5;
+      tipAngle = -0.08;
+    } else {
+      // Flapping - smooth sinusoidal with acceleration
+      const flapT = elapsed * 7;
+      wingAngle = Math.sin(flapT) * 0.55;
+      // Outer wing lags slightly (flex)
+      outerAngle = Math.sin(flapT - 0.4) * 0.35;
+      // Tips flex most
+      tipAngle = Math.sin(flapT - 0.8) * 0.25;
     }
-    if (rightWingRef.current) {
-      rightWingRef.current.rotation.z = -wingAngle - (isGliding ? 0.15 : 0.08);
-    }
-    if (leftTipRef.current) {
-      leftTipRef.current.rotation.z = tipAngle + 0.1;
-    }
-    if (rightTipRef.current) {
-      rightTipRef.current.rotation.z = -tipAngle - 0.1;
-    }
+
+    if (leftWingRef.current) leftWingRef.current.rotation.z = wingAngle;
+    if (rightWingRef.current) rightWingRef.current.rotation.z = -wingAngle;
+    if (leftOuterRef.current) leftOuterRef.current.rotation.z = outerAngle;
+    if (rightOuterRef.current) rightOuterRef.current.rotation.z = -outerAngle;
+    if (leftTipRef.current) leftTipRef.current.rotation.z = tipAngle + 0.12;
+    if (rightTipRef.current) rightTipRef.current.rotation.z = -tipAngle - 0.12;
   });
 
   return (
     <group ref={ref} position={position} scale={birdScale}>
-      {/* Body - streamlined */}
-      <mesh>
-        <capsuleGeometry args={[0.07, 0.4, 8, 10]} />
-        <meshStandardMaterial color="#f0ece6" roughness={0.65} />
-      </mesh>
-      {/* Breast (white, slightly bigger) */}
-      <mesh position={[0, -0.02, -0.08]}>
-        <sphereGeometry args={[0.075, 8, 6]} />
-        <meshStandardMaterial color="#ffffff" roughness={0.6} />
-      </mesh>
-      {/* Head */}
-      <mesh position={[0, 0.06, -0.28]}>
-        <sphereGeometry args={[0.065, 8, 8]} />
-        <meshStandardMaterial color="#ffffff" roughness={0.55} />
-      </mesh>
-      {/* Dark head marking (varies by species) */}
-      <mesh position={[0, 0.09, -0.3]}>
-        <sphereGeometry args={[0.04, 8, 6]} />
-        <meshStandardMaterial color="#1a1a1a" roughness={0.7} />
-      </mesh>
-      {/* Beak - yellow with red spot */}
-      <mesh position={[0, 0.03, -0.38]} rotation={[0.2, 0, 0]}>
-        <coneGeometry args={[0.018, 0.14, 5]} />
-        <meshStandardMaterial color="#e8a020" roughness={0.4} />
-      </mesh>
-      <mesh position={[0, 0.02, -0.36]}>
-        <sphereGeometry args={[0.008, 4, 4]} />
-        <meshStandardMaterial color="#cc3333" roughness={0.5} />
-      </mesh>
-      {/* Eyes */}
-      <mesh position={[0.04, 0.08, -0.29]}>
-        <sphereGeometry args={[0.01, 6, 6]} />
-        <meshStandardMaterial color="#ffee00" roughness={0.3} />
-      </mesh>
-      <mesh position={[0.041, 0.081, -0.295]}>
-        <sphereGeometry args={[0.005, 4, 4]} />
-        <meshStandardMaterial color="#000000" />
-      </mesh>
-      <mesh position={[-0.04, 0.08, -0.29]}>
-        <sphereGeometry args={[0.01, 6, 6]} />
-        <meshStandardMaterial color="#ffee00" roughness={0.3} />
-      </mesh>
-      <mesh position={[-0.041, 0.081, -0.295]}>
-        <sphereGeometry args={[0.005, 4, 4]} />
-        <meshStandardMaterial color="#000000" />
-      </mesh>
-      {/* Tail fan */}
-      <mesh position={[0, 0.01, 0.28]} rotation={[-0.15, 0, 0]}>
-        <boxGeometry args={[0.08, 0.012, 0.2]} />
-        <meshStandardMaterial color="#e0dcd4" roughness={0.8} />
-      </mesh>
-      <mesh position={[0.025, 0.01, 0.3]} rotation={[-0.15, 0.1, 0]}>
-        <boxGeometry args={[0.04, 0.01, 0.18]} />
-        <meshStandardMaterial color="#d8d4cc" roughness={0.8} />
-      </mesh>
-      <mesh position={[-0.025, 0.01, 0.3]} rotation={[-0.15, -0.1, 0]}>
-        <boxGeometry args={[0.04, 0.01, 0.18]} />
-        <meshStandardMaterial color="#d8d4cc" roughness={0.8} />
-      </mesh>
-      {/* Left Wing (articulated with inner + outer + tip) */}
-      <group ref={leftWingRef} position={[0.08, 0.02, 0]}>
-        {/* Inner wing (shoulder) */}
-        <mesh position={[0.14, 0, 0.02]}>
-          <boxGeometry args={[0.28, 0.018, 0.18]} />
-          <meshStandardMaterial color="#e8e4dc" roughness={0.7} />
+      <group ref={bodyRef}>
+        {/* Body - elongated fusiform shape */}
+        <mesh rotation={[0, 0, 0]}>
+          <capsuleGeometry args={[0.06, 0.45, 6, 12]} />
+          <meshStandardMaterial color="#f5f2ec" roughness={0.6} />
         </mesh>
-        {/* Mid wing */}
-        <mesh position={[0.32, 0.005, 0.01]}>
-          <boxGeometry args={[0.14, 0.014, 0.15]} />
-          <meshStandardMaterial color="#d0ccc4" roughness={0.75} />
+        {/* White underbelly */}
+        <mesh position={[0, -0.03, -0.05]}>
+          <capsuleGeometry args={[0.055, 0.3, 5, 10]} />
+          <meshStandardMaterial color="#ffffff" roughness={0.55} />
         </mesh>
-        {/* Outer wing / primary feathers (dark tips) */}
-        <group ref={leftTipRef} position={[0.4, 0.01, 0]}>
-          <mesh position={[0.08, 0, 0.01]}>
-            <boxGeometry args={[0.14, 0.01, 0.12]} />
-            <meshStandardMaterial color="#1a1a1a" roughness={0.8} />
-          </mesh>
-          {/* Individual primary feather tips */}
-          {[0, 1, 2, 3].map((i) => (
-            <mesh key={i} position={[0.15, 0, -0.03 + i * 0.025]} rotation={[0, 0.05 * i, 0]}>
-              <boxGeometry args={[0.06, 0.006, 0.02]} />
-              <meshStandardMaterial color="#111111" roughness={0.85} />
+        {/* Grey mantle/back */}
+        <mesh position={[0, 0.03, 0.05]}>
+          <capsuleGeometry args={[0.045, 0.25, 5, 10]} />
+          <meshStandardMaterial color="#b8b8be" roughness={0.7} />
+        </mesh>
+
+        {/* Head - round with smooth neck */}
+        <mesh position={[0, 0.04, -0.32]}>
+          <sphereGeometry args={[0.058, 10, 10]} />
+          <meshStandardMaterial color="#ffffff" roughness={0.5} />
+        </mesh>
+        {/* Neck transition */}
+        <mesh position={[0, 0.03, -0.26]} rotation={[0.2, 0, 0]}>
+          <capsuleGeometry args={[0.04, 0.08, 5, 8]} />
+          <meshStandardMaterial color="#f8f6f0" roughness={0.55} />
+        </mesh>
+
+        {/* Beak - longer, hooked tip, yellow-orange with red gonydeal spot */}
+        <mesh position={[0, 0.025, -0.42]} rotation={[0.15, 0, 0]}>
+          <coneGeometry args={[0.014, 0.16, 6]} />
+          <meshStandardMaterial color="#f0a030" roughness={0.35} metalness={0.1} />
+        </mesh>
+        {/* Lower mandible */}
+        <mesh position={[0, 0.015, -0.41]} rotation={[0.3, 0, 0]}>
+          <coneGeometry args={[0.01, 0.12, 5]} />
+          <meshStandardMaterial color="#e89828" roughness={0.4} />
+        </mesh>
+        {/* Red gonydeal spot */}
+        <mesh position={[0, 0.018, -0.39]}>
+          <sphereGeometry args={[0.006, 5, 5]} />
+          <meshStandardMaterial color="#cc2020" roughness={0.4} />
+        </mesh>
+        {/* Hooked tip */}
+        <mesh position={[0, 0.02, -0.49]} rotation={[0.5, 0, 0]}>
+          <coneGeometry args={[0.005, 0.04, 4]} />
+          <meshStandardMaterial color="#d48820" roughness={0.35} />
+        </mesh>
+
+        {/* Eyes - pale iris with dark pupil */}
+        {[1, -1].map((side) => (
+          <group key={side} position={[0.035 * side, 0.055, -0.33]}>
+            <mesh>
+              <sphereGeometry args={[0.012, 8, 8]} />
+              <meshStandardMaterial color="#f0e860" roughness={0.3} />
             </mesh>
-          ))}
+            <mesh position={[0.003 * side, 0.001, -0.005]}>
+              <sphereGeometry args={[0.006, 6, 6]} />
+              <meshStandardMaterial color="#111111" />
+            </mesh>
+            {/* Eye ring */}
+            <mesh position={[0.002 * side, 0, -0.008]} rotation={[0, 0.2 * side, 0]}>
+              <torusGeometry args={[0.013, 0.001, 6, 10]} />
+              <meshStandardMaterial color="#cc3030" roughness={0.5} />
+            </mesh>
+          </group>
+        ))}
+
+        {/* Tail feathers - forked */}
+        <mesh position={[0, 0.005, 0.32]} rotation={[-0.1, 0, 0]}>
+          <boxGeometry args={[0.06, 0.008, 0.16]} />
+          <meshStandardMaterial color="#c8c4bc" roughness={0.8} />
+        </mesh>
+        {[1, -1].map((side) => (
+          <mesh key={side} position={[0.03 * side, 0.003, 0.35]} rotation={[-0.12, 0.08 * side, 0]}>
+            <boxGeometry args={[0.03, 0.006, 0.14]} />
+            <meshStandardMaterial color="#bbb8b0" roughness={0.8} />
+          </mesh>
+        ))}
+
+        {/* Feet - tucked under in flight */}
+        {[1, -1].map((side) => (
+          <group key={side} position={[0.02 * side, -0.07, 0.1]}>
+            <mesh>
+              <boxGeometry args={[0.006, 0.04, 0.006]} />
+              <meshStandardMaterial color="#e88020" />
+            </mesh>
+            {/* Webbed toes */}
+            <mesh position={[0, -0.025, -0.01]} rotation={[0.3, 0, 0]}>
+              <boxGeometry args={[0.015, 0.004, 0.02]} />
+              <meshStandardMaterial color="#e88020" />
+            </mesh>
+          </group>
+        ))}
+      </group>
+
+      {/* LEFT WING - 3-section articulation */}
+      <group ref={leftWingRef} position={[0.07, 0.02, 0.02]}>
+        {/* Inner wing (secondary feathers) - grey */}
+        <mesh position={[0.13, 0, 0.02]}>
+          <boxGeometry args={[0.26, 0.016, 0.2]} />
+          <meshStandardMaterial color="#b0b0b8" roughness={0.7} />
+        </mesh>
+        {/* Wing coverts (layered look) */}
+        <mesh position={[0.12, 0.008, 0.0]}>
+          <boxGeometry args={[0.2, 0.008, 0.14]} />
+          <meshStandardMaterial color="#c0c0c6" roughness={0.65} />
+        </mesh>
+        {/* Outer wing */}
+        <group ref={leftOuterRef} position={[0.26, 0, 0]}>
+          <mesh position={[0.1, 0, 0.01]}>
+            <boxGeometry args={[0.2, 0.012, 0.16]} />
+            <meshStandardMaterial color="#a0a0a8" roughness={0.75} />
+          </mesh>
+          {/* Primary feathers (wingtips) - BLACK */}
+          <group ref={leftTipRef} position={[0.2, 0, 0]}>
+            <mesh position={[0.06, 0, 0]}>
+              <boxGeometry args={[0.12, 0.008, 0.1]} />
+              <meshStandardMaterial color="#0a0a0a" roughness={0.85} />
+            </mesh>
+            {/* Individual primary tips with white mirrors */}
+            {[0, 1, 2, 3, 4].map((i) => (
+              <group key={i}>
+                <mesh position={[0.12 + i * 0.012, 0, -0.025 + i * 0.018]} rotation={[0, 0.04 * i, 0]}>
+                  <boxGeometry args={[0.04, 0.005, 0.015]} />
+                  <meshStandardMaterial color="#050505" roughness={0.9} />
+                </mesh>
+                {/* White mirror on P10 */}
+                {i === 0 && (
+                  <mesh position={[0.1, 0.002, -0.025]}>
+                    <boxGeometry args={[0.015, 0.004, 0.01]} />
+                    <meshStandardMaterial color="#ffffff" roughness={0.5} />
+                  </mesh>
+                )}
+              </group>
+            ))}
+          </group>
         </group>
       </group>
-      {/* Right Wing (mirrored) */}
-      <group ref={rightWingRef} position={[-0.08, 0.02, 0]}>
-        <mesh position={[-0.14, 0, 0.02]}>
-          <boxGeometry args={[0.28, 0.018, 0.18]} />
-          <meshStandardMaterial color="#e8e4dc" roughness={0.7} />
+
+      {/* RIGHT WING - mirrored */}
+      <group ref={rightWingRef} position={[-0.07, 0.02, 0.02]}>
+        <mesh position={[-0.13, 0, 0.02]}>
+          <boxGeometry args={[0.26, 0.016, 0.2]} />
+          <meshStandardMaterial color="#b0b0b8" roughness={0.7} />
         </mesh>
-        <mesh position={[-0.32, 0.005, 0.01]}>
-          <boxGeometry args={[0.14, 0.014, 0.15]} />
-          <meshStandardMaterial color="#d0ccc4" roughness={0.75} />
+        <mesh position={[-0.12, 0.008, 0.0]}>
+          <boxGeometry args={[0.2, 0.008, 0.14]} />
+          <meshStandardMaterial color="#c0c0c6" roughness={0.65} />
         </mesh>
-        <group ref={rightTipRef} position={[-0.4, 0.01, 0]}>
-          <mesh position={[-0.08, 0, 0.01]}>
-            <boxGeometry args={[0.14, 0.01, 0.12]} />
-            <meshStandardMaterial color="#1a1a1a" roughness={0.8} />
+        <group ref={rightOuterRef} position={[-0.26, 0, 0]}>
+          <mesh position={[-0.1, 0, 0.01]}>
+            <boxGeometry args={[0.2, 0.012, 0.16]} />
+            <meshStandardMaterial color="#a0a0a8" roughness={0.75} />
           </mesh>
-          {[0, 1, 2, 3].map((i) => (
-            <mesh key={i} position={[-0.15, 0, -0.03 + i * 0.025]} rotation={[0, -0.05 * i, 0]}>
-              <boxGeometry args={[0.06, 0.006, 0.02]} />
-              <meshStandardMaterial color="#111111" roughness={0.85} />
+          <group ref={rightTipRef} position={[-0.2, 0, 0]}>
+            <mesh position={[-0.06, 0, 0]}>
+              <boxGeometry args={[0.12, 0.008, 0.1]} />
+              <meshStandardMaterial color="#0a0a0a" roughness={0.85} />
             </mesh>
-          ))}
+            {[0, 1, 2, 3, 4].map((i) => (
+              <group key={i}>
+                <mesh position={[-0.12 - i * 0.012, 0, -0.025 + i * 0.018]} rotation={[0, -0.04 * i, 0]}>
+                  <boxGeometry args={[0.04, 0.005, 0.015]} />
+                  <meshStandardMaterial color="#050505" roughness={0.9} />
+                </mesh>
+                {i === 0 && (
+                  <mesh position={[-0.1, 0.002, -0.025]}>
+                    <boxGeometry args={[0.015, 0.004, 0.01]} />
+                    <meshStandardMaterial color="#ffffff" roughness={0.5} />
+                  </mesh>
+                )}
+              </group>
+            ))}
+          </group>
         </group>
       </group>
-      {/* Feet (tucked) */}
-      <mesh position={[0.025, -0.07, 0.08]}>
-        <boxGeometry args={[0.008, 0.05, 0.008]} />
-        <meshStandardMaterial color="#e89020" />
-      </mesh>
-      <mesh position={[-0.025, -0.07, 0.08]}>
-        <boxGeometry args={[0.008, 0.05, 0.008]} />
-        <meshStandardMaterial color="#e89020" />
-      </mesh>
     </group>
   );
 }
