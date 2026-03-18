@@ -83,4 +83,9 @@ export const FISH_IMAGES: Record<string, string> = {
   'wahoo': wahoo,
   'olhete': olhete,
   'dourado-do-mar': douradoDoMar,
+  'arraia': arraia,
+  'arraia-doce': arraiaDoce,
+  'lucio': lucio,
+  'dragao-negro': dragaoNegro,
+  'peixe-vela': peixeVela,
 };

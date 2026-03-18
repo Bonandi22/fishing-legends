@@ -153,7 +153,7 @@ export const LOCATIONS: FishingLocation[] = [
     id: 'como', name: 'Lago de Como', type: 'lake', waterType: 'freshwater',
     description: 'O romântico lago italiano nos Alpes.', requiredLevel: 12,
     waterColor: '#0e7490', skyColor: '#bae6fd', ambientColor: '#e0f2fe',
-    fishIds: ['carpa', 'truta', 'lambari', 'dourado', 'surubim', 'dourado-real', 'matrinxa', 'jaú', 'esturjao'],
+    fishIds: ['carpa', 'truta', 'lambari', 'dourado', 'surubim', 'dourado-real', 'matrinxa', 'lucio', 'jaú', 'arraia-doce', 'esturjao'],
     emoji: '🇮🇹'
   },
 ];
