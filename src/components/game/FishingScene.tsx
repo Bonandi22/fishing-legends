@@ -197,7 +197,7 @@ function FishingRod({ bobberVisible, bobberPosition }: { bobberVisible: boolean;
         </mesh>
       ))}
       {/* Fishing line from rod tip to bobber (when visible) */}
-      {bobberVisible && <FishingLine tipOffset={[0, 0, -2.5]} bobberPosition={bobberPosition} />}
+      {bobberVisible && <FishingLineFromTip bobberPosition={bobberPosition} />}
     </group>
   );
 }
