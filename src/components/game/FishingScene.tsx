@@ -202,7 +202,7 @@ function FishingRod({ bobberVisible, bobberPosition }: { bobberVisible: boolean;
   );
 }
 
-/* ═══════ FISHING LINE ═══════ */
+/* ═══════ FISHING LINE (straight, no sag) ═══════ */
 function FishingLine({ tipOffset, bobberPosition }: { tipOffset: [number, number, number]; bobberPosition: [number, number, number] }) {
   const lineRef = useRef<THREE.Line>(null);
   const { camera } = useThree();
@@ -214,24 +214,24 @@ function FishingLine({ tipOffset, bobberPosition }: { tipOffset: [number, number
     rodOffset.applyQuaternion(camera.quaternion);
     const rodPos = camera.position.clone().add(rodOffset);
 
-    const tipWorld = new THREE.Vector3(...tipOffset);
-    tipWorld.applyQuaternion(camera.quaternion);
-    tipWorld.add(rodPos);
+    // Apply same rotation as rod
+    const rodQuat = camera.quaternion.clone();
+    const tipLocal = new THREE.Vector3(...tipOffset);
+    tipLocal.applyQuaternion(rodQuat);
+    const tipWorld = rodPos.clone().add(tipLocal);
 
-    const bobber = new THREE.Vector3(...bobberPosition);
-    // Create curved line with midpoint sag
-    const mid = tipWorld.clone().lerp(bobber, 0.5);
-    mid.y -= 0.5;
+    // Target: top of bobber (the antenna tip = bobber pos + 0.6 up)
+    const bobberTop = new THREE.Vector3(bobberPosition[0], bobberPosition[1] + 0.6, bobberPosition[2]);
 
-    const curve = new THREE.QuadraticBezierCurve3(tipWorld, mid, bobber);
-    const points = curve.getPoints(20);
+    // Straight line from tip to bobber top
+    const points = [tipWorld, bobberTop];
     lineRef.current.geometry.setFromPoints(points);
   });
 
   return (
     <line ref={lineRef}>
       <bufferGeometry />
-      <lineBasicMaterial color="#cccccc" transparent opacity={0.6} linewidth={1} />
+      <lineBasicMaterial color="#cccccc" transparent opacity={0.7} linewidth={1} />
     </line>
   );
 }
