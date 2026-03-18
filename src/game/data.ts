@@ -63,6 +63,7 @@ export const FISH: Fish[] = [
   { id: 'peixe-lua', name: 'Peixe-lua Oceânico', rarity: 'abyssal', waterType: 'saltwater', minWeight: 200, maxWeight: 2000, xp: 550, description: 'O maior peixe ósseo do mundo.', emoji: '🌟' },
   { id: 'tamboril', name: 'Tamboril Abissal', rarity: 'abyssal', waterType: 'saltwater', minWeight: 5, maxWeight: 50, xp: 480, description: 'Criatura das trevas com sua luz hipnotizante.', emoji: '🌟' },
   { id: 'marlim-azul', name: 'Marlim-azul', rarity: 'abyssal', waterType: 'saltwater', minWeight: 100, maxWeight: 800, xp: 650, description: 'O troféu supremo da pesca oceânica.', emoji: '🌟' },
+  { id: 'dragao-negro', name: 'Dragão Negro', rarity: 'abyssal', waterType: 'saltwater', minWeight: 2, maxWeight: 15, xp: 520, description: 'Criatura bioluminescente das trevas abissais, com presas terríveis.', emoji: '🌟' },
 ];
 
 export const LOCATIONS: FishingLocation[] = [
