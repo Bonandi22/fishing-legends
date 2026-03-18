@@ -79,7 +79,7 @@ export const LOCATIONS: FishingLocation[] = [
     id: 'caribbean', name: 'Mar do Caribe', type: 'ocean', waterType: 'saltwater',
     description: 'Águas cristalinas e tropicais do Caribe.', requiredLevel: 3,
     waterColor: '#06b6d4', skyColor: '#a5f3fc', ambientColor: '#cffafe',
-    fishIds: ['sardinha', 'corvina', 'robalo', 'garoupa', 'pargo', 'olhete', 'dourado-do-mar', 'espadarte', 'marlim-azul'],
+    fishIds: ['sardinha', 'corvina', 'robalo', 'garoupa', 'pargo', 'olhete', 'dourado-do-mar', 'arraia', 'espadarte', 'peixe-vela', 'marlim-azul', 'dragao-negro'],
     emoji: '🏝️'
   },
   {
