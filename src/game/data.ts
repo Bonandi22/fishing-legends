@@ -38,6 +38,8 @@ export const FISH: Fish[] = [
   { id: 'wahoo', name: 'Wahoo', rarity: 'mythic', waterType: 'saltwater', minWeight: 8, maxWeight: 45, xp: 70, description: 'Um dos peixes mais rápidos do oceano.', emoji: '✨' },
   { id: 'olhete', name: 'Olhete', rarity: 'mythic', waterType: 'saltwater', minWeight: 5, maxWeight: 25, xp: 58, description: 'Lutador feroz das águas costeiras.', emoji: '✨' },
   { id: 'dourado-do-mar', name: 'Dourado-do-mar', rarity: 'mythic', waterType: 'saltwater', minWeight: 4, maxWeight: 20, xp: 62, description: 'Brilha como ouro sob o sol tropical.', emoji: '✨' },
+  { id: 'arraia', name: 'Arraia', rarity: 'mythic', waterType: 'saltwater', minWeight: 10, maxWeight: 60, xp: 68, description: 'Desliza silenciosamente pelas águas salgadas com sua cauda venenosa.', emoji: '✨' },
+  { id: 'lucio', name: 'Lúcio', rarity: 'mythic', waterType: 'freshwater', minWeight: 3, maxWeight: 25, xp: 63, description: 'Predador de emboscada dos rios e lagos europeus.', emoji: '✨' },
 
   // === FRESHWATER LEGENDARY ===
   { id: 'pirarucu', name: 'Pirarucu', rarity: 'legendary', waterType: 'freshwater', minWeight: 50, maxWeight: 200, xp: 150, description: 'O gigante da Amazônia, um dos maiores peixes de água doce.', emoji: '🏆' },
