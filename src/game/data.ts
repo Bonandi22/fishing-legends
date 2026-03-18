@@ -45,6 +45,7 @@ export const FISH: Fish[] = [
   { id: 'pirarucu', name: 'Pirarucu', rarity: 'legendary', waterType: 'freshwater', minWeight: 50, maxWeight: 200, xp: 150, description: 'O gigante da Amazônia, um dos maiores peixes de água doce.', emoji: '🏆' },
   { id: 'jaú', name: 'Jaú', rarity: 'legendary', waterType: 'freshwater', minWeight: 30, maxWeight: 120, xp: 120, description: 'Gigante silencioso das profundezas dos rios.', emoji: '🏆' },
   { id: 'surubim', name: 'Surubim', rarity: 'legendary', waterType: 'freshwater', minWeight: 10, maxWeight: 60, xp: 100, description: 'Nobre bagre de rios brasileiros.', emoji: '🏆' },
+  { id: 'arraia-doce', name: 'Arraia de Água Doce', rarity: 'legendary', waterType: 'freshwater', minWeight: 15, maxWeight: 80, xp: 130, description: 'Majestosa arraia dos rios amazônicos com padrões hipnotizantes.', emoji: '🏆' },
 
   // === SALTWATER LEGENDARY ===
   { id: 'atum', name: 'Atum', rarity: 'legendary', waterType: 'saltwater', minWeight: 20, maxWeight: 300, xp: 160, description: 'Rei dos oceanos, velocidade e força.', emoji: '🏆' },
