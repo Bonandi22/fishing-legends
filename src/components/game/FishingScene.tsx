@@ -202,37 +202,33 @@ function FishingRod({ bobberVisible, bobberPosition }: { bobberVisible: boolean;
   );
 }
 
-/* ═══════ FISHING LINE (straight, no sag) ═══════ */
-function FishingLine({ tipOffset, bobberPosition }: { tipOffset: [number, number, number]; bobberPosition: [number, number, number] }) {
+/* ═══════ FISHING LINE (anchored to rod tip mesh) ═══════ */
+function FishingLineFromTip({ bobberPosition }: { bobberPosition: [number, number, number] }) {
+  const tipMarkerRef = useRef<THREE.Mesh>(null);
   const lineRef = useRef<THREE.Line>(null);
-  const { camera } = useThree();
+  const worldPos = useMemo(() => new THREE.Vector3(), []);
 
   useFrame(() => {
-    if (!lineRef.current) return;
-    // Calculate world position of rod tip
-    const rodOffset = new THREE.Vector3(0.8, -0.6, -1.5);
-    rodOffset.applyQuaternion(camera.quaternion);
-    const rodPos = camera.position.clone().add(rodOffset);
+    if (!lineRef.current || !tipMarkerRef.current) return;
+    // Get actual world position of the tip marker (child of the rod group)
+    tipMarkerRef.current.updateWorldMatrix(true, false);
+    tipMarkerRef.current.getWorldPosition(worldPos);
 
-    // Apply same rotation as rod
-    const rodQuat = camera.quaternion.clone();
-    const tipLocal = new THREE.Vector3(...tipOffset);
-    tipLocal.applyQuaternion(rodQuat);
-    const tipWorld = rodPos.clone().add(tipLocal);
-
-    // Target: top of bobber (the antenna tip = bobber pos + 0.6 up)
     const bobberTop = new THREE.Vector3(bobberPosition[0], bobberPosition[1] + 0.6, bobberPosition[2]);
-
-    // Straight line from tip to bobber top
-    const points = [tipWorld, bobberTop];
-    lineRef.current.geometry.setFromPoints(points);
+    lineRef.current.geometry.setFromPoints([worldPos, bobberTop]);
   });
 
   return (
-    <line ref={lineRef}>
-      <bufferGeometry />
-      <lineBasicMaterial color="#cccccc" transparent opacity={0.7} linewidth={1} />
-    </line>
+    <>
+      {/* Invisible marker at rod tip position [0, 0, -2.5] in rod local space */}
+      <mesh ref={tipMarkerRef} position={[0, 0, -2.5]} visible={false}>
+        <sphereGeometry args={[0.001]} />
+      </mesh>
+      <line ref={lineRef}>
+        <bufferGeometry />
+        <lineBasicMaterial color="#cccccc" transparent opacity={0.7} linewidth={1} />
+      </line>
+    </>
   );
 }
 
