@@ -123,7 +123,7 @@ export const LOCATIONS: FishingLocation[] = [
     id: 'danube', name: 'Rio Danúbio', type: 'river', waterType: 'freshwater',
     description: 'O rio azul da Europa, atravessa 10 países.', requiredLevel: 10,
     waterColor: '#4338ca', skyColor: '#c7d2fe', ambientColor: '#e0e7ff',
-    fishIds: ['carpa', 'truta', 'bagre', 'dourado', 'pintado', 'pirarara', 'dourado-real', 'jaú', 'peixe-lua-doce'],
+    fishIds: ['carpa', 'truta', 'bagre', 'dourado', 'pintado', 'pirarara', 'dourado-real', 'lucio', 'jaú', 'arraia-doce', 'peixe-lua-doce'],
     emoji: '🏰'
   },
 
