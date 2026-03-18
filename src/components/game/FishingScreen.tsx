@@ -35,6 +35,30 @@ export default function FishingScreen({ location, player, onCatch, onBack }: Pro
     setPhase('casting');
     setMessage('Lançando...');
 
+    // Play reel sound for 0.75 seconds
+    try {
+      const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const duration = 0.75;
+      const sampleRate = audioCtx.sampleRate;
+      const bufferSize = Math.floor(sampleRate * duration);
+      const buffer = audioCtx.createBuffer(1, bufferSize, sampleRate);
+      const data = buffer.getChannelData(0);
+      // Simulate reel clicking/whirring sound
+      for (let i = 0; i < bufferSize; i++) {
+        const t = i / sampleRate;
+        const clickFreq = 40 + t * 20; // accelerating clicks
+        const click = Math.sin(t * clickFreq * Math.PI * 2) > 0.7 ? 0.3 : 0;
+        const whir = Math.sin(t * 800 * Math.PI * 2) * 0.05 * (1 - t / duration);
+        const noise = (Math.random() - 0.5) * 0.08 * (1 - t / duration);
+        data[i] = (click + whir + noise) * (1 - t / duration) * 0.6;
+      }
+      const source = audioCtx.createBufferSource();
+      source.buffer = buffer;
+      source.connect(audioCtx.destination);
+      source.start();
+      source.onended = () => audioCtx.close();
+    } catch (e) { /* audio not available */ }
+
     setTimeout(() => {
       setPhase('waiting');
       setMessage('Esperando o peixe morder... 🐟');
