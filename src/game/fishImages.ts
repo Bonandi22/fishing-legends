@@ -37,6 +37,11 @@ import barracuda from '@/assets/fish/barracuda.png';
 import wahoo from '@/assets/fish/wahoo.png';
 import olhete from '@/assets/fish/olhete.png';
 import douradoDoMar from '@/assets/fish/dourado-do-mar.png';
+import arraia from '@/assets/fish/arraia.png';
+import arraiaDoce from '@/assets/fish/arraia-doce.png';
+import lucio from '@/assets/fish/lucio.png';
+import dragaoNegro from '@/assets/fish/dragao-negro.png';
+import peixeVela from '@/assets/fish/peixe-vela.png';
 
 export const FISH_IMAGES: Record<string, string> = {
   'tilapia': tilapia,
