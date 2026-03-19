@@ -196,8 +196,6 @@ function FishingRod() {
           <meshStandardMaterial color="#999999" metalness={0.7} roughness={0.3} />
         </mesh>
       ))}
-      {/* Fishing line from rod tip to bobber (when visible) */}
-      {bobberVisible && <FishingLineFromTip bobberPosition={bobberPosition} />}
     </group>
   );
 }
