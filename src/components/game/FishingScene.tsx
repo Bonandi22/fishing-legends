@@ -105,7 +105,7 @@ function FishingBobber({ visible, position }: { visible: boolean; position: [num
 }
 
 /* ═══════ FISHING ROD (follows camera) ═══════ */
-function FishingRod({ bobberVisible, bobberPosition }: { bobberVisible: boolean; bobberPosition: [number, number, number] }) {
+function FishingRod() {
   const ref = useRef<THREE.Group>(null);
   const tipRef = useRef<THREE.Group>(null);
   const { camera } = useThree();
