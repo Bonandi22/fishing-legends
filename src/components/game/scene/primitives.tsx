@@ -236,7 +236,7 @@ export function Cloud({ position, scale = 1, speed = 0.3 }: {
   );
 }
 
-/* ═══════ Realistic Seagull ═══════ */
+/* ═══════ Realistic Seagull — flies forward ═══════ */
 export function Bird({ position, speed = 1 }: { position: [number, number, number]; speed?: number }) {
   const ref = useRef<THREE.Group>(null);
   const bodyRef = useRef<THREE.Group>(null);
@@ -249,109 +249,125 @@ export function Bird({ position, speed = 1 }: { position: [number, number, numbe
   const headRef = useRef<THREE.Group>(null);
   const tailRef = useRef<THREE.Group>(null);
   const offset = useMemo(() => Math.random() * Math.PI * 2, []);
-  const radius = useMemo(() => 12 + Math.random() * 20, []);
-  const heightVar = useMemo(() => Math.random() * 3, []);
+  const flyRadius = useMemo(() => 25 + Math.random() * 30, []);
+  const heightBase = useMemo(() => Math.random() * 2, []);
   const birdScale = useMemo(() => 0.9 + Math.random() * 0.3, []);
   const flapCycle = useMemo(() => Math.random() * 10, []);
-  const glideRatio = useMemo(() => 0.4 + Math.random() * 0.3, []);
+  const glideRatio = useMemo(() => 0.35 + Math.random() * 0.25, []);
+  // Direction: mainly forward (negative Z) with gentle curves
+  const dirAngle = useMemo(() => (Math.random() - 0.5) * 0.6, []);
+
+  // Store previous position for heading calculation
+  const prevPos = useRef(new THREE.Vector3(position[0], position[1], position[2]));
 
   useFrame(({ clock }) => {
     if (!ref.current) return;
-    const t = clock.getElapsedTime() * speed * 0.18 + offset;
+    const t = clock.getElapsedTime() * speed * 0.15 + offset;
 
-    // Smooth soaring path with thermals
-    const pathX = Math.cos(t) * radius + Math.sin(t * 0.37) * 4 + Math.cos(t * 0.13) * 2;
-    const pathZ = Math.sin(t * 1.6) * radius * 0.55 + Math.cos(t * 0.47) * 5;
-    ref.current.position.x = position[0] + pathX;
-    ref.current.position.z = position[2] + pathZ;
-    // Realistic altitude: long gentle climbs in thermals, slow descents
-    ref.current.position.y = position[1] + heightVar +
-      Math.sin(t * 0.6) * 1.5 +
-      Math.sin(t * 1.8) * 0.4 +
-      Math.cos(t * 0.25) * 0.8;
+    // Forward flight path: large oval/loop moving predominantly forward
+    // Uses a stretched figure-8 so birds traverse back but mostly fly "forward"
+    const forwardSpeed = speed * 0.4;
+    const cx = position[0] + Math.sin(t * 0.7 + dirAngle) * flyRadius * 0.4 + Math.cos(t * 0.23) * 3;
+    const cz = position[2] + Math.cos(t * 0.35) * flyRadius + t * forwardSpeed * 2;
+    // Wrap around so they don't fly away forever
+    const wrapZ = ((cz - position[2] + 100) % 200) - 100 + position[2];
+    const wrapX = ((cx - position[0] + 80) % 160) - 80 + position[0];
 
-    // Heading follows velocity vector
-    const dx = -Math.sin(t) * radius + Math.cos(t * 0.37) * 4 * 0.37;
-    const dz = Math.cos(t * 1.6) * radius * 0.55 * 1.6 - Math.sin(t * 0.47) * 5 * 0.47;
-    ref.current.rotation.y = Math.atan2(dx, dz);
-    // Banking proportional to turn rate
-    const turnRate = Math.cos(t) * radius * speed * 0.18;
-    ref.current.rotation.z = Math.atan2(turnRate, 50) * 0.5;
-    // Pitch follows altitude changes
-    const dy = Math.cos(t * 0.6) * 1.5 * 0.6 + Math.cos(t * 1.8) * 0.4 * 1.8;
-    ref.current.rotation.x = Math.atan2(dy, 8) * 0.3;
+    ref.current.position.x = wrapX;
+    ref.current.position.z = wrapZ;
+    // Gentle altitude variation simulating thermals
+    ref.current.position.y = position[1] + heightBase +
+      Math.sin(t * 0.5) * 1.2 +
+      Math.sin(t * 1.4) * 0.3 +
+      Math.cos(t * 0.2) * 0.6;
+
+    // Calculate heading from velocity (face the direction of travel)
+    const currPos = ref.current.position;
+    const dx = currPos.x - prevPos.current.x;
+    const dz = currPos.z - prevPos.current.z;
+    const dy = currPos.y - prevPos.current.y;
+    
+    if (Math.abs(dx) > 0.0001 || Math.abs(dz) > 0.0001) {
+      // Smooth heading: bird faces where it's going
+      const targetYaw = Math.atan2(dx, dz);
+      // Smooth interpolation for natural turning
+      let currentYaw = ref.current.rotation.y;
+      let diff = targetYaw - currentYaw;
+      // Wrap angle difference
+      while (diff > Math.PI) diff -= Math.PI * 2;
+      while (diff < -Math.PI) diff += Math.PI * 2;
+      ref.current.rotation.y += diff * 0.05;
+
+      // Banking into turns
+      ref.current.rotation.z = -diff * 0.3;
+      // Pitch follows altitude changes
+      ref.current.rotation.x = Math.atan2(dy, Math.sqrt(dx * dx + dz * dz)) * 0.4;
+    }
+    prevPos.current.copy(currPos);
 
     // Subtle body oscillation
     if (bodyRef.current) {
-      bodyRef.current.rotation.x = Math.sin(clock.getElapsedTime() * 1.5 + offset) * 0.015;
-      bodyRef.current.rotation.z = Math.cos(clock.getElapsedTime() * 0.8 + offset) * 0.008;
+      bodyRef.current.rotation.x = Math.sin(clock.getElapsedTime() * 1.5 + offset) * 0.012;
+      bodyRef.current.rotation.z = Math.cos(clock.getElapsedTime() * 0.8 + offset) * 0.006;
     }
 
-    // Head looks around occasionally
+    // Head looks around
     if (headRef.current) {
-      const headT = clock.getElapsedTime() * 0.3 + offset;
-      headRef.current.rotation.y = Math.sin(headT * 2.3) * 0.15;
-      headRef.current.rotation.x = Math.sin(headT * 1.1) * 0.05;
+      const headT = clock.getElapsedTime() * 0.25 + offset;
+      headRef.current.rotation.y = Math.sin(headT * 2.3) * 0.12 + Math.sin(headT * 5.1) * 0.03;
+      headRef.current.rotation.x = Math.sin(headT * 1.1) * 0.04 - 0.02;
     }
 
-    // Tail adjusts for steering
+    // Tail steers
     if (tailRef.current) {
-      tailRef.current.rotation.y = -Math.atan2(turnRate, 80) * 0.2;
-      tailRef.current.rotation.x = Math.sin(clock.getElapsedTime() * 0.7) * 0.03;
+      const turnAmount = ref.current.rotation.z;
+      tailRef.current.rotation.y = turnAmount * 0.15;
+      tailRef.current.rotation.x = Math.sin(clock.getElapsedTime() * 0.6) * 0.025;
     }
 
     const elapsed = clock.getElapsedTime() + flapCycle;
-    // Natural flap pattern: bursts of flaps followed by extended glides
-    const cycleLen = 4.0; // seconds per full cycle
-    const cyclePos = ((elapsed * 0.6) % cycleLen) / cycleLen;
+    const cycleLen = 4.5;
+    const cyclePos = ((elapsed * 0.55) % cycleLen) / cycleLen;
     const isGliding = cyclePos > (1 - glideRatio);
 
     let wingAngle: number, outerAngle: number, tipAngle: number;
 
     if (isGliding) {
-      // Gliding: wings held in slight dihedral, gentle flex from air currents
-      const glideT = clock.getElapsedTime() * 0.5 + offset;
-      wingAngle = 0.15 + Math.sin(glideT * 1.3) * 0.025;
-      outerAngle = 0.06 + Math.sin(glideT * 1.7) * 0.015;
-      tipAngle = -0.1 + Math.sin(glideT * 2.1) * 0.02;
+      const glideT = clock.getElapsedTime() * 0.4 + offset;
+      wingAngle = 0.12 + Math.sin(glideT * 1.1) * 0.02;
+      outerAngle = 0.05 + Math.sin(glideT * 1.5) * 0.012;
+      tipAngle = -0.08 + Math.sin(glideT * 1.9) * 0.015;
     } else {
-      // Flapping: smooth sinusoidal with cascading flex along wing
-      const flapSpeed = 6.5;
+      const flapSpeed = 5.5;
       const flapT = elapsed * flapSpeed;
-      // Downstroke is faster than upstroke (asymmetric)
       const raw = Math.sin(flapT);
-      wingAngle = (raw > 0 ? raw * 0.6 : raw * 0.45);
-      outerAngle = (Math.sin(flapT - 0.5) > 0 ? Math.sin(flapT - 0.5) * 0.4 : Math.sin(flapT - 0.5) * 0.3);
-      tipAngle = Math.sin(flapT - 1.0) * 0.3;
+      wingAngle = raw > 0 ? raw * 0.55 : raw * 0.4;
+      outerAngle = Math.sin(flapT - 0.45) > 0 ? Math.sin(flapT - 0.45) * 0.35 : Math.sin(flapT - 0.45) * 0.25;
+      tipAngle = Math.sin(flapT - 0.9) * 0.28;
     }
 
     if (leftWingRef.current) leftWingRef.current.rotation.z = wingAngle;
     if (rightWingRef.current) rightWingRef.current.rotation.z = -wingAngle;
     if (leftOuterRef.current) leftOuterRef.current.rotation.z = outerAngle;
     if (rightOuterRef.current) rightOuterRef.current.rotation.z = -outerAngle;
-    if (leftTipRef.current) leftTipRef.current.rotation.z = tipAngle + 0.1;
-    if (rightTipRef.current) rightTipRef.current.rotation.z = -tipAngle - 0.1;
+    if (leftTipRef.current) leftTipRef.current.rotation.z = tipAngle + 0.08;
+    if (rightTipRef.current) rightTipRef.current.rotation.z = -tipAngle - 0.08;
   });
 
-  // Wing section builder to avoid duplication
   const WingInner = ({ side }: { side: 1 | -1 }) => (
     <>
-      {/* Secondary feathers */}
       <mesh position={[0.14 * side, 0, 0.02]}>
         <boxGeometry args={[0.28, 0.014, 0.22]} />
         <meshStandardMaterial color="#aeb0b8" roughness={0.7} />
       </mesh>
-      {/* Greater coverts */}
       <mesh position={[0.12 * side, 0.009, -0.01]}>
         <boxGeometry args={[0.22, 0.007, 0.12]} />
         <meshStandardMaterial color="#c2c4ca" roughness={0.6} />
       </mesh>
-      {/* Median coverts */}
       <mesh position={[0.1 * side, 0.014, -0.02]}>
         <boxGeometry args={[0.16, 0.005, 0.08]} />
         <meshStandardMaterial color="#d0d2d6" roughness={0.55} />
       </mesh>
-      {/* Scapulars (shoulder feathers) */}
       <mesh position={[0.05 * side, 0.006, 0.06]}>
         <boxGeometry args={[0.08, 0.01, 0.1]} />
         <meshStandardMaterial color="#b5b7be" roughness={0.7} />
@@ -365,7 +381,6 @@ export function Bird({ position, speed = 1 }: { position: [number, number, numbe
         <boxGeometry args={[0.22, 0.011, 0.17]} />
         <meshStandardMaterial color="#9a9ca5" roughness={0.75} />
       </mesh>
-      {/* Alula (thumb feathers) */}
       <mesh position={[0.02 * side, 0.01, -0.06]}>
         <boxGeometry args={[0.04, 0.006, 0.04]} />
         <meshStandardMaterial color="#606068" roughness={0.8} />
@@ -375,19 +390,16 @@ export function Bird({ position, speed = 1 }: { position: [number, number, numbe
 
   const WingTip = ({ side }: { side: 1 | -1 }) => (
     <>
-      {/* Primary feathers block - black */}
       <mesh position={[0.07 * side, 0, 0]}>
         <boxGeometry args={[0.14, 0.007, 0.09]} />
         <meshStandardMaterial color="#080808" roughness={0.85} />
       </mesh>
-      {/* Individual primaries with white mirrors */}
       {[0, 1, 2, 3, 4, 5].map((i) => (
         <group key={i}>
           <mesh position={[(0.12 + i * 0.01) * side, 0, -0.02 + i * 0.016]} rotation={[0, 0.03 * i * side, 0]}>
             <boxGeometry args={[0.035, 0.004, 0.013]} />
             <meshStandardMaterial color="#050505" roughness={0.9} />
           </mesh>
-          {/* White mirrors on P9 and P10 */}
           {i <= 1 && (
             <mesh position={[(0.09 + i * 0.015) * side, 0.002, -0.02 + i * 0.016]}>
               <boxGeometry args={[0.018, 0.003, 0.009]} />
@@ -407,36 +419,30 @@ export function Bird({ position, speed = 1 }: { position: [number, number, numbe
           <capsuleGeometry args={[0.058, 0.48, 8, 14]} />
           <meshStandardMaterial color="#f5f2ec" roughness={0.55} />
         </mesh>
-        {/* White breast/belly */}
         <mesh position={[0, -0.025, -0.06]}>
           <capsuleGeometry args={[0.052, 0.35, 6, 12]} />
           <meshStandardMaterial color="#ffffff" roughness={0.5} />
         </mesh>
-        {/* Pearl-grey mantle */}
         <mesh position={[0, 0.028, 0.04]}>
           <capsuleGeometry args={[0.048, 0.3, 6, 12]} />
           <meshStandardMaterial color="#b3b5bc" roughness={0.65} />
         </mesh>
-        {/* Rump (lighter grey) */}
         <mesh position={[0, 0.01, 0.22]}>
           <sphereGeometry args={[0.04, 8, 8]} />
           <meshStandardMaterial color="#d8d8dc" roughness={0.6} />
         </mesh>
 
-        {/* Head group - can look around */}
+        {/* Head */}
         <group ref={headRef} position={[0, 0.04, -0.32]}>
-          {/* Skull */}
           <mesh>
             <sphereGeometry args={[0.06, 12, 12]} />
             <meshStandardMaterial color="#ffffff" roughness={0.45} />
           </mesh>
-          {/* Forehead slope */}
           <mesh position={[0, 0.015, -0.03]}>
             <sphereGeometry args={[0.04, 8, 8]} />
             <meshStandardMaterial color="#ffffff" roughness={0.45} />
           </mesh>
-
-          {/* Beak - yellow-orange with red spot and hooked tip */}
+          {/* Beak */}
           <mesh position={[0, -0.01, -0.1]} rotation={[0.12, 0, 0]}>
             <coneGeometry args={[0.015, 0.18, 8]} />
             <meshStandardMaterial color="#f0a030" roughness={0.3} metalness={0.15} />
@@ -445,36 +451,29 @@ export function Bird({ position, speed = 1 }: { position: [number, number, numbe
             <coneGeometry args={[0.011, 0.13, 6]} />
             <meshStandardMaterial color="#e89828" roughness={0.35} />
           </mesh>
-          {/* Red gonydeal spot */}
           <mesh position={[0, -0.016, -0.07]}>
             <sphereGeometry args={[0.007, 6, 6]} />
             <meshStandardMaterial color="#cc2020" roughness={0.4} />
           </mesh>
-          {/* Hooked tip (nail) */}
           <mesh position={[0, -0.014, -0.18]} rotation={[0.6, 0, 0]}>
             <coneGeometry args={[0.004, 0.03, 4]} />
             <meshStandardMaterial color="#cc8820" roughness={0.3} />
           </mesh>
-
-          {/* Eyes with orbital ring */}
+          {/* Eyes */}
           {[1, -1].map((side) => (
             <group key={side} position={[0.038 * side, 0.015, -0.02]}>
-              {/* Pale yellow iris */}
               <mesh>
                 <sphereGeometry args={[0.013, 10, 10]} />
                 <meshStandardMaterial color="#f0e860" roughness={0.25} />
               </mesh>
-              {/* Dark pupil */}
               <mesh position={[0.004 * side, 0.001, -0.006]}>
                 <sphereGeometry args={[0.006, 8, 8]} />
                 <meshStandardMaterial color="#0a0a0a" />
               </mesh>
-              {/* Orbital ring (red) */}
               <mesh position={[0.003 * side, 0, -0.009]} rotation={[0, 0.2 * side, 0]}>
                 <torusGeometry args={[0.014, 0.0012, 8, 14]} />
                 <meshStandardMaterial color="#cc3030" roughness={0.45} />
               </mesh>
-              {/* Specular highlight */}
               <mesh position={[0.002 * side, 0.004, -0.01]}>
                 <sphereGeometry args={[0.002, 4, 4]} />
                 <meshStandardMaterial color="#ffffff" emissive="#ffffff" emissiveIntensity={0.3} />
@@ -489,28 +488,25 @@ export function Bird({ position, speed = 1 }: { position: [number, number, numbe
           <meshStandardMaterial color="#f8f6f0" roughness={0.5} />
         </mesh>
 
-        {/* Tail group */}
+        {/* Tail */}
         <group ref={tailRef} position={[0, 0, 0.3]}>
-          {/* Central tail feathers */}
           <mesh position={[0, 0.003, 0.08]} rotation={[-0.08, 0, 0]}>
             <boxGeometry args={[0.05, 0.007, 0.18]} />
             <meshStandardMaterial color="#c8c4bc" roughness={0.8} />
           </mesh>
-          {/* Outer tail feathers */}
           {[1, -1].map((side) => (
             <mesh key={side} position={[0.025 * side, 0.001, 0.09]} rotation={[-0.1, 0.06 * side, 0]}>
               <boxGeometry args={[0.025, 0.005, 0.16]} />
               <meshStandardMaterial color="#bbb8b0" roughness={0.8} />
             </mesh>
           ))}
-          {/* Under tail coverts */}
           <mesh position={[0, -0.01, 0.04]}>
             <boxGeometry args={[0.03, 0.006, 0.06]} />
             <meshStandardMaterial color="#ffffff" roughness={0.6} />
           </mesh>
         </group>
 
-        {/* Feet tucked */}
+        {/* Feet */}
         {[1, -1].map((side) => (
           <group key={side} position={[0.018 * side, -0.065, 0.1]}>
             <mesh rotation={[0.4, 0, 0]}>
