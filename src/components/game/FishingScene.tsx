@@ -200,35 +200,7 @@ function FishingRod() {
   );
 }
 
-/* ═══════ FISHING LINE (anchored to rod tip mesh) ═══════ */
-function FishingLineFromTip({ bobberPosition }: { bobberPosition: [number, number, number] }) {
-  const tipMarkerRef = useRef<THREE.Mesh>(null);
-  const lineRef = useRef<THREE.Line>(null);
-  const worldPos = useMemo(() => new THREE.Vector3(), []);
 
-  useFrame(() => {
-    if (!lineRef.current || !tipMarkerRef.current) return;
-    // Get actual world position of the tip marker (child of the rod group)
-    tipMarkerRef.current.updateWorldMatrix(true, false);
-    tipMarkerRef.current.getWorldPosition(worldPos);
-
-    const bobberTop = new THREE.Vector3(bobberPosition[0], bobberPosition[1] + 0.6, bobberPosition[2]);
-    lineRef.current.geometry.setFromPoints([worldPos, bobberTop]);
-  });
-
-  return (
-    <>
-      {/* Invisible marker at rod tip position [0, 0, -2.5] in rod local space */}
-      <mesh ref={tipMarkerRef} position={[0, 0, -2.5]} visible={false}>
-        <sphereGeometry args={[0.001]} />
-      </mesh>
-      <line ref={lineRef}>
-        <bufferGeometry />
-        <lineBasicMaterial color="#cccccc" transparent opacity={0.7} linewidth={1} />
-      </line>
-    </>
-  );
-}
 
 /* ═══════ SCENE CONFIGS ═══════ */
 
