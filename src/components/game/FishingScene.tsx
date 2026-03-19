@@ -288,7 +288,7 @@ export function FishingScene3D({ location, bobberVisible, bobberPosition, onWate
       </mesh>
 
       <FishingBobber visible={bobberVisible} position={bobberPosition} />
-      <FishingRod bobberVisible={bobberVisible} bobberPosition={bobberPosition} />
+      <FishingRod />
 
       <OrbitControls
         maxPolarAngle={Math.PI / 2.2}
