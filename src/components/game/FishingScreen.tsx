@@ -35,22 +35,25 @@ export default function FishingScreen({ location, player, onCatch, onBack }: Pro
     setPhase('casting');
     setMessage('Lançando...');
 
-    // Play reel sound for 0.75 seconds
+    // Play reel sound for 3 seconds
     try {
       const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
-      const duration = 0.75;
+      const duration = 3.0;
       const sampleRate = audioCtx.sampleRate;
       const bufferSize = Math.floor(sampleRate * duration);
       const buffer = audioCtx.createBuffer(1, bufferSize, sampleRate);
       const data = buffer.getChannelData(0);
-      // Simulate reel clicking/whirring sound
       for (let i = 0; i < bufferSize; i++) {
         const t = i / sampleRate;
-        const clickFreq = 40 + t * 20; // accelerating clicks
-        const click = Math.sin(t * clickFreq * Math.PI * 2) > 0.7 ? 0.3 : 0;
-        const whir = Math.sin(t * 800 * Math.PI * 2) * 0.05 * (1 - t / duration);
-        const noise = (Math.random() - 0.5) * 0.08 * (1 - t / duration);
-        data[i] = (click + whir + noise) * (1 - t / duration) * 0.6;
+        const progress = t / duration;
+        const clickFreq = 30 + progress * 40;
+        const click = Math.sin(t * clickFreq * Math.PI * 2) > 0.65 ? 0.25 : 0;
+        const whir = Math.sin(t * 600 * Math.PI * 2) * 0.06 * (1 - progress * 0.7);
+        const whir2 = Math.sin(t * 1200 * Math.PI * 2) * 0.02 * (1 - progress);
+        const noise = (Math.random() - 0.5) * 0.06 * (1 - progress * 0.5);
+        const rattle = Math.sin(t * 150 * Math.PI * 2) * 0.03 * Math.max(0, 1 - progress * 1.5);
+        const envelope = Math.min(1, t * 10) * (1 - Math.pow(progress, 2) * 0.6);
+        data[i] = (click + whir + whir2 + noise + rattle) * envelope * 0.5;
       }
       const source = audioCtx.createBufferSource();
       source.buffer = buffer;
