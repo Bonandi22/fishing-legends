@@ -8,6 +8,7 @@ import { FishingLocation, LocationType } from '@/game/types';
 import OceanScene from './scene/OceanScene';
 import RiverScene from './scene/RiverScene';
 import LakeScene from './scene/LakeScene';
+import { WeatherSystem } from './scene/WeatherSystem';
 
 /* ═══════ WATER ═══════ */
 function Water({ color, locationType }: { color: string; locationType: LocationType }) {
@@ -277,6 +278,7 @@ export function FishingScene3D({ location, bobberVisible, bobberPosition, onWate
 
       <Water color={location.waterColor} locationType={location.type} />
       <SceneEnvironment locationType={location.type} />
+      <WeatherSystem />
 
       <mesh
         rotation={[-Math.PI / 2, 0, 0]}
