@@ -20,6 +20,8 @@ export const FISH: Fish[] = [
   { id: 'truta', name: 'Truta', rarity: 'uncommon', waterType: 'freshwater', minWeight: 0.5, maxWeight: 5, xp: 30, description: 'Peixe de águas frias e cristalinas.', emoji: '🐠' },
   { id: 'pacu', name: 'Pacu', rarity: 'uncommon', waterType: 'freshwater', minWeight: 2, maxWeight: 10, xp: 32, description: 'Parente da piranha, mas herbívoro.', emoji: '🐠' },
   { id: 'pintado', name: 'Pintado', rarity: 'uncommon', waterType: 'freshwater', minWeight: 5, maxWeight: 30, xp: 45, description: 'Grande bagre com manchas escuras.', emoji: '🐠' },
+  { id: 'acara', name: 'Acará', rarity: 'uncommon', waterType: 'freshwater', minWeight: 0.3, maxWeight: 2, xp: 28, description: 'Peixe colorido e territorial dos rios brasileiros.', emoji: '🐠' },
+  { id: 'cascudo', name: 'Cascudo', rarity: 'uncommon', waterType: 'freshwater', minWeight: 0.5, maxWeight: 4, xp: 25, description: 'Peixe de fundo com armadura de placas ósseas.', emoji: '🐠' },
 
   // === SALTWATER UNCOMMON ===
   { id: 'robalo', name: 'Robalo', rarity: 'uncommon', waterType: 'saltwater', minWeight: 2, maxWeight: 12, xp: 35, description: 'Excelente peixe esportivo costeiro.', emoji: '🐠' },

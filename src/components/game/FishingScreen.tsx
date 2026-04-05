@@ -35,7 +35,7 @@ export default function FishingScreen({ location, player, onCatch, onBack }: Pro
     setPhase('casting');
     setMessage('Lançando...');
 
-    // Play smooth reel sound for 3 seconds
+    // Realistic fishing reel sound — metallic clicks + drag + line whizz
     try {
       const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
       const duration = 3.0;
@@ -43,40 +43,71 @@ export default function FishingScreen({ location, player, onCatch, onBack }: Pro
       const bufferSize = Math.floor(sampleRate * duration);
       const buffer = audioCtx.createBuffer(1, bufferSize, sampleRate);
       const data = buffer.getChannelData(0);
-      // Use seeded noise for smoother texture
-      let noiseState = 0;
+
+      let noiseState1 = 0;
+      let noiseState2 = 0;
       for (let i = 0; i < bufferSize; i++) {
         const t = i / sampleRate;
         const progress = t / duration;
-        // Smooth reel spin: continuous tone that slows down
-        const reelSpeed = 1 - progress * 0.6;
-        const baseFreq = 80 * reelSpeed;
-        const spin = Math.sin(t * baseFreq * Math.PI * 2) * 0.08;
-        const spin2 = Math.sin(t * baseFreq * 2 * Math.PI * 2) * 0.04;
-        const spin3 = Math.sin(t * baseFreq * 3 * Math.PI * 2) * 0.02;
-        // Smooth whir instead of harsh click
-        const whir = Math.sin(t * 400 * reelSpeed * Math.PI * 2) * 0.05 * reelSpeed;
-        const whir2 = Math.sin(t * 800 * reelSpeed * Math.PI * 2) * 0.025 * reelSpeed;
-        // Filtered noise (smoothed) for line friction
-        noiseState = noiseState * 0.97 + (Math.random() - 0.5) * 0.03;
-        const friction = noiseState * 0.15 * reelSpeed;
-        // Gentle rattle/vibration
-        const rattle = Math.sin(t * 120 * reelSpeed * Math.PI * 2) * 0.02 * Math.max(0, 1 - progress * 1.2);
-        // Smooth envelope: fade in, sustain, fade out
-        const fadeIn = Math.min(1, t * 20);
-        const fadeOut = Math.min(1, (duration - t) * 8);
+        // Reel slows down as line extends
+        const reelSpeed = 1 - progress * 0.5;
+
+        // === Metallic click pattern (real reel anti-reverse clicks) ===
+        const clickRate = 35 * reelSpeed; // clicks per second
+        const clickPhase = (t * clickRate) % 1;
+        const click = clickPhase < 0.08 ? Math.sin(clickPhase / 0.08 * Math.PI) * 0.6 : 0;
+        // Higher metallic ping on each click
+        const ping = clickPhase < 0.05 ? Math.sin(t * 3200 * Math.PI * 2) * 0.15 * (1 - clickPhase / 0.05) : 0;
+
+        // === Drag mechanism — buzzy metallic whine ===
+        const dragFreq = 220 * reelSpeed;
+        const drag = (Math.sin(t * dragFreq * Math.PI * 2) * 0.5 +
+                      Math.sin(t * dragFreq * 1.5 * Math.PI * 2) * 0.25 +
+                      Math.sin(t * dragFreq * 2.5 * Math.PI * 2) * 0.12) * 0.18 * reelSpeed;
+
+        // === Spool rotation hum ===
+        const spoolFreq = 60 * reelSpeed;
+        const spool = Math.sin(t * spoolFreq * Math.PI * 2) * 0.1;
+
+        // === Line friction — filtered noise (zzzzz sound) ===
+        noiseState1 = noiseState1 * 0.92 + (Math.random() - 0.5) * 0.08;
+        noiseState2 = noiseState2 * 0.85 + noiseState1 * 0.15;
+        const lineFriction = noiseState2 * 0.5 * reelSpeed;
+
+        // === High-frequency line whizz ===
+        const whizz = Math.sin(t * 1800 * reelSpeed * Math.PI * 2) * 0.04 * reelSpeed *
+                       (0.5 + 0.5 * Math.sin(t * 12 * Math.PI * 2));
+
+        // === Handle wobble (low thump) ===
+        const handleRate = 6 * reelSpeed;
+        const handlePhase = (t * handleRate) % 1;
+        const handle = handlePhase < 0.15 ? Math.sin(handlePhase / 0.15 * Math.PI) * 0.08 : 0;
+
+        // Envelope
+        const fadeIn = Math.min(1, t * 15);
+        const fadeOut = Math.min(1, (duration - t) * 6);
         const envelope = fadeIn * fadeOut;
-        data[i] = (spin + spin2 + spin3 + whir + whir2 + friction + rattle) * envelope * 0.85;
+
+        data[i] = (click + ping + drag + spool + lineFriction + whizz + handle) * envelope * 0.9;
       }
+
       const source = audioCtx.createBufferSource();
       source.buffer = buffer;
-      // Add a low-pass filter for smoothness
-      const filter = audioCtx.createBiquadFilter();
-      filter.type = 'lowpass';
-      filter.frequency.value = 2500;
-      filter.Q.value = 0.7;
-      source.connect(filter);
-      filter.connect(audioCtx.destination);
+      // Bandpass to focus on metallic frequencies
+      const lpf = audioCtx.createBiquadFilter();
+      lpf.type = 'lowpass';
+      lpf.frequency.value = 4500;
+      lpf.Q.value = 0.5;
+      const hpf = audioCtx.createBiquadFilter();
+      hpf.type = 'highpass';
+      hpf.frequency.value = 60;
+      hpf.Q.value = 0.5;
+      const gain = audioCtx.createGain();
+      gain.gain.value = 1.2;
+      source.connect(hpf);
+      hpf.connect(lpf);
+      lpf.connect(gain);
+      gain.connect(audioCtx.destination);
       source.start();
       source.onended = () => audioCtx.close();
     } catch (e) { /* audio not available */ }
