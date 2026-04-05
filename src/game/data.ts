@@ -20,6 +20,8 @@ export const FISH: Fish[] = [
   { id: 'truta', name: 'Truta', rarity: 'uncommon', waterType: 'freshwater', minWeight: 0.5, maxWeight: 5, xp: 30, description: 'Peixe de águas frias e cristalinas.', emoji: '🐠' },
   { id: 'pacu', name: 'Pacu', rarity: 'uncommon', waterType: 'freshwater', minWeight: 2, maxWeight: 10, xp: 32, description: 'Parente da piranha, mas herbívoro.', emoji: '🐠' },
   { id: 'pintado', name: 'Pintado', rarity: 'uncommon', waterType: 'freshwater', minWeight: 5, maxWeight: 30, xp: 45, description: 'Grande bagre com manchas escuras.', emoji: '🐠' },
+  { id: 'acara', name: 'Acará', rarity: 'uncommon', waterType: 'freshwater', minWeight: 0.3, maxWeight: 2, xp: 28, description: 'Peixe colorido e territorial dos rios brasileiros.', emoji: '🐠' },
+  { id: 'cascudo', name: 'Cascudo', rarity: 'uncommon', waterType: 'freshwater', minWeight: 0.5, maxWeight: 4, xp: 25, description: 'Peixe de fundo com armadura de placas ósseas.', emoji: '🐠' },
 
   // === SALTWATER UNCOMMON ===
   { id: 'robalo', name: 'Robalo', rarity: 'uncommon', waterType: 'saltwater', minWeight: 2, maxWeight: 12, xp: 35, description: 'Excelente peixe esportivo costeiro.', emoji: '🐠' },
@@ -102,28 +104,28 @@ export const LOCATIONS: FishingLocation[] = [
     id: 'amazon', name: 'Rio Amazonas', type: 'river', waterType: 'freshwater',
     description: 'O maior rio do mundo, coração da Amazônia.', requiredLevel: 1,
     waterColor: '#854d0e', skyColor: '#86efac', ambientColor: '#bbf7d0',
-    fishIds: ['tilapia', 'piranha', 'lambari', 'tucunare', 'pacu', 'arapaima', 'lucio', 'pirarara', 'pirarucu', 'arraia-doce', 'peixe-lua-doce'],
+    fishIds: ['tilapia', 'piranha', 'lambari', 'tucunare', 'pacu', 'acara', 'cascudo', 'arapaima', 'lucio', 'pirarara', 'pirarucu', 'arraia-doce', 'peixe-lua-doce'],
     emoji: '🌿'
   },
   {
     id: 'nile', name: 'Rio Nilo', type: 'river', waterType: 'freshwater',
     description: 'O rio dos faraós, berço do Egito antigo.', requiredLevel: 4,
     waterColor: '#a16207', skyColor: '#fde68a', ambientColor: '#fef3c7',
-    fishIds: ['tilapia', 'bagre', 'carpa', 'tucunare', 'pintado', 'matrinxa', 'lucio', 'jaú', 'arraia-doce', 'esturjao'],
+    fishIds: ['tilapia', 'bagre', 'carpa', 'tucunare', 'pintado', 'acara', 'cascudo', 'matrinxa', 'lucio', 'jaú', 'arraia-doce', 'esturjao'],
     emoji: '🏛️'
   },
   {
     id: 'mississippi', name: 'Rio Mississippi', type: 'river', waterType: 'freshwater',
     description: 'O grande rio da América do Norte.', requiredLevel: 6,
     waterColor: '#78716c', skyColor: '#d6d3d1', ambientColor: '#e7e5e4',
-    fishIds: ['bagre', 'carpa', 'lambari', 'truta', 'dourado', 'dourado-real', 'lucio', 'surubim', 'arraia-doce', 'esturjao'],
+    fishIds: ['bagre', 'carpa', 'lambari', 'truta', 'dourado', 'acara', 'cascudo', 'dourado-real', 'lucio', 'surubim', 'arraia-doce', 'esturjao'],
     emoji: '🦅'
   },
   {
     id: 'danube', name: 'Rio Danúbio', type: 'river', waterType: 'freshwater',
     description: 'O rio azul da Europa, atravessa 10 países.', requiredLevel: 10,
     waterColor: '#4338ca', skyColor: '#c7d2fe', ambientColor: '#e0e7ff',
-    fishIds: ['carpa', 'truta', 'bagre', 'dourado', 'pintado', 'pirarara', 'dourado-real', 'lucio', 'jaú', 'arraia-doce', 'peixe-lua-doce'],
+    fishIds: ['carpa', 'truta', 'bagre', 'dourado', 'pintado', 'acara', 'cascudo', 'pirarara', 'dourado-real', 'lucio', 'jaú', 'arraia-doce', 'peixe-lua-doce'],
     emoji: '🏰'
   },
 
@@ -132,28 +134,28 @@ export const LOCATIONS: FishingLocation[] = [
     id: 'titicaca', name: 'Lago Titicaca', type: 'lake', waterType: 'freshwater',
     description: 'O lago navegável mais alto do mundo.', requiredLevel: 2,
     waterColor: '#0284c7', skyColor: '#e0f2fe', ambientColor: '#f0f9ff',
-    fishIds: ['tilapia', 'carpa', 'lambari', 'truta', 'pacu', 'matrinxa', 'lucio', 'surubim', 'arraia-doce'],
+    fishIds: ['tilapia', 'carpa', 'lambari', 'truta', 'pacu', 'acara', 'cascudo', 'matrinxa', 'lucio', 'surubim', 'arraia-doce'],
     emoji: '⛰️'
   },
   {
     id: 'baikal', name: 'Lago Baikal', type: 'lake', waterType: 'freshwater',
     description: 'O lago mais profundo do mundo, na Sibéria.', requiredLevel: 7,
     waterColor: '#164e63', skyColor: '#cffafe', ambientColor: '#ecfeff',
-    fishIds: ['carpa', 'truta', 'bagre', 'dourado', 'pintado', 'arapaima', 'lucio', 'jaú', 'arraia-doce', 'esturjao'],
+    fishIds: ['carpa', 'truta', 'bagre', 'dourado', 'pintado', 'acara', 'cascudo', 'arapaima', 'lucio', 'jaú', 'arraia-doce', 'esturjao'],
     emoji: '❄️'
   },
   {
     id: 'victoria', name: 'Lago Vitória', type: 'lake', waterType: 'freshwater',
     description: 'O maior lago da África.', requiredLevel: 9,
     waterColor: '#059669', skyColor: '#a7f3d0', ambientColor: '#d1fae5',
-    fishIds: ['tilapia', 'piranha', 'bagre', 'tucunare', 'pintado', 'pirarara', 'lucio', 'pirarucu', 'arraia-doce', 'peixe-lua-doce'],
+    fishIds: ['tilapia', 'piranha', 'bagre', 'tucunare', 'pintado', 'acara', 'cascudo', 'pirarara', 'lucio', 'pirarucu', 'arraia-doce', 'peixe-lua-doce'],
     emoji: '🌍'
   },
   {
     id: 'como', name: 'Lago de Como', type: 'lake', waterType: 'freshwater',
     description: 'O romântico lago italiano nos Alpes.', requiredLevel: 12,
     waterColor: '#0e7490', skyColor: '#bae6fd', ambientColor: '#e0f2fe',
-    fishIds: ['carpa', 'truta', 'lambari', 'dourado', 'surubim', 'dourado-real', 'matrinxa', 'lucio', 'jaú', 'arraia-doce', 'esturjao'],
+    fishIds: ['carpa', 'truta', 'lambari', 'dourado', 'surubim', 'acara', 'cascudo', 'dourado-real', 'matrinxa', 'lucio', 'jaú', 'arraia-doce', 'esturjao'],
     emoji: '🇮🇹'
   },
 ];
