@@ -413,8 +413,8 @@ export function Bird({ position, speed = 1 }: { position: [number, number, numbe
 
   return (
     <group ref={ref} position={position} scale={birdScale}>
-      <group ref={bodyRef}>
-        {/* Streamlined body */}
+      <group ref={bodyRef} rotation={[Math.PI / 2, 0, 0]}>
+        {/* Streamlined body — horizontal */}
         <mesh>
           <capsuleGeometry args={[0.058, 0.48, 8, 14]} />
           <meshStandardMaterial color="#f5f2ec" roughness={0.55} />

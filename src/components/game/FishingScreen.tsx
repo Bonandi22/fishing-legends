@@ -66,7 +66,7 @@ export default function FishingScreen({ location, player, onCatch, onBack }: Pro
         const fadeIn = Math.min(1, t * 20);
         const fadeOut = Math.min(1, (duration - t) * 8);
         const envelope = fadeIn * fadeOut;
-        data[i] = (spin + spin2 + spin3 + whir + whir2 + friction + rattle) * envelope * 0.45;
+        data[i] = (spin + spin2 + spin3 + whir + whir2 + friction + rattle) * envelope * 0.85;
       }
       const source = audioCtx.createBufferSource();
       source.buffer = buffer;
