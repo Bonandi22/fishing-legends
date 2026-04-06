@@ -108,23 +108,17 @@ function FishingBobber({ visible, position }: { visible: boolean; position: [num
 /* ═══════ FISHING ROD (follows camera) ═══════ */
 function FishingRod() {
   const ref = useRef<THREE.Group>(null);
-  const tipRef = useRef<THREE.Group>(null);
   const { camera } = useThree();
 
   useFrame(({ clock }) => {
     if (!ref.current) return;
-    // Position rod relative to camera (lower-right of view)
     const offset = new THREE.Vector3(0.8, -0.6, -1.5);
     offset.applyQuaternion(camera.quaternion);
     ref.current.position.copy(camera.position).add(offset);
-
-    // Rod points forward-ish with slight angle
     ref.current.quaternion.copy(camera.quaternion);
     ref.current.rotateX(-0.3);
     ref.current.rotateY(0.15);
     ref.current.rotateZ(0.05);
-
-    // Subtle idle sway
     const t = clock.getElapsedTime();
     ref.current.rotateZ(Math.sin(t * 1.2) * 0.008);
     ref.current.rotateX(Math.sin(t * 0.9) * 0.005);
@@ -132,69 +126,130 @@ function FishingRod() {
 
   return (
     <group ref={ref}>
-      {/* Handle / grip - cork */}
-      <mesh position={[0, 0, 0.35]} rotation={[Math.PI / 2, 0, 0]}>
-        <cylinderGeometry args={[0.025, 0.03, 0.7, 8]} />
-        <meshStandardMaterial color="#c4a066" roughness={0.9} />
-      </mesh>
-      {/* Handle grip rings */}
-      {[0.1, 0.2, 0.3, 0.55, 0.65].map((z, i) => (
-        <mesh key={i} position={[0, 0, 0.35 - z * 0.7 + 0.35]} rotation={[Math.PI / 2, 0, 0]}>
-          <torusGeometry args={[0.028, 0.004, 6, 12]} />
-          <meshStandardMaterial color="#333333" metalness={0.6} roughness={0.4} />
+      {/* Cork grip - textured with multiple segments */}
+      {Array.from({ length: 12 }, (_, i) => (
+        <mesh key={`cork-${i}`} position={[0, 0, 0.05 + i * 0.05]} rotation={[Math.PI / 2, 0, 0]}>
+          <cylinderGeometry args={[0.024 + Math.sin(i * 0.8) * 0.003, 0.024 + Math.sin((i + 1) * 0.8) * 0.003, 0.05, 12]} />
+          <meshStandardMaterial color={i % 2 === 0 ? '#c4a066' : '#b8955a'} roughness={0.95} />
         </mesh>
       ))}
-      {/* Reel seat */}
-      <mesh position={[0, -0.03, 0.25]} rotation={[Math.PI / 2, 0, 0]}>
-        <cylinderGeometry args={[0.035, 0.035, 0.12, 8]} />
-        <meshStandardMaterial color="#444444" metalness={0.7} roughness={0.3} />
+      {/* Cork grip rings (decorative bands) */}
+      {[0.05, 0.15, 0.25, 0.35, 0.5, 0.6].map((z, i) => (
+        <mesh key={`ring-${i}`} position={[0, 0, z]} rotation={[Math.PI / 2, 0, 0]}>
+          <torusGeometry args={[0.026, 0.003, 8, 16]} />
+          <meshStandardMaterial color="#2a2a2a" metalness={0.7} roughness={0.3} />
+        </mesh>
+      ))}
+      {/* Fore grip (EVA foam) */}
+      <mesh position={[0, 0, -0.05]} rotation={[Math.PI / 2, 0, 0]}>
+        <cylinderGeometry args={[0.022, 0.024, 0.15, 12]} />
+        <meshStandardMaterial color="#333333" roughness={0.85} />
       </mesh>
-      {/* Reel body */}
-      <group position={[0, -0.06, 0.25]}>
+      {/* Reel seat - metallic */}
+      <mesh position={[0, 0, 0.08]} rotation={[Math.PI / 2, 0, 0]}>
+        <cylinderGeometry args={[0.028, 0.028, 0.08, 12]} />
+        <meshStandardMaterial color="#4a4a4a" metalness={0.85} roughness={0.15} />
+      </mesh>
+      {/* Reel seat locking rings */}
+      <mesh position={[0, 0, 0.04]} rotation={[Math.PI / 2, 0, 0]}>
+        <torusGeometry args={[0.029, 0.004, 8, 16]} />
+        <meshStandardMaterial color="#666666" metalness={0.9} roughness={0.1} />
+      </mesh>
+      <mesh position={[0, 0, 0.12]} rotation={[Math.PI / 2, 0, 0]}>
+        <torusGeometry args={[0.029, 0.004, 8, 16]} />
+        <meshStandardMaterial color="#666666" metalness={0.9} roughness={0.1} />
+      </mesh>
+      {/* Spinning reel body */}
+      <group position={[0, -0.055, 0.08]}>
+        {/* Reel housing */}
         <mesh rotation={[0, 0, Math.PI / 2]}>
-          <cylinderGeometry args={[0.04, 0.04, 0.06, 12]} />
+          <cylinderGeometry args={[0.038, 0.042, 0.05, 16]} />
+          <meshStandardMaterial color="#3a3a3a" metalness={0.9} roughness={0.1} />
+        </mesh>
+        {/* Spool */}
+        <mesh rotation={[0, 0, Math.PI / 2]} position={[0.03, 0, 0]}>
+          <cylinderGeometry args={[0.035, 0.035, 0.02, 16]} />
+          <meshStandardMaterial color="#b0b0b0" metalness={0.95} roughness={0.05} />
+        </mesh>
+        {/* Spool lip */}
+        <mesh rotation={[0, 0, Math.PI / 2]} position={[0.04, 0, 0]}>
+          <cylinderGeometry args={[0.04, 0.036, 0.005, 16]} />
+          <meshStandardMaterial color="#999999" metalness={0.9} roughness={0.1} />
+        </mesh>
+        {/* Bail arm */}
+        <mesh position={[0.04, 0.02, 0]} rotation={[0.3, 0, 0.5]}>
+          <cylinderGeometry args={[0.003, 0.003, 0.07, 6]} />
+          <meshStandardMaterial color="#cccccc" metalness={0.95} roughness={0.05} />
+        </mesh>
+        {/* Handle arm */}
+        <mesh position={[-0.04, 0, 0]} rotation={[0, 0, Math.PI / 2]}>
+          <cylinderGeometry args={[0.004, 0.004, 0.06, 8]} />
           <meshStandardMaterial color="#555555" metalness={0.8} roughness={0.2} />
         </mesh>
-        {/* Reel handle */}
-        <mesh position={[0.05, 0, 0]} rotation={[0, 0, Math.PI / 2]}>
-          <cylinderGeometry args={[0.005, 0.005, 0.04, 6]} />
-          <meshStandardMaterial color="#777777" metalness={0.7} />
+        {/* Handle knob */}
+        <mesh position={[-0.07, 0, 0]}>
+          <capsuleGeometry args={[0.01, 0.02, 8, 8]} />
+          <meshStandardMaterial color="#222222" roughness={0.6} />
         </mesh>
-        <mesh position={[0.07, 0, 0]}>
-          <sphereGeometry args={[0.012, 6, 6]} />
-          <meshStandardMaterial color="#222222" roughness={0.5} />
-        </mesh>
-      </group>
-      {/* Rod sections (increasingly thinner) */}
-      <mesh position={[0, 0, -0.35]} rotation={[Math.PI / 2, 0, 0]}>
-        <cylinderGeometry args={[0.018, 0.022, 1.0, 8]} />
-        <meshStandardMaterial color="#1a1a2e" roughness={0.4} metalness={0.2} />
-      </mesh>
-      <mesh position={[0, 0, -1.1]} rotation={[Math.PI / 2, 0, 0]}>
-        <cylinderGeometry args={[0.012, 0.018, 0.9, 8]} />
-        <meshStandardMaterial color="#1a1a2e" roughness={0.4} metalness={0.2} />
-      </mesh>
-      <mesh position={[0, 0, -1.75]} rotation={[Math.PI / 2, 0, 0]}>
-        <cylinderGeometry args={[0.006, 0.012, 0.8, 6]} />
-        <meshStandardMaterial color="#222240" roughness={0.35} metalness={0.3} />
-      </mesh>
-      {/* Rod tip */}
-      <group ref={tipRef}>
-        <mesh position={[0, 0, -2.25]} rotation={[Math.PI / 2, 0, 0]}>
-          <cylinderGeometry args={[0.003, 0.006, 0.5, 6]} />
-          <meshStandardMaterial color="#333355" roughness={0.3} metalness={0.4} />
-        </mesh>
-        {/* Tip ring */}
-        <mesh position={[0, 0, -2.5]}>
-          <torusGeometry args={[0.008, 0.002, 6, 8]} />
-          <meshStandardMaterial color="#888888" metalness={0.8} roughness={0.2} />
+        {/* Drag knob */}
+        <mesh rotation={[0, 0, Math.PI / 2]} position={[0.05, 0, 0]}>
+          <cylinderGeometry args={[0.015, 0.015, 0.008, 12]} />
+          <meshStandardMaterial color="#444444" metalness={0.7} roughness={0.3} />
         </mesh>
       </group>
-      {/* Guide rings along the rod */}
-      {[-0.1, -0.55, -1.0, -1.45, -1.9].map((z, i) => (
-        <mesh key={i} position={[0, 0.02, z]}>
-          <torusGeometry args={[0.01 - i * 0.001, 0.002, 6, 8]} />
-          <meshStandardMaterial color="#999999" metalness={0.7} roughness={0.3} />
+      {/* Rod blank - Section 1 (butt) */}
+      <mesh position={[0, 0, -0.45]} rotation={[Math.PI / 2, 0, 0]}>
+        <cylinderGeometry args={[0.016, 0.021, 0.85, 10]} />
+        <meshStandardMaterial color="#141428" roughness={0.3} metalness={0.25} />
+      </mesh>
+      {/* Rod blank - Section 2 (mid) */}
+      <mesh position={[0, 0, -1.15]} rotation={[Math.PI / 2, 0, 0]}>
+        <cylinderGeometry args={[0.01, 0.016, 0.85, 10]} />
+        <meshStandardMaterial color="#181830" roughness={0.3} metalness={0.25} />
+      </mesh>
+      {/* Rod blank - Section 3 (upper mid) */}
+      <mesh position={[0, 0, -1.8]} rotation={[Math.PI / 2, 0, 0]}>
+        <cylinderGeometry args={[0.006, 0.01, 0.75, 8]} />
+        <meshStandardMaterial color="#1c1c38" roughness={0.25} metalness={0.3} />
+      </mesh>
+      {/* Rod blank - Section 4 (tip) */}
+      <mesh position={[0, 0, -2.3]} rotation={[Math.PI / 2, 0, 0]}>
+        <cylinderGeometry args={[0.002, 0.006, 0.5, 6]} />
+        <meshStandardMaterial color="#222244" roughness={0.2} metalness={0.35} />
+      </mesh>
+      {/* Line guides with frames */}
+      {[
+        { z: -0.15, r: 0.012, h: 0.025 },
+        { z: -0.5, r: 0.011, h: 0.022 },
+        { z: -0.85, r: 0.010, h: 0.020 },
+        { z: -1.2, r: 0.008, h: 0.017 },
+        { z: -1.55, r: 0.007, h: 0.015 },
+        { z: -1.85, r: 0.006, h: 0.012 },
+        { z: -2.1, r: 0.005, h: 0.010 },
+      ].map(({ z, r, h }, i) => (
+        <group key={`guide-${i}`} position={[0, 0, z]}>
+          {/* Guide ring */}
+          <mesh position={[0, h, 0]}>
+            <torusGeometry args={[r, 0.0015, 8, 12]} />
+            <meshStandardMaterial color="#aaaaaa" metalness={0.9} roughness={0.1} />
+          </mesh>
+          {/* Guide frame legs */}
+          <mesh position={[0, h * 0.5, 0]} rotation={[0, 0, 0]}>
+            <cylinderGeometry args={[0.002, 0.002, h, 4]} />
+            <meshStandardMaterial color="#888888" metalness={0.8} roughness={0.2} />
+          </mesh>
+        </group>
+      ))}
+      {/* Tip-top guide */}
+      <mesh position={[0, 0.008, -2.55]}>
+        <torusGeometry args={[0.004, 0.0015, 6, 10]} />
+        <meshStandardMaterial color="#cccccc" metalness={0.95} roughness={0.05} />
+      </mesh>
+      {/* Thread wraps at guide feet (colored accents) */}
+      {[-0.15, -0.5, -0.85, -1.2, -1.55, -1.85, -2.1].map((z, i) => (
+        <mesh key={`wrap-${i}`} position={[0, 0, z]} rotation={[Math.PI / 2, 0, 0]}>
+          <cylinderGeometry args={[0.018 - i * 0.002, 0.018 - i * 0.002, 0.015, 10]} />
+          <meshStandardMaterial color="#8b0000" roughness={0.5} metalness={0.1} />
         </mesh>
       ))}
     </group>
