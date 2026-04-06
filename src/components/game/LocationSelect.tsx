@@ -2,8 +2,36 @@ import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { LOCATIONS } from '@/game/data';
-import { FishingLocation, Rarity } from '@/game/types';
+import { FishingLocation } from '@/game/types';
 import { Lock } from 'lucide-react';
+
+import atlanticImg from '@/assets/locations/atlantic.jpg';
+import caribbeanImg from '@/assets/locations/caribbean.jpg';
+import mediterraneanImg from '@/assets/locations/mediterranean.jpg';
+import pacificImg from '@/assets/locations/pacific.jpg';
+import amazonImg from '@/assets/locations/amazon.jpg';
+import nileImg from '@/assets/locations/nile.jpg';
+import mississippiImg from '@/assets/locations/mississippi.jpg';
+import danubeImg from '@/assets/locations/danube.jpg';
+import titicacaImg from '@/assets/locations/titicaca.jpg';
+import baikalImg from '@/assets/locations/baikal.jpg';
+import victoriaImg from '@/assets/locations/victoria.jpg';
+import comoImg from '@/assets/locations/como.jpg';
+
+const locationImages: Record<string, string> = {
+  atlantic: atlanticImg,
+  caribbean: caribbeanImg,
+  mediterranean: mediterraneanImg,
+  pacific: pacificImg,
+  amazon: amazonImg,
+  nile: nileImg,
+  mississippi: mississippiImg,
+  danube: danubeImg,
+  titicaca: titicacaImg,
+  baikal: baikalImg,
+  victoria: victoriaImg,
+  como: comoImg,
+};
 
 interface Props {
   playerLevel: number;
@@ -37,19 +65,32 @@ export default function LocationSelect({ playerLevel, unlockedLocations, onSelec
                 transition={{ delay: i * 0.05 }}
               >
                 <Card
-                  className={`cursor-pointer transition-all border-2 ${
+                  className={`cursor-pointer transition-all border-2 overflow-hidden ${
                     unlocked
                       ? 'hover:border-primary hover:shadow-lg hover:shadow-primary/10 border-border'
                       : 'opacity-50 border-border cursor-not-allowed'
                   }`}
                   onClick={() => unlocked && onSelect(loc)}
                 >
-                  <CardContent className="p-4">
-                    <div className="flex items-start justify-between mb-2">
-                      <span className="text-3xl">{loc.emoji}</span>
-                      {!unlocked && <Lock className="w-5 h-5 text-muted-foreground" />}
+                  <div className="relative h-36 overflow-hidden">
+                    <img
+                      src={locationImages[loc.id]}
+                      alt={loc.name}
+                      className="w-full h-full object-cover"
+                      loading="lazy"
+                      width={768}
+                      height={512}
+                    />
+                    {!unlocked && (
+                      <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                        <Lock className="w-8 h-8 text-white/70" />
+                      </div>
+                    )}
+                    <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/70 to-transparent p-3">
+                      <h3 className="font-bold text-white text-lg drop-shadow">{loc.name}</h3>
                     </div>
-                    <h3 className="font-bold text-foreground text-lg">{loc.name}</h3>
+                  </div>
+                  <CardContent className="p-3">
                     <p className="text-sm text-muted-foreground mb-2">{loc.description}</p>
                     <div className="flex items-center gap-2 text-xs">
                       <span className="bg-secondary px-2 py-0.5 rounded-full text-secondary-foreground">
