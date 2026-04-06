@@ -139,7 +139,7 @@ export default function FishingScreen({ location, player, onCatch, onBack }: Pro
 
       const wait = getWaitTime();
       timerRef.current = setTimeout(() => {
-        const fish = rollFish(location, player.level);
+        const fish = rollFish(location, player.level, luckyMode);
         const weight = rollWeight(fish);
         setCurrentFish(fish);
         setCurrentWeight(weight);
@@ -147,7 +147,7 @@ export default function FishingScreen({ location, player, onCatch, onBack }: Pro
         setMessage('Um peixe mordeu! 🐟💥');
       }, wait);
     }, 800);
-  }, [phase, location, player.level]);
+  }, [phase, location, player.level, luckyMode]);
 
   const handlePull = useCallback(() => {
     setPhase('pulling');
@@ -179,6 +179,28 @@ export default function FishingScreen({ location, player, onCatch, onBack }: Pro
         bobberPosition={bobberPos}
         onWaterClick={handleWaterClick}
       />
+
+      {/* Lucky mode banner */}
+      <AnimatePresence>
+        {luckyMode && (
+          <motion.div
+            className="absolute top-14 left-0 right-0 z-20 flex justify-center pointer-events-none"
+            initial={{ opacity: 0, y: -30 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -30 }}
+          >
+            <motion.div
+              className="bg-gradient-to-r from-yellow-500/90 via-amber-400/90 to-yellow-500/90 backdrop-blur px-6 py-2 rounded-full border-2 border-yellow-300 shadow-lg shadow-yellow-500/30"
+              animate={{ scale: [1, 1.05, 1] }}
+              transition={{ duration: 1.5, repeat: Infinity }}
+            >
+              <span className="text-lg font-extrabold text-yellow-950 tracking-wide">
+                ✨ 2x SORTE ✨
+              </span>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* HUD overlay */}
       <div className="absolute top-0 left-0 right-0 p-4 flex items-start justify-between z-10 pointer-events-none">
