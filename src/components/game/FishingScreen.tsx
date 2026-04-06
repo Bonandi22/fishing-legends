@@ -23,10 +23,31 @@ export default function FishingScreen({ location, player, onCatch, onBack }: Pro
   const [currentFish, setCurrentFish] = useState<Fish | null>(null);
   const [currentWeight, setCurrentWeight] = useState(0);
   const [message, setMessage] = useState('Clique na água para lançar a linha! 🎣');
+  const [luckyMode, setLuckyMode] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout>>();
+  const luckyTimerRef = useRef<ReturnType<typeof setTimeout>>();
 
   useEffect(() => {
     return () => { if (timerRef.current) clearTimeout(timerRef.current); };
+  }, []);
+
+  // Lucky mode: 2min active every 7min cycle
+  useEffect(() => {
+    const CYCLE = 7 * 60 * 1000;
+    const DURATION = 2 * 60 * 1000;
+
+    const startCycle = () => {
+      luckyTimerRef.current = setTimeout(() => {
+        setLuckyMode(true);
+        luckyTimerRef.current = setTimeout(() => {
+          setLuckyMode(false);
+          startCycle();
+        }, DURATION);
+      }, CYCLE);
+    };
+
+    startCycle();
+    return () => { if (luckyTimerRef.current) clearTimeout(luckyTimerRef.current); };
   }, []);
 
   const handleWaterClick = useCallback((point: THREE.Vector3) => {
