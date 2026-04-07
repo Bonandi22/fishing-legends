@@ -5,12 +5,15 @@ import FishingScreen from '@/components/game/FishingScreen';
 import Collection from '@/components/game/Collection';
 import Warehouse from '@/components/game/Warehouse';
 import { useGameState } from '@/game/useGameState';
+import { useBackgroundMusic } from '@/game/useBackgroundMusic';
+import { I18nProvider } from '@/game/i18n';
 import { FishingLocation, Fish } from '@/game/types';
 
 type Screen = 'menu' | 'locations' | 'fishing' | 'collection' | 'warehouse';
 
-const Index = () => {
+const IndexInner = () => {
   const { player, catchFish, resetProgress, sellWarehouse } = useGameState();
+  const { isPlaying: musicPlaying, toggle: toggleMusic } = useBackgroundMusic();
   const [screen, setScreen] = useState<Screen>('menu');
   const [selectedLocation, setSelectedLocation] = useState<FishingLocation | null>(null);
 
@@ -60,8 +63,16 @@ const Index = () => {
       onCollection={() => setScreen('collection')}
       onWarehouse={() => setScreen('warehouse')}
       onReset={resetProgress}
+      musicPlaying={musicPlaying}
+      onToggleMusic={toggleMusic}
     />
   );
 };
+
+const Index = () => (
+  <I18nProvider>
+    <IndexInner />
+  </I18nProvider>
+);
 
 export default Index;

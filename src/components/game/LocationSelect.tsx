@@ -4,6 +4,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { LOCATIONS } from '@/game/data';
 import { FishingLocation } from '@/game/types';
 import { Lock } from 'lucide-react';
+import { useI18n } from '@/game/i18n';
 
 import atlanticImg from '@/assets/locations/atlantic.jpg';
 import caribbeanImg from '@/assets/locations/caribbean.jpg';
@@ -19,18 +20,9 @@ import victoriaImg from '@/assets/locations/victoria.jpg';
 import comoImg from '@/assets/locations/como.jpg';
 
 const locationImages: Record<string, string> = {
-  atlantic: atlanticImg,
-  caribbean: caribbeanImg,
-  mediterranean: mediterraneanImg,
-  pacific: pacificImg,
-  amazon: amazonImg,
-  nile: nileImg,
-  mississippi: mississippiImg,
-  danube: danubeImg,
-  titicaca: titicacaImg,
-  baikal: baikalImg,
-  victoria: victoriaImg,
-  como: comoImg,
+  atlantic: atlanticImg, caribbean: caribbeanImg, mediterranean: mediterraneanImg,
+  pacific: pacificImg, amazon: amazonImg, nile: nileImg, mississippi: mississippiImg,
+  danube: danubeImg, titicaca: titicacaImg, baikal: baikalImg, victoria: victoriaImg, como: comoImg,
 };
 
 interface Props {
@@ -40,47 +32,32 @@ interface Props {
   onBack: () => void;
 }
 
-const typeLabels: Record<string, string> = { ocean: '🌊 Mar', river: '🏞️ Rio', lake: '🏔️ Lago' };
-
 export default function LocationSelect({ playerLevel, unlockedLocations, onSelect, onBack }: Props) {
+  const { t } = useI18n();
+  const typeLabels: Record<string, string> = { ocean: t('loc.ocean'), river: t('loc.river'), lake: t('loc.lake') };
+
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
       <div className="max-w-5xl mx-auto">
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-foreground">Escolha o Local</h1>
-            <p className="text-muted-foreground">Nível {playerLevel} — {unlockedLocations.length}/{LOCATIONS.length} desbloqueados</p>
+            <h1 className="text-3xl font-bold text-foreground">{t('loc.title')}</h1>
+            <p className="text-muted-foreground">{t('loc.level')} {playerLevel} — {unlockedLocations.length}/{LOCATIONS.length} {t('loc.unlocked')}</p>
           </div>
-          <Button variant="outline" onClick={onBack}>← Voltar</Button>
+          <Button variant="outline" onClick={onBack}>{t('loc.back')}</Button>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {LOCATIONS.map((loc, i) => {
             const unlocked = unlockedLocations.includes(loc.id);
             return (
-              <motion.div
-                key={loc.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.05 }}
-              >
+              <motion.div key={loc.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
                 <Card
-                  className={`cursor-pointer transition-all border-2 overflow-hidden ${
-                    unlocked
-                      ? 'hover:border-primary hover:shadow-lg hover:shadow-primary/10 border-border'
-                      : 'opacity-50 border-border cursor-not-allowed'
-                  }`}
+                  className={`cursor-pointer transition-all border-2 overflow-hidden ${unlocked ? 'hover:border-primary hover:shadow-lg hover:shadow-primary/10 border-border' : 'opacity-50 border-border cursor-not-allowed'}`}
                   onClick={() => unlocked && onSelect(loc)}
                 >
                   <div className="relative h-36 overflow-hidden">
-                    <img
-                      src={locationImages[loc.id]}
-                      alt={loc.name}
-                      className="w-full h-full object-cover"
-                      loading="lazy"
-                      width={768}
-                      height={512}
-                    />
+                    <img src={locationImages[loc.id]} alt={loc.name} className="w-full h-full object-cover" loading="lazy" width={768} height={512} />
                     {!unlocked && (
                       <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
                         <Lock className="w-8 h-8 text-white/70" />
@@ -93,15 +70,9 @@ export default function LocationSelect({ playerLevel, unlockedLocations, onSelec
                   <CardContent className="p-3">
                     <p className="text-sm text-muted-foreground mb-2">{loc.description}</p>
                     <div className="flex items-center gap-2 text-xs">
-                      <span className="bg-secondary px-2 py-0.5 rounded-full text-secondary-foreground">
-                        {typeLabels[loc.type]}
-                      </span>
-                      <span className="bg-secondary px-2 py-0.5 rounded-full text-secondary-foreground">
-                        Nv. {loc.requiredLevel}
-                      </span>
-                      <span className="bg-secondary px-2 py-0.5 rounded-full text-secondary-foreground">
-                        {loc.fishIds.length} peixes
-                      </span>
+                      <span className="bg-secondary px-2 py-0.5 rounded-full text-secondary-foreground">{typeLabels[loc.type]}</span>
+                      <span className="bg-secondary px-2 py-0.5 rounded-full text-secondary-foreground">Nv. {loc.requiredLevel}</span>
+                      <span className="bg-secondary px-2 py-0.5 rounded-full text-secondary-foreground">{loc.fishIds.length} {t('loc.fishCount')}</span>
                     </div>
                   </CardContent>
                 </Card>

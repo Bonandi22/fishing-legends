@@ -1,6 +1,9 @@
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
+import { Switch } from '@/components/ui/switch';
 import { PlayerState } from '@/game/types';
+import { useI18n } from '@/game/i18n';
+import { Volume2, VolumeX, Globe } from 'lucide-react';
 
 interface Props {
   player: PlayerState;
@@ -8,9 +11,13 @@ interface Props {
   onCollection: () => void;
   onWarehouse: () => void;
   onReset: () => void;
+  musicPlaying: boolean;
+  onToggleMusic: () => void;
 }
 
-export default function MainMenu({ player, onPlay, onCollection, onWarehouse, onReset }: Props) {
+export default function MainMenu({ player, onPlay, onCollection, onWarehouse, onReset, musicPlaying, onToggleMusic }: Props) {
+  const { lang, setLang, t } = useI18n();
+
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-background relative overflow-hidden">
       {/* Animated background waves */}
@@ -24,6 +31,31 @@ export default function MainMenu({ player, onPlay, onCollection, onWarehouse, on
             transition={{ duration: 4 + i, repeat: Infinity, ease: 'easeInOut', delay: i * 0.5 }}
           />
         ))}
+      </div>
+
+      {/* Settings bar - top right */}
+      <div className="absolute top-4 right-4 z-20 flex items-center gap-3">
+        {/* Language toggle */}
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setLang(lang === 'pt' ? 'en' : 'pt')}
+          className="bg-background/80 backdrop-blur gap-1.5"
+        >
+          <Globe className="w-4 h-4" />
+          {lang === 'pt' ? 'PT' : 'EN'}
+        </Button>
+
+        {/* Music toggle */}
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={onToggleMusic}
+          className="bg-background/80 backdrop-blur gap-1.5"
+        >
+          {musicPlaying ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
+          {t('settings.music')}
+        </Button>
       </div>
 
       <motion.div
@@ -43,7 +75,7 @@ export default function MainMenu({ player, onPlay, onCollection, onWarehouse, on
           PESCA<span className="text-primary">3D</span>
         </h1>
         <p className="text-muted-foreground text-lg mb-8">
-          Explore os mares, rios e lagos do mundo
+          {t('menu.subtitle')}
         </p>
 
         {player.level > 1 && (
@@ -52,9 +84,9 @@ export default function MainMenu({ player, onPlay, onCollection, onWarehouse, on
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
           >
-            <span className="text-primary font-bold">Nível {player.level}</span>
+            <span className="text-primary font-bold">{t('menu.level')} {player.level}</span>
             <span className="text-muted-foreground">•</span>
-            <span className="text-muted-foreground">{player.totalFishCaught} peixes</span>
+            <span className="text-muted-foreground">{player.totalFishCaught} {t('menu.fish')}</span>
           </motion.div>
         )}
 
@@ -64,7 +96,7 @@ export default function MainMenu({ player, onPlay, onCollection, onWarehouse, on
             size="lg"
             className="w-64 h-14 text-lg font-bold bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/25"
           >
-            🐟 Pescar
+            {t('menu.play')}
           </Button>
           <Button
             onClick={onCollection}
@@ -72,7 +104,7 @@ export default function MainMenu({ player, onPlay, onCollection, onWarehouse, on
             size="lg"
             className="w-64 h-12"
           >
-            📦 Coleção ({player.collection.length})
+            {t('menu.collection')} ({player.collection.length})
           </Button>
           <Button
             onClick={onWarehouse}
@@ -80,7 +112,7 @@ export default function MainMenu({ player, onPlay, onCollection, onWarehouse, on
             size="lg"
             className="w-64 h-12"
           >
-            🏠 Armazém ({player.warehouse.length}/15)
+            {t('menu.warehouse')} ({player.warehouse.length}/15)
           </Button>
           {player.level > 1 && (
             <Button
@@ -89,7 +121,7 @@ export default function MainMenu({ player, onPlay, onCollection, onWarehouse, on
               size="sm"
               className="text-muted-foreground mt-2"
             >
-              Resetar Progresso
+              {t('menu.reset')}
             </Button>
           )}
         </div>
