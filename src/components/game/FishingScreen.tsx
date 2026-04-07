@@ -149,7 +149,7 @@ export default function FishingScreen({ location, player, onCatch, onBack }: Pro
         setMessage(t('fish.hooked'));
       }, wait);
     }, 800);
-  }, [phase, location, player.level, luckyMode]);
+  }, [phase, location, player.level, luckyMode, t]);
 
   const handlePull = useCallback(() => {
     setPhase('pulling');
@@ -197,7 +197,7 @@ export default function FishingScreen({ location, player, onCatch, onBack }: Pro
               transition={{ duration: 1.5, repeat: Infinity }}
             >
               <span className="text-lg font-extrabold text-yellow-950 tracking-wide">
-                ✨ 2x SORTE ✨
+                {t('fish.lucky')}
               </span>
             </motion.div>
           </motion.div>
@@ -208,7 +208,7 @@ export default function FishingScreen({ location, player, onCatch, onBack }: Pro
       <div className="absolute top-0 left-0 right-0 p-4 flex items-start justify-between z-10 pointer-events-none">
         <div className="pointer-events-auto">
           <Button variant="outline" size="sm" onClick={onBack} className="bg-background/80 backdrop-blur">
-            ← Voltar
+            {t('fish.back')}
           </Button>
         </div>
         <div className="bg-background/80 backdrop-blur rounded-lg px-4 py-2 text-right">
@@ -236,7 +236,7 @@ export default function FishingScreen({ location, player, onCatch, onBack }: Pro
                   size="lg"
                   className="bg-accent text-accent-foreground hover:bg-accent/90 font-bold text-lg animate-pulse"
                 >
-                  🎣 PUXAR!
+                  {t('fish.pull')}
                 </Button>
               )}
 
@@ -292,16 +292,16 @@ export default function FishingScreen({ location, player, onCatch, onBack }: Pro
                   <span className="text-7xl">{currentFish.emoji}</span>
                 )}
               </motion.div>
-              <h2 className="text-3xl font-bold text-foreground mb-1">Capturado!</h2>
+              <h2 className="text-3xl font-bold text-foreground mb-1">{t('fish.caught')}</h2>
               <h3 className="text-xl font-bold text-foreground">{currentFish.name}</h3>
               <p className={`text-sm font-bold text-rarity-${currentFish.rarity} mb-2`}>
-                {RARITY_CONFIG[currentFish.rarity].label}
+                {getRarityLabel(currentFish.rarity, lang)}
               </p>
               <p className="text-muted-foreground text-sm mb-1">{currentWeight} kg</p>
               <p className="text-primary text-sm font-semibold mb-4">+{currentFish.xp} XP</p>
               <p className="text-muted-foreground text-xs mb-6">{currentFish.description}</p>
               <Button onClick={handleReset} size="lg" className="w-full">
-                Pescar Novamente 🎣
+                {t('fish.fishAgain')}
               </Button>
             </motion.div>
           </motion.div>
@@ -320,13 +320,13 @@ export default function FishingScreen({ location, player, onCatch, onBack }: Pro
               animate={{ scale: 1 }}
             >
               <div className="text-7xl mb-4">💨</div>
-              <h2 className="text-3xl font-bold text-foreground mb-1">Escapou!</h2>
+              <h2 className="text-3xl font-bold text-foreground mb-1">{t('fish.escaped')}</h2>
               <h3 className="text-lg text-muted-foreground mb-2">
-                O <span className={`font-bold text-rarity-${currentFish.rarity}`}>{currentFish.name}</span> fugiu...
+                <span className={`font-bold text-rarity-${currentFish.rarity}`}>{currentFish.name}</span> {t('fish.escapedMsg')}
               </h3>
-              <p className="text-muted-foreground text-sm mb-6">Tente novamente!</p>
+              <p className="text-muted-foreground text-sm mb-6">{t('fish.tryAgain')}</p>
               <Button onClick={handleReset} size="lg" className="w-full">
-                Tentar Novamente 🎣
+                {t('fish.tryAgainBtn')}
               </Button>
             </motion.div>
           </motion.div>
