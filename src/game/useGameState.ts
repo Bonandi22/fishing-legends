@@ -18,7 +18,10 @@ const defaultState: PlayerState = {
 function loadState(): PlayerState {
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) return JSON.parse(saved);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      return { ...defaultState, ...parsed };
+    }
   } catch {}
   return { ...defaultState };
 }
