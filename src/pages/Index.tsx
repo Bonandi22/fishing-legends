@@ -3,13 +3,14 @@ import MainMenu from '@/components/game/MainMenu';
 import LocationSelect from '@/components/game/LocationSelect';
 import FishingScreen from '@/components/game/FishingScreen';
 import Collection from '@/components/game/Collection';
+import Warehouse from '@/components/game/Warehouse';
 import { useGameState } from '@/game/useGameState';
 import { FishingLocation, Fish } from '@/game/types';
 
-type Screen = 'menu' | 'locations' | 'fishing' | 'collection';
+type Screen = 'menu' | 'locations' | 'fishing' | 'collection' | 'warehouse';
 
 const Index = () => {
-  const { player, catchFish, resetProgress } = useGameState();
+  const { player, catchFish, resetProgress, sellWarehouse } = useGameState();
   const [screen, setScreen] = useState<Screen>('menu');
   const [selectedLocation, setSelectedLocation] = useState<FishingLocation | null>(null);
 
@@ -48,11 +49,16 @@ const Index = () => {
     return <Collection player={player} onBack={() => setScreen('menu')} />;
   }
 
+  if (screen === 'warehouse') {
+    return <Warehouse player={player} onSell={sellWarehouse} onBack={() => setScreen('menu')} />;
+  }
+
   return (
     <MainMenu
       player={player}
       onPlay={() => setScreen('locations')}
       onCollection={() => setScreen('collection')}
+      onWarehouse={() => setScreen('warehouse')}
       onReset={resetProgress}
     />
   );
