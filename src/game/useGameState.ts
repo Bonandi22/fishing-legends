@@ -12,6 +12,7 @@ const defaultState: PlayerState = {
   collection: [],
   unlockedLocations: LOCATIONS.filter(l => l.requiredLevel <= 1).map(l => l.id),
   heaviestFish: null,
+  warehouse: [],
 };
 
 function loadState(): PlayerState {
