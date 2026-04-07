@@ -6,10 +6,11 @@ interface Props {
   player: PlayerState;
   onPlay: () => void;
   onCollection: () => void;
+  onWarehouse: () => void;
   onReset: () => void;
 }
 
-export default function MainMenu({ player, onPlay, onCollection, onReset }: Props) {
+export default function MainMenu({ player, onPlay, onCollection, onWarehouse, onReset }: Props) {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-background relative overflow-hidden">
       {/* Animated background waves */}
