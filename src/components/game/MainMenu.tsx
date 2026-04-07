@@ -74,6 +74,14 @@ export default function MainMenu({ player, onPlay, onCollection, onWarehouse, on
           >
             📦 Coleção ({player.collection.length})
           </Button>
+          <Button
+            onClick={onWarehouse}
+            variant="secondary"
+            size="lg"
+            className="w-64 h-12"
+          >
+            🏠 Armazém ({player.warehouse.length}/15)
+          </Button>
           {player.level > 1 && (
             <Button
               onClick={onReset}
