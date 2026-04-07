@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { Fish, RARITY_CONFIG } from '@/game/types';
 import { Button } from '@/components/ui/button';
+import { useI18n, getRarityLabel } from '@/game/i18n';
 
 interface Props {
   fish: Fish;
@@ -10,6 +11,7 @@ interface Props {
 }
 
 export default function PullMinigame({ fish, onWin, onLose }: Props) {
+  const { lang, t } = useI18n();
   const config = RARITY_CONFIG[fish.rarity];
   const greenSize = config.greenZoneSize;
   const speed = config.speed;
@@ -95,9 +97,9 @@ export default function PullMinigame({ fish, onWin, onLose }: Props) {
           <span className="text-5xl">{fish.emoji}</span>
           <h2 className="text-2xl font-bold text-foreground mt-2">{fish.name}</h2>
           <p className={`text-sm font-semibold text-rarity-${fish.rarity}`}>
-            {RARITY_CONFIG[fish.rarity].label}
+            {getRarityLabel(fish.rarity, lang)}
           </p>
-          <p className="text-muted-foreground text-sm mt-1">Clique em PUXAR quando a linha estiver no verde!</p>
+          <p className="text-muted-foreground text-sm mt-1">{t('pull.instruction')}</p>
         </motion.div>
 
         {/* The bar */}
@@ -120,7 +122,7 @@ export default function PullMinigame({ fish, onWin, onLose }: Props) {
             size="lg"
             className="bg-accent text-accent-foreground hover:bg-accent/90 font-bold text-xl px-10 py-6 animate-pulse"
           >
-            🎣 PUXAR!
+            {t('fish.pull')}
           </Button>
         </div>
 
@@ -128,7 +130,7 @@ export default function PullMinigame({ fish, onWin, onLose }: Props) {
         <div className="space-y-3">
           <div>
             <div className="flex justify-between text-xs text-muted-foreground mb-1">
-              <span>✅ Captura</span>
+              <span>{t('pull.capture')}</span>
               <span>{Math.round(greenProgress * 100)}%</span>
             </div>
             <div className="h-3 rounded-full bg-secondary overflow-hidden">
@@ -140,7 +142,7 @@ export default function PullMinigame({ fish, onWin, onLose }: Props) {
           </div>
           <div>
             <div className="flex justify-between text-xs text-muted-foreground mb-1">
-              <span>❌ Escape</span>
+              <span>{t('pull.escape')}</span>
               <span>{Math.round(redProgress * 100)}%</span>
             </div>
             <div className="h-3 rounded-full bg-secondary overflow-hidden">

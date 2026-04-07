@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { FishingScene3D } from './FishingScene';
 import PullMinigame from './PullMinigame';
-import { FishingLocation, Fish, PlayerState, RARITY_CONFIG } from '@/game/types';
+import { FishingLocation, Fish, PlayerState } from '@/game/types';
 import { FISH_IMAGES } from '@/game/fishImages';
 import { rollFish, rollWeight, getWaitTime } from '@/game/fishingLogic';
 import { useI18n, getRarityLabel } from '@/game/i18n';
