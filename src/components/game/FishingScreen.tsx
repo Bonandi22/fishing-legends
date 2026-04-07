@@ -19,11 +19,12 @@ interface Props {
 }
 
 export default function FishingScreen({ location, player, onCatch, onBack }: Props) {
+  const { lang, t } = useI18n();
   const [phase, setPhase] = useState<Phase>('idle');
   const [bobberPos, setBobberPos] = useState<[number, number, number]>([0, 0, 0]);
   const [currentFish, setCurrentFish] = useState<Fish | null>(null);
   const [currentWeight, setCurrentWeight] = useState(0);
-  const [message, setMessage] = useState('Clique na água para lançar a linha! 🎣');
+  const [message, setMessage] = useState(t('fish.castPrompt'));
   const [luckyMode, setLuckyMode] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout>>();
   const luckyTimerRef = useRef<ReturnType<typeof setTimeout>>();
@@ -55,7 +56,7 @@ export default function FishingScreen({ location, player, onCatch, onBack }: Pro
     if (phase !== 'idle') return;
     setBobberPos([point.x, 0, point.z]);
     setPhase('casting');
-    setMessage('Lançando...');
+    setMessage(t('fish.casting'));
 
     // Realistic fishing reel sound — metallic clicks + drag + line whizz
     try {
@@ -136,7 +137,7 @@ export default function FishingScreen({ location, player, onCatch, onBack }: Pro
 
     setTimeout(() => {
       setPhase('waiting');
-      setMessage('Esperando o peixe morder... 🐟');
+      setMessage(t('fish.waiting'));
 
       const wait = getWaitTime();
       timerRef.current = setTimeout(() => {
@@ -145,7 +146,7 @@ export default function FishingScreen({ location, player, onCatch, onBack }: Pro
         setCurrentFish(fish);
         setCurrentWeight(weight);
         setPhase('hooked');
-        setMessage('Um peixe mordeu! 🐟💥');
+        setMessage(t('fish.hooked'));
       }, wait);
     }, 800);
   }, [phase, location, player.level, luckyMode]);
@@ -168,8 +169,8 @@ export default function FishingScreen({ location, player, onCatch, onBack }: Pro
     setPhase('idle');
     setCurrentFish(null);
     setCurrentWeight(0);
-    setMessage('Clique na água para lançar a linha! 🎣');
-  }, []);
+    setMessage(t('fish.castPrompt'));
+  }, [t]);
 
   return (
     <div className="relative w-full h-screen bg-background overflow-hidden">
