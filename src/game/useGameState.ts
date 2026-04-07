@@ -12,6 +12,7 @@ const defaultState: PlayerState = {
   collection: [],
   unlockedLocations: LOCATIONS.filter(l => l.requiredLevel <= 1).map(l => l.id),
   heaviestFish: null,
+  warehouse: [],
 };
 
 function loadState(): PlayerState {
@@ -47,6 +48,7 @@ export function useGameState() {
       const newCollection = [...prev.collection, caught];
       const heaviest = !prev.heaviestFish || weight > prev.heaviestFish.weight ? caught : prev.heaviestFish;
       const unlockedLocations = LOCATIONS.filter(l => l.requiredLevel <= newLevel).map(l => l.id);
+      const newWarehouse = prev.warehouse.length < 15 ? [...prev.warehouse, caught] : prev.warehouse;
 
       return {
         level: newLevel,
@@ -56,6 +58,34 @@ export function useGameState() {
         collection: newCollection,
         unlockedLocations,
         heaviestFish: heaviest,
+        warehouse: newWarehouse,
+      };
+    });
+  }, []);
+
+  const sellWarehouse = useCallback(() => {
+    setPlayer(prev => {
+      if (prev.warehouse.length === 0) return prev;
+      const bonusXp = prev.warehouse.reduce((sum, c) => sum + Math.floor(c.fish.xp * 0.5), 0);
+      let newXp = prev.xp + bonusXp;
+      let newLevel = prev.level;
+      let xpNeeded = prev.xpToNextLevel;
+
+      while (newXp >= xpNeeded && newLevel < 20) {
+        newXp -= xpNeeded;
+        newLevel++;
+        xpNeeded = getXpForLevel(newLevel);
+      }
+
+      const unlockedLocations = LOCATIONS.filter(l => l.requiredLevel <= newLevel).map(l => l.id);
+
+      return {
+        ...prev,
+        xp: newXp,
+        level: newLevel,
+        xpToNextLevel: xpNeeded,
+        unlockedLocations,
+        warehouse: [],
       };
     });
   }, []);
@@ -64,5 +94,5 @@ export function useGameState() {
     setPlayer({ ...defaultState });
   }, []);
 
-  return { player, catchFish, resetProgress };
+  return { player, catchFish, resetProgress, sellWarehouse };
 }

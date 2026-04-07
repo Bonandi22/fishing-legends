@@ -73,33 +73,69 @@ function Water({ color, locationType }: { color: string; locationType: LocationT
   );
 }
 
-/* ═══════ BOBBER ═══════ */
+/* ═══════ BOBBER (realistic slip bobber) ═══════ */
 function FishingBobber({ visible, position }: { visible: boolean; position: [number, number, number] }) {
   const ref = useRef<THREE.Group>(null);
   useFrame(({ clock }) => {
     if (!ref.current || !visible) return;
     const t = clock.getElapsedTime();
-    ref.current.position.y = position[1] + Math.sin(t * 2) * 0.12 + Math.cos(t * 3.1) * 0.05;
-    ref.current.rotation.z = Math.sin(t * 1.5) * 0.08;
+    // Realistic water bobbing — slow primary + fast secondary ripple
+    ref.current.position.y = position[1] + Math.sin(t * 1.4) * 0.08 + Math.cos(t * 2.7) * 0.03 + Math.sin(t * 4.2) * 0.015;
+    ref.current.rotation.z = Math.sin(t * 1.1) * 0.06 + Math.cos(t * 2.3) * 0.03;
+    ref.current.rotation.x = Math.sin(t * 0.9) * 0.04;
   });
   if (!visible) return null;
   return (
     <group ref={ref} position={position}>
-      <mesh position={[0, 0.15, 0]}>
-        <sphereGeometry args={[0.18, 16, 16]} />
-        <meshStandardMaterial color="#e03030" roughness={0.4} />
+      {/* Submerged lead weight */}
+      <mesh position={[0, -0.45, 0]}>
+        <sphereGeometry args={[0.02, 8, 8]} />
+        <meshStandardMaterial color="#555555" metalness={0.8} roughness={0.3} />
       </mesh>
-      <mesh position={[0, 0, 0]}>
-        <sphereGeometry args={[0.12, 12, 12]} />
-        <meshStandardMaterial color="#ffffff" roughness={0.3} />
-      </mesh>
-      <mesh position={[0, 0.4, 0]}>
-        <cylinderGeometry args={[0.015, 0.015, 0.4]} />
-        <meshStandardMaterial color="#dddddd" />
-      </mesh>
+      {/* Line below bobber */}
       <mesh position={[0, -0.25, 0]}>
-        <cylinderGeometry args={[0.006, 0.006, 0.6]} />
-        <meshStandardMaterial color="#aaaaaa" transparent opacity={0.5} />
+        <cylinderGeometry args={[0.003, 0.003, 0.45]} />
+        <meshStandardMaterial color="#cccccc" transparent opacity={0.4} />
+      </mesh>
+      {/* Lower body — white (submerged portion) */}
+      <mesh position={[0, -0.02, 0]}>
+        <cylinderGeometry args={[0.06, 0.09, 0.12, 16]} />
+        <meshPhysicalMaterial color="#f0f0f0" roughness={0.25} clearcoat={0.6} clearcoatRoughness={0.15} />
+      </mesh>
+      {/* Main body — red egg shape */}
+      <mesh position={[0, 0.1, 0]}>
+        <sphereGeometry args={[0.11, 20, 20]} />
+        <meshPhysicalMaterial color="#cc2020" roughness={0.2} clearcoat={0.8} clearcoatRoughness={0.1} metalness={0.05} />
+      </mesh>
+      {/* Red/white dividing band */}
+      <mesh position={[0, 0.02, 0]} rotation={[Math.PI / 2, 0, 0]}>
+        <torusGeometry args={[0.095, 0.006, 8, 20]} />
+        <meshStandardMaterial color="#222222" roughness={0.5} />
+      </mesh>
+      {/* Top taper — red narrowing */}
+      <mesh position={[0, 0.2, 0]}>
+        <cylinderGeometry args={[0.025, 0.08, 0.1, 14]} />
+        <meshPhysicalMaterial color="#cc2020" roughness={0.2} clearcoat={0.7} />
+      </mesh>
+      {/* Antenna stem — thin yellow */}
+      <mesh position={[0, 0.35, 0]}>
+        <cylinderGeometry args={[0.008, 0.012, 0.22, 8]} />
+        <meshPhysicalMaterial color="#ffcc00" roughness={0.3} clearcoat={0.5} />
+      </mesh>
+      {/* Antenna tip — bright orange ball */}
+      <mesh position={[0, 0.47, 0]}>
+        <sphereGeometry args={[0.018, 10, 10]} />
+        <meshPhysicalMaterial color="#ff6600" roughness={0.15} clearcoat={0.9} emissive="#ff4400" emissiveIntensity={0.15} />
+      </mesh>
+      {/* Line clip at top */}
+      <mesh position={[0, 0.25, 0]} rotation={[Math.PI / 2, 0, 0]}>
+        <torusGeometry args={[0.015, 0.004, 6, 10]} />
+        <meshStandardMaterial color="#888888" metalness={0.9} roughness={0.1} />
+      </mesh>
+      {/* Water ring effect — subtle ring around waterline */}
+      <mesh position={[0, -0.01, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[0.1, 0.18, 24]} />
+        <meshBasicMaterial color="#ffffff" transparent opacity={0.08} side={THREE.DoubleSide} />
       </mesh>
     </group>
   );

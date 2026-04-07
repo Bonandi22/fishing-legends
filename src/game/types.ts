@@ -43,7 +43,10 @@ export interface PlayerState {
   collection: CaughtFish[];
   unlockedLocations: string[];
   heaviestFish: CaughtFish | null;
+  warehouse: CaughtFish[];
 }
+
+export const WAREHOUSE_LIMIT = 15;
 
 export interface PullGameState {
   isActive: boolean;
