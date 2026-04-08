@@ -4,12 +4,13 @@ import LocationSelect from '@/components/game/LocationSelect';
 import FishingScreen from '@/components/game/FishingScreen';
 import Collection from '@/components/game/Collection';
 import Warehouse from '@/components/game/Warehouse';
+import SubmarineFishing from '@/components/game/SubmarineFishing';
 import { useGameState } from '@/game/useGameState';
 import { useBackgroundMusic } from '@/game/useBackgroundMusic';
 import { I18nProvider } from '@/game/i18n';
 import { FishingLocation, Fish } from '@/game/types';
 
-type Screen = 'menu' | 'locations' | 'fishing' | 'collection' | 'warehouse';
+type Screen = 'menu' | 'locations' | 'fishing' | 'collection' | 'warehouse' | 'submarine';
 
 const IndexInner = () => {
   const { player, catchFish, resetProgress, sellWarehouse } = useGameState();
@@ -56,12 +57,23 @@ const IndexInner = () => {
     return <Warehouse player={player} onSell={sellWarehouse} onBack={() => setScreen('menu')} />;
   }
 
+  if (screen === 'submarine') {
+    return (
+      <SubmarineFishing
+        player={player}
+        onCatch={handleCatch}
+        onBack={() => setScreen('menu')}
+      />
+    );
+  }
+
   return (
     <MainMenu
       player={player}
       onPlay={() => setScreen('locations')}
       onCollection={() => setScreen('collection')}
       onWarehouse={() => setScreen('warehouse')}
+      onSubmarine={() => setScreen('submarine')}
       onReset={resetProgress}
       musicPlaying={musicPlaying}
       onToggleMusic={toggleMusic}

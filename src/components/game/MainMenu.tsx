@@ -1,22 +1,35 @@
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
-import { Switch } from '@/components/ui/switch';
 import { PlayerState } from '@/game/types';
-import { useI18n } from '@/game/i18n';
-import { Volume2, VolumeX, Globe } from 'lucide-react';
+import { useI18n, Lang, LANG_LABELS } from '@/game/i18n';
+import { Volume2, VolumeX, Globe, ChevronDown } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
 
 interface Props {
   player: PlayerState;
   onPlay: () => void;
   onCollection: () => void;
   onWarehouse: () => void;
+  onSubmarine: () => void;
   onReset: () => void;
   musicPlaying: boolean;
   onToggleMusic: () => void;
 }
 
-export default function MainMenu({ player, onPlay, onCollection, onWarehouse, onReset, musicPlaying, onToggleMusic }: Props) {
+const LANGS: Lang[] = ['pt', 'en', 'es', 'fr', 'de', 'ja'];
+
+export default function MainMenu({ player, onPlay, onCollection, onWarehouse, onSubmarine, onReset, musicPlaying, onToggleMusic }: Props) {
   const { lang, setLang, t } = useI18n();
+  const [langOpen, setLangOpen] = useState(false);
+  const langRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (langRef.current && !langRef.current.contains(e.target as Node)) setLangOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-background relative overflow-hidden">
@@ -35,16 +48,32 @@ export default function MainMenu({ player, onPlay, onCollection, onWarehouse, on
 
       {/* Settings bar - top right */}
       <div className="absolute top-4 right-4 z-20 flex items-center gap-3">
-        {/* Language toggle */}
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => setLang(lang === 'pt' ? 'en' : 'pt')}
-          className="bg-background/80 backdrop-blur gap-1.5"
-        >
-          <Globe className="w-4 h-4" />
-          {lang === 'pt' ? 'PT' : 'EN'}
-        </Button>
+        {/* Language dropdown */}
+        <div ref={langRef} className="relative">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setLangOpen(!langOpen)}
+            className="bg-background/80 backdrop-blur gap-1.5"
+          >
+            <Globe className="w-4 h-4" />
+            {lang.toUpperCase()}
+            <ChevronDown className="w-3 h-3" />
+          </Button>
+          {langOpen && (
+            <div className="absolute right-0 mt-1 bg-card border border-border rounded-lg shadow-xl py-1 min-w-[140px] z-50">
+              {LANGS.map(l => (
+                <button
+                  key={l}
+                  onClick={() => { setLang(l); setLangOpen(false); }}
+                  className={`w-full text-left px-3 py-1.5 text-sm hover:bg-accent transition-colors ${l === lang ? 'font-bold text-primary' : 'text-foreground'}`}
+                >
+                  {LANG_LABELS[l]}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
 
         {/* Music toggle */}
         <Button
@@ -99,6 +128,13 @@ export default function MainMenu({ player, onPlay, onCollection, onWarehouse, on
             {t('menu.play')}
           </Button>
           <Button
+            onClick={onSubmarine}
+            size="lg"
+            className="w-64 h-12 bg-cyan-700 text-cyan-50 hover:bg-cyan-600 font-bold"
+          >
+            {t('menu.submarine')}
+          </Button>
+          <Button
             onClick={onCollection}
             variant="secondary"
             size="lg"
@@ -112,7 +148,7 @@ export default function MainMenu({ player, onPlay, onCollection, onWarehouse, on
             size="lg"
             className="w-64 h-12"
           >
-            {t('menu.warehouse')} ({player.warehouse.length}/15)
+            {t('menu.warehouse')} ({player.warehouse?.length || 0}/15)
           </Button>
           {player.level > 1 && (
             <Button
