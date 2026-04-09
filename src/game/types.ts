@@ -35,6 +35,34 @@ export interface CaughtFish {
   timestamp: number;
 }
 
+export interface RodSkin {
+  id: string;
+  name: string;
+  emoji: string;
+  price: number;
+  color: string;
+}
+
+export const ROD_SKINS: RodSkin[] = [
+  { id: 'default', name: 'Padrão', emoji: '🎣', price: 0, color: '#8B4513' },
+  { id: 'shark', name: 'Tubarão', emoji: '🦈', price: 1000, color: '#607D8B' },
+  { id: 'fish', name: 'Peixe', emoji: '🐟', price: 1500, color: '#2196F3' },
+  { id: 'octopus', name: 'Polvo', emoji: '🐙', price: 2000, color: '#9C27B0' },
+  { id: 'dragon', name: 'Dragão', emoji: '🐉', price: 3000, color: '#F44336' },
+  { id: 'phoenix', name: 'Fênix', emoji: '🔥', price: 4000, color: '#FF9800' },
+  { id: 'kraken', name: 'Kraken', emoji: '🦑', price: 5000, color: '#1A237E' },
+  { id: 'gold', name: 'Ouro', emoji: '✨', price: 7500, color: '#FFD700' },
+  { id: 'diamond', name: 'Diamante', emoji: '💎', price: 10000, color: '#00BCD4' },
+];
+
+export const FISH_COIN_VALUE: Record<Rarity, number> = {
+  common: 10,
+  uncommon: 25,
+  mythic: 50,
+  legendary: 100,
+  abyssal: 200,
+};
+
 export interface PlayerState {
   level: number;
   xp: number;
@@ -44,9 +72,17 @@ export interface PlayerState {
   unlockedLocations: string[];
   heaviestFish: CaughtFish | null;
   warehouse: CaughtFish[];
+  coins: number;
+  activeSkin: string;
+  ownedSkins: string[];
+  luckMultiplierEnd: number | null;
+  strengthMultiplierEnd: number | null;
+  lastRouletteDate: string | null;
 }
 
 export const WAREHOUSE_LIMIT = 15;
+export const MULTIPLIER_COST = 3000;
+export const MULTIPLIER_DURATION = 60 * 1000; // 1 minute
 
 export interface PullGameState {
   isActive: boolean;
