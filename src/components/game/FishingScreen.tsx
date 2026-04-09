@@ -259,7 +259,7 @@ export default function FishingScreen({ location, player, onCatch, onBack }: Pro
 
       {/* Pull minigame */}
       {phase === 'pulling' && currentFish && (
-        <PullMinigame fish={currentFish} onWin={handleWin} onLose={handleLose} />
+        <PullMinigame fish={currentFish} strengthActive={!!(player.strengthMultiplierEnd && player.strengthMultiplierEnd > Date.now())} onWin={handleWin} onLose={handleLose} />
       )}
 
       {/* Caught result */}
