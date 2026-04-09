@@ -28,6 +28,9 @@ const translations = {
   'menu.warehouse': { pt: '🏠 Armazém', en: '🏠 Warehouse', es: '🏠 Almacén', fr: '🏠 Entrepôt', de: '🏠 Lager', ja: '🏠 倉庫' },
   'menu.reset': { pt: 'Resetar Progresso', en: 'Reset Progress', es: 'Reiniciar Progreso', fr: 'Réinitialiser', de: 'Fortschritt zurücksetzen', ja: '進行状況リセット' },
   'menu.submarine': { pt: '🤿 Pesca Submarina', en: '🤿 Submarine Fishing', es: '🤿 Pesca Submarina', fr: '🤿 Pêche sous-marine', de: '🤿 Unterwasserfischen', ja: '🤿 水中漁' },
+  'menu.multiplier': { pt: '⚡ Multiplicador', en: '⚡ Multiplier', es: '⚡ Multiplicador', fr: '⚡ Multiplicateur', de: '⚡ Multiplikator', ja: '⚡ マルチプライヤー' },
+  'menu.skins': { pt: '🎨 Skins', en: '🎨 Skins', es: '🎨 Skins', fr: '🎨 Skins', de: '🎨 Skins', ja: '🎨 スキン' },
+  'menu.roulette': { pt: '🎰 Roleta', en: '🎰 Roulette', es: '🎰 Ruleta', fr: '🎰 Roulette', de: '🎰 Roulette', ja: '🎰 ルーレット' },
 
   // Location Select
   'loc.title': { pt: 'Escolha o Local', en: 'Choose Location', es: 'Elige el Lugar', fr: 'Choisir le Lieu', de: 'Ort wählen', ja: '場所を選ぶ' },
@@ -92,6 +95,32 @@ const translations = {
   'sub.title': { pt: 'Pesca Submarina', en: 'Submarine Fishing', es: 'Pesca Submarina', fr: 'Pêche sous-marine', de: 'Unterwasserfischen', ja: '水中漁' },
   'sub.hint': { pt: 'Clique em um peixe para lançar o arpão! 🔱', en: 'Click a fish to launch the harpoon! 🔱', es: '¡Haz clic en un pez para lanzar el arpón! 🔱', fr: 'Cliquez sur un poisson pour lancer le harpon ! 🔱', de: 'Klicke auf einen Fisch um die Harpune zu werfen! 🔱', ja: '魚をクリックしてモリを投げよう！🔱' },
   'sub.back': { pt: '← Voltar', en: '← Back', es: '← Volver', fr: '← Retour', de: '← Zurück', ja: '← 戻る' },
+
+  // Multiplier
+  'mult.title': { pt: '⚡ Multiplicadores', en: '⚡ Multipliers', es: '⚡ Multiplicadores', fr: '⚡ Multiplicateurs', de: '⚡ Multiplikatoren', ja: '⚡ マルチプライヤー' },
+  'mult.coins': { pt: 'moedas', en: 'coins', es: 'monedas', fr: 'pièces', de: 'Münzen', ja: 'コイン' },
+  'mult.luck': { pt: 'Sorte', en: 'Luck', es: 'Suerte', fr: 'Chance', de: 'Glück', ja: '幸運' },
+  'mult.luckDesc': { pt: 'Durante 1 minuto, pesque apenas peixes Míticos, Lendários e Abissais!', en: 'For 1 minute, catch only Mythic, Legendary and Abyssal fish!', es: 'Durante 1 minuto, ¡pesca solo peces Míticos, Legendarios y Abisales!', fr: 'Pendant 1 minute, pêchez uniquement des poissons Mythiques, Légendaires et Abyssaux !', de: 'Für 1 Minute nur Mythische, Legendäre und Abyssale Fische!', ja: '1分間、ミシック・レジェンダリー・アビサルの魚だけ！' },
+  'mult.strength': { pt: 'Força', en: 'Strength', es: 'Fuerza', fr: 'Force', de: 'Stärke', ja: '力' },
+  'mult.strengthDesc': { pt: 'Durante 1 minuto, a barrinha branca fica mais lenta em todas as raridades!', en: 'For 1 minute, the pull bar moves slower for all rarities!', es: 'Durante 1 minuto, ¡la barra blanca se mueve más lento!', fr: 'Pendant 1 minute, la barre blanche ralentit !', de: 'Für 1 Minute bewegt sich der weiße Balken langsamer!', ja: '1分間、全レアリティのバーが遅くなる！' },
+  'mult.minute': { pt: 'minuto', en: 'minute', es: 'minuto', fr: 'minute', de: 'Minute', ja: '分' },
+  'mult.active': { pt: 'Ativo!', en: 'Active!', es: '¡Activo!', fr: 'Actif !', de: 'Aktiv!', ja: '有効！' },
+  'mult.buy': { pt: 'Comprar', en: 'Buy', es: 'Comprar', fr: 'Acheter', de: 'Kaufen', ja: '購入' },
+  'mult.noCoins': { pt: 'Moedas insuficientes', en: 'Not enough coins', es: 'Monedas insuficientes', fr: 'Pas assez de pièces', de: 'Nicht genug Münzen', ja: 'コイン不足' },
+
+  // Skins
+  'skins.title': { pt: '🎨 Skins de Vara', en: '🎨 Rod Skins', es: '🎨 Skins de Caña', fr: '🎨 Skins de Canne', de: '🎨 Ruten-Skins', ja: '🎨 ロッドスキン' },
+  'skins.buy': { pt: 'Comprar', en: 'Buy', es: 'Comprar', fr: 'Acheter', de: 'Kaufen', ja: '購入' },
+  'skins.equip': { pt: 'Equipar', en: 'Equip', es: 'Equipar', fr: 'Équiper', de: 'Ausrüsten', ja: '装備' },
+  'skins.equipped': { pt: 'Equipado', en: 'Equipped', es: 'Equipado', fr: 'Équipé', de: 'Ausgerüstet', ja: '装備中' },
+
+  // Roulette
+  'roulette.title': { pt: '🎰 Roleta Diária', en: '🎰 Daily Roulette', es: '🎰 Ruleta Diaria', fr: '🎰 Roulette Quotidienne', de: '🎰 Tägliches Roulette', ja: '🎰 デイリールーレット' },
+  'roulette.spin': { pt: '🎰 Girar!', en: '🎰 Spin!', es: '🎰 ¡Girar!', fr: '🎰 Tourner !', de: '🎰 Drehen!', ja: '🎰 回す！' },
+  'roulette.spinning': { pt: 'Girando...', en: 'Spinning...', es: 'Girando...', fr: 'En cours...', de: 'Dreht sich...', ja: '回転中...' },
+  'roulette.won': { pt: 'Você ganhou!', en: 'You won!', es: '¡Ganaste!', fr: 'Vous avez gagné !', de: 'Du hast gewonnen!', ja: '当たり！' },
+  'roulette.used': { pt: 'Você já girou a roleta hoje! Volte amanhã.', en: 'You already spun today! Come back tomorrow.', es: '¡Ya giraste hoy! Vuelve mañana.', fr: 'Vous avez déjà tourné aujourd\'hui ! Revenez demain.', de: 'Du hast heute schon gedreht! Komm morgen wieder.', ja: '今日はもう回しました！明日また来てね。' },
+  'roulette.daily': { pt: 'Você pode girar a roleta 1 vez por dia', en: 'You can spin the roulette once per day', es: 'Puedes girar la ruleta 1 vez al día', fr: 'Vous pouvez tourner la roulette 1 fois par jour', de: 'Du kannst das Roulette 1 mal pro Tag drehen', ja: 'ルーレットは1日1回回せます' },
 } as const;
 
 type TransKey = keyof typeof translations;
