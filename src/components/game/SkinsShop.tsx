@@ -1,0 +1,72 @@
+import { motion } from 'framer-motion';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { PlayerState, ROD_SKINS } from '@/game/types';
+import { useI18n } from '@/game/i18n';
+
+interface Props {
+  player: PlayerState;
+  onBuy: (skinId: string, price: number) => void;
+  onEquip: (skinId: string) => void;
+  onBack: () => void;
+}
+
+export default function SkinsShop({ player, onBuy, onEquip, onBack }: Props) {
+  const { t } = useI18n();
+
+  return (
+    <div className="min-h-screen bg-background p-4 md:p-8">
+      <div className="max-w-4xl mx-auto">
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h1 className="text-3xl font-bold text-foreground">{t('skins.title')}</h1>
+            <p className="text-muted-foreground">💰 {player.coins} {t('mult.coins')}</p>
+          </div>
+          <Button variant="outline" onClick={onBack}>{t('loc.back')}</Button>
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+          {ROD_SKINS.map((skin, i) => {
+            const owned = player.ownedSkins.includes(skin.id);
+            const equipped = player.activeSkin === skin.id;
+
+            return (
+              <motion.div key={skin.id} initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: i * 0.05 }}>
+                <Card className={`border-2 ${equipped ? 'border-primary shadow-lg shadow-primary/20' : owned ? 'border-accent' : 'border-border'}`}>
+                  <CardContent className="p-4 text-center">
+                    <div
+                      className="w-16 h-16 mx-auto mb-2 rounded-xl flex items-center justify-center text-3xl"
+                      style={{ backgroundColor: skin.color + '22', border: `2px solid ${skin.color}` }}
+                    >
+                      {skin.emoji}
+                    </div>
+                    <p className="font-bold text-foreground text-sm">{skin.name}</p>
+                    {skin.price > 0 && <p className="text-xs text-muted-foreground">💰 {skin.price}</p>}
+                    <div className="mt-2">
+                      {equipped ? (
+                        <span className="text-xs font-bold text-primary">✅ {t('skins.equipped')}</span>
+                      ) : owned ? (
+                        <Button size="sm" variant="outline" onClick={() => onEquip(skin.id)} className="w-full text-xs">
+                          {t('skins.equip')}
+                        </Button>
+                      ) : (
+                        <Button
+                          size="sm"
+                          onClick={() => onBuy(skin.id, skin.price)}
+                          disabled={player.coins < skin.price}
+                          className="w-full text-xs"
+                        >
+                          {player.coins < skin.price ? t('mult.noCoins') : t('skins.buy')}
+                        </Button>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
