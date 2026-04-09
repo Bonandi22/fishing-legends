@@ -6,15 +6,16 @@ import { useI18n, getRarityLabel } from '@/game/i18n';
 
 interface Props {
   fish: Fish;
+  strengthActive?: boolean;
   onWin: () => void;
   onLose: () => void;
 }
 
-export default function PullMinigame({ fish, onWin, onLose }: Props) {
+export default function PullMinigame({ fish, strengthActive, onWin, onLose }: Props) {
   const { lang, t } = useI18n();
   const config = RARITY_CONFIG[fish.rarity];
   const greenSize = config.greenZoneSize;
-  const speed = config.speed;
+  const speed = strengthActive ? config.speed * 0.5 : config.speed;
 
   const greenStart = (1 - greenSize) / 2;
 
@@ -63,14 +64,8 @@ export default function PullMinigame({ fish, onWin, onLose }: Props) {
       setGreenTime(greenTimeRef.current);
       setRedTime(redTimeRef.current);
 
-      if (greenTimeRef.current >= 10) {
-        onWin();
-        return;
-      }
-      if (redTimeRef.current >= 15) {
-        onLose();
-        return;
-      }
+      if (greenTimeRef.current >= 10) { onWin(); return; }
+      if (redTimeRef.current >= 15) { onLose(); return; }
 
       frameRef.current = requestAnimationFrame(tick);
     };
@@ -100,9 +95,11 @@ export default function PullMinigame({ fish, onWin, onLose }: Props) {
             {getRarityLabel(fish.rarity, lang)}
           </p>
           <p className="text-muted-foreground text-sm mt-1">{t('pull.instruction')}</p>
+          {strengthActive && (
+            <p className="text-xs text-primary font-bold mt-1">💪 {t('mult.strength')} {t('mult.active')}</p>
+          )}
         </motion.div>
 
-        {/* The bar */}
         <div className="relative h-14 rounded-xl overflow-hidden border-2 border-border bg-secondary mb-6">
           <div className="absolute inset-0 bg-destructive/80" />
           <div
@@ -115,7 +112,6 @@ export default function PullMinigame({ fish, onWin, onLose }: Props) {
           />
         </div>
 
-        {/* Pull button */}
         <div className="text-center mb-6">
           <Button
             onClick={handlePull}
@@ -126,7 +122,6 @@ export default function PullMinigame({ fish, onWin, onLose }: Props) {
           </Button>
         </div>
 
-        {/* Progress indicators */}
         <div className="space-y-3">
           <div>
             <div className="flex justify-between text-xs text-muted-foreground mb-1">
@@ -134,10 +129,7 @@ export default function PullMinigame({ fish, onWin, onLose }: Props) {
               <span>{Math.round(greenProgress * 100)}%</span>
             </div>
             <div className="h-3 rounded-full bg-secondary overflow-hidden">
-              <motion.div
-                className="h-full bg-accent rounded-full"
-                style={{ width: `${greenProgress * 100}%` }}
-              />
+              <motion.div className="h-full bg-accent rounded-full" style={{ width: `${greenProgress * 100}%` }} />
             </div>
           </div>
           <div>
@@ -146,10 +138,7 @@ export default function PullMinigame({ fish, onWin, onLose }: Props) {
               <span>{Math.round(redProgress * 100)}%</span>
             </div>
             <div className="h-3 rounded-full bg-secondary overflow-hidden">
-              <motion.div
-                className="h-full bg-destructive rounded-full"
-                style={{ width: `${redProgress * 100}%` }}
-              />
+              <motion.div className="h-full bg-destructive rounded-full" style={{ width: `${redProgress * 100}%` }} />
             </div>
           </div>
         </div>
