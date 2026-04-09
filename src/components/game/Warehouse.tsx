@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { PlayerState, WAREHOUSE_LIMIT } from '@/game/types';
+import { PlayerState, WAREHOUSE_LIMIT, FISH_COIN_VALUE } from '@/game/types';
 import { FISH_IMAGES } from '@/game/fishImages';
 import { useI18n, getRarityLabel } from '@/game/i18n';
 
@@ -15,6 +15,7 @@ export default function Warehouse({ player, onSell, onBack }: Props) {
   const { lang, t } = useI18n();
   const warehouse = player.warehouse;
   const totalXp = warehouse.reduce((sum, c) => sum + Math.floor(c.fish.xp * 0.5), 0);
+  const totalCoins = warehouse.reduce((sum, c) => sum + FISH_COIN_VALUE[c.fish.rarity], 0);
 
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
@@ -48,6 +49,7 @@ export default function Warehouse({ player, onSell, onBack }: Props) {
                     <p className={`text-xs font-semibold text-rarity-${caught.fish.rarity}`}>{getRarityLabel(caught.fish.rarity, lang)}</p>
                     <p className="text-xs text-muted-foreground">{caught.weight} kg</p>
                     <p className="text-xs text-primary">+{Math.floor(caught.fish.xp * 0.5)} XP</p>
+                    <p className="text-xs text-accent-foreground">💰 +{FISH_COIN_VALUE[caught.fish.rarity]}</p>
                   </CardContent>
                 </Card>
               </motion.div>
@@ -58,7 +60,7 @@ export default function Warehouse({ player, onSell, onBack }: Props) {
         {warehouse.length > 0 && (
           <div className="fixed bottom-6 right-6 z-50">
             <Button onClick={onSell} size="lg" className="bg-accent text-accent-foreground hover:bg-accent/90 font-bold text-lg shadow-lg">
-              {t('wh.sell')} (+{totalXp} XP)
+              {t('wh.sell')} (+{totalXp} XP | 💰 +{totalCoins})
             </Button>
           </div>
         )}

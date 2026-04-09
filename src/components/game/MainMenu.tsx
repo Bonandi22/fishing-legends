@@ -11,6 +11,9 @@ interface Props {
   onCollection: () => void;
   onWarehouse: () => void;
   onSubmarine: () => void;
+  onMultiplier: () => void;
+  onSkins: () => void;
+  onRoulette: () => void;
   onReset: () => void;
   musicPlaying: boolean;
   onToggleMusic: () => void;
@@ -18,7 +21,7 @@ interface Props {
 
 const LANGS: Lang[] = ['pt', 'en', 'es', 'fr', 'de', 'ja'];
 
-export default function MainMenu({ player, onPlay, onCollection, onWarehouse, onSubmarine, onReset, musicPlaying, onToggleMusic }: Props) {
+export default function MainMenu({ player, onPlay, onCollection, onWarehouse, onSubmarine, onMultiplier, onSkins, onRoulette, onReset, musicPlaying, onToggleMusic }: Props) {
   const { lang, setLang, t } = useI18n();
   const [langOpen, setLangOpen] = useState(false);
   const langRef = useRef<HTMLDivElement>(null);
@@ -46,16 +49,10 @@ export default function MainMenu({ player, onPlay, onCollection, onWarehouse, on
         ))}
       </div>
 
-      {/* Settings bar - top right */}
+      {/* Settings bar */}
       <div className="absolute top-4 right-4 z-20 flex items-center gap-3">
-        {/* Language dropdown */}
         <div ref={langRef} className="relative">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setLangOpen(!langOpen)}
-            className="bg-background/80 backdrop-blur gap-1.5"
-          >
+          <Button variant="outline" size="sm" onClick={() => setLangOpen(!langOpen)} className="bg-background/80 backdrop-blur gap-1.5">
             <Globe className="w-4 h-4" />
             {lang.toUpperCase()}
             <ChevronDown className="w-3 h-3" />
@@ -74,17 +71,17 @@ export default function MainMenu({ player, onPlay, onCollection, onWarehouse, on
             </div>
           )}
         </div>
-
-        {/* Music toggle */}
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={onToggleMusic}
-          className="bg-background/80 backdrop-blur gap-1.5"
-        >
+        <Button variant="outline" size="sm" onClick={onToggleMusic} className="bg-background/80 backdrop-blur gap-1.5">
           {musicPlaying ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
           {t('settings.music')}
         </Button>
+      </div>
+
+      {/* Coins display */}
+      <div className="absolute top-4 left-4 z-20">
+        <div className="bg-background/80 backdrop-blur rounded-lg px-4 py-2 text-sm font-bold text-foreground">
+          💰 {player.coins} {t('mult.coins')}
+        </div>
       </div>
 
       <motion.div
@@ -120,43 +117,33 @@ export default function MainMenu({ player, onPlay, onCollection, onWarehouse, on
         )}
 
         <div className="flex flex-col gap-3 items-center">
-          <Button
-            onClick={onPlay}
-            size="lg"
-            className="w-64 h-14 text-lg font-bold bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/25"
-          >
+          <Button onClick={onPlay} size="lg" className="w-64 h-14 text-lg font-bold bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/25">
             {t('menu.play')}
           </Button>
-          <Button
-            onClick={onSubmarine}
-            size="lg"
-            className="w-64 h-12 bg-cyan-700 text-cyan-50 hover:bg-cyan-600 font-bold"
-          >
+          <Button onClick={onSubmarine} size="lg" className="w-64 h-12 bg-cyan-700 text-cyan-50 hover:bg-cyan-600 font-bold">
             {t('menu.submarine')}
           </Button>
-          <Button
-            onClick={onCollection}
-            variant="secondary"
-            size="lg"
-            className="w-64 h-12"
-          >
-            {t('menu.collection')} ({player.collection.length})
-          </Button>
-          <Button
-            onClick={onWarehouse}
-            variant="secondary"
-            size="lg"
-            className="w-64 h-12"
-          >
-            {t('menu.warehouse')} ({player.warehouse?.length || 0}/15)
+          <div className="flex gap-3">
+            <Button onClick={onCollection} variant="secondary" size="lg" className="w-[122px] h-12 text-xs">
+              {t('menu.collection')} ({player.collection.length})
+            </Button>
+            <Button onClick={onWarehouse} variant="secondary" size="lg" className="w-[122px] h-12 text-xs">
+              {t('menu.warehouse')} ({player.warehouse?.length || 0}/15)
+            </Button>
+          </div>
+          <div className="flex gap-3">
+            <Button onClick={onMultiplier} variant="secondary" size="lg" className="w-[122px] h-12 text-xs">
+              {t('menu.multiplier')}
+            </Button>
+            <Button onClick={onSkins} variant="secondary" size="lg" className="w-[122px] h-12 text-xs">
+              {t('menu.skins')}
+            </Button>
+          </div>
+          <Button onClick={onRoulette} variant="outline" size="lg" className="w-64 h-12 font-bold">
+            {t('menu.roulette')}
           </Button>
           {player.level > 1 && (
-            <Button
-              onClick={onReset}
-              variant="ghost"
-              size="sm"
-              className="text-muted-foreground mt-2"
-            >
+            <Button onClick={onReset} variant="ghost" size="sm" className="text-muted-foreground mt-2">
               {t('menu.reset')}
             </Button>
           )}

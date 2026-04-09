@@ -141,7 +141,8 @@ export default function FishingScreen({ location, player, onCatch, onBack }: Pro
 
       const wait = getWaitTime();
       timerRef.current = setTimeout(() => {
-        const fish = rollFish(location, player.level, luckyMode);
+        const luckMultActive = player.luckMultiplierEnd ? player.luckMultiplierEnd > Date.now() : false;
+        const fish = rollFish(location, player.level, luckyMode || luckMultActive);
         const weight = rollWeight(fish);
         setCurrentFish(fish);
         setCurrentWeight(weight);
@@ -259,7 +260,7 @@ export default function FishingScreen({ location, player, onCatch, onBack }: Pro
 
       {/* Pull minigame */}
       {phase === 'pulling' && currentFish && (
-        <PullMinigame fish={currentFish} onWin={handleWin} onLose={handleLose} />
+        <PullMinigame fish={currentFish} strengthActive={!!(player.strengthMultiplierEnd && player.strengthMultiplierEnd > Date.now())} onWin={handleWin} onLose={handleLose} />
       )}
 
       {/* Caught result */}
