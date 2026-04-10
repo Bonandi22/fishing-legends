@@ -41,18 +41,24 @@ export interface RodSkin {
   emoji: string;
   price: number;
   color: string;
+  rodColor: string;       // main rod blank color
+  gripColor: string;      // grip/handle color
+  accentColor: string;    // thread wraps / accent color
+  reelColor: string;      // reel body color
+  metalness: number;      // rod metalness
+  emissive?: string;      // optional glow
 }
 
 export const ROD_SKINS: RodSkin[] = [
-  { id: 'default', name: 'Padrão', emoji: '🎣', price: 0, color: '#8B4513' },
-  { id: 'shark', name: 'Tubarão', emoji: '🦈', price: 1000, color: '#607D8B' },
-  { id: 'fish', name: 'Peixe', emoji: '🐟', price: 1500, color: '#2196F3' },
-  { id: 'octopus', name: 'Polvo', emoji: '🐙', price: 2000, color: '#9C27B0' },
-  { id: 'dragon', name: 'Dragão', emoji: '🐉', price: 3000, color: '#F44336' },
-  { id: 'phoenix', name: 'Fênix', emoji: '🔥', price: 4000, color: '#FF9800' },
-  { id: 'kraken', name: 'Kraken', emoji: '🦑', price: 5000, color: '#1A237E' },
-  { id: 'gold', name: 'Ouro', emoji: '✨', price: 7500, color: '#FFD700' },
-  { id: 'diamond', name: 'Diamante', emoji: '💎', price: 10000, color: '#00BCD4' },
+  { id: 'default', name: 'Padrão', emoji: '🎣', price: 0, color: '#8B4513', rodColor: '#141428', gripColor: '#c4a066', accentColor: '#8b0000', reelColor: '#3a3a3a', metalness: 0.25 },
+  { id: 'shark', name: 'Tubarão', emoji: '🦈', price: 1000, color: '#607D8B', rodColor: '#37474F', gripColor: '#546E7A', accentColor: '#90A4AE', reelColor: '#455A64', metalness: 0.6 },
+  { id: 'fish', name: 'Peixe', emoji: '🐟', price: 1500, color: '#2196F3', rodColor: '#0D47A1', gripColor: '#1565C0', accentColor: '#42A5F5', reelColor: '#1976D2', metalness: 0.4 },
+  { id: 'octopus', name: 'Polvo', emoji: '🐙', price: 2000, color: '#9C27B0', rodColor: '#4A148C', gripColor: '#6A1B9A', accentColor: '#CE93D8', reelColor: '#7B1FA2', metalness: 0.35 },
+  { id: 'dragon', name: 'Dragão', emoji: '🐉', price: 3000, color: '#F44336', rodColor: '#B71C1C', gripColor: '#C62828', accentColor: '#FF8F00', reelColor: '#D32F2F', metalness: 0.5, emissive: '#ff2200' },
+  { id: 'phoenix', name: 'Fênix', emoji: '🔥', price: 4000, color: '#FF9800', rodColor: '#E65100', gripColor: '#F57C00', accentColor: '#FFD54F', reelColor: '#EF6C00', metalness: 0.45, emissive: '#ff6600' },
+  { id: 'kraken', name: 'Kraken', emoji: '🦑', price: 5000, color: '#1A237E', rodColor: '#0D1642', gripColor: '#1A237E', accentColor: '#7C4DFF', reelColor: '#283593', metalness: 0.55, emissive: '#3311aa' },
+  { id: 'gold', name: 'Ouro', emoji: '✨', price: 7500, color: '#FFD700', rodColor: '#B8860B', gripColor: '#DAA520', accentColor: '#FFD700', reelColor: '#CD950C', metalness: 0.9, emissive: '#aa8800' },
+  { id: 'diamond', name: 'Diamante', emoji: '💎', price: 10000, color: '#00BCD4', rodColor: '#006064', gripColor: '#00838F', accentColor: '#80DEEA', reelColor: '#00ACC1', metalness: 0.95, emissive: '#00ccff' },
 ];
 
 export const FISH_COIN_VALUE: Record<Rarity, number> = {

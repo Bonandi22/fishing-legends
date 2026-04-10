@@ -181,6 +181,7 @@ export default function FishingScreen({ location, player, onCatch, onBack }: Pro
         bobberVisible={phase === 'casting' || phase === 'waiting' || phase === 'hooked'}
         bobberPosition={bobberPos}
         onWaterClick={handleWaterClick}
+        activeSkin={player.activeSkin}
       />
 
       {/* Lucky mode banner */}
