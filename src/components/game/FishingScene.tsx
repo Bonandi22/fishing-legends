@@ -4,7 +4,7 @@ import { OrbitControls, Sky } from '@react-three/drei';
 import { useRef, useMemo } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
-import { FishingLocation, LocationType } from '@/game/types';
+import { FishingLocation, LocationType, ROD_SKINS, RodSkin } from '@/game/types';
 import OceanScene from './scene/OceanScene';
 import RiverScene from './scene/RiverScene';
 import LakeScene from './scene/LakeScene';
