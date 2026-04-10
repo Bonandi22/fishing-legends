@@ -1,8 +1,9 @@
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { PlayerState } from '@/game/types';
 import { useI18n, Lang, LANG_LABELS } from '@/game/i18n';
-import { Volume2, VolumeX, Globe, ChevronDown } from 'lucide-react';
+import { Volume2, VolumeX, Globe, ChevronDown, User, ChevronUp } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 
 interface Props {
@@ -21,10 +22,32 @@ interface Props {
 
 const LANGS: Lang[] = ['pt', 'en', 'es', 'fr', 'de', 'ja'];
 
+const ACCOUNT_KEY = 'fishing-game-account';
+
+function loadAccount() {
+  try {
+    const saved = localStorage.getItem(ACCOUNT_KEY);
+    if (saved) return JSON.parse(saved) as { email: string; birthdate: string };
+  } catch {}
+  return null;
+}
+
+function saveAccount(email: string, birthdate: string) {
+  localStorage.setItem(ACCOUNT_KEY, JSON.stringify({ email, birthdate }));
+}
+
 export default function MainMenu({ player, onPlay, onCollection, onWarehouse, onSubmarine, onMultiplier, onSkins, onRoulette, onReset, musicPlaying, onToggleMusic }: Props) {
   const { lang, setLang, t } = useI18n();
   const [langOpen, setLangOpen] = useState(false);
   const langRef = useRef<HTMLDivElement>(null);
+
+  // Account state
+  const [accountOpen, setAccountOpen] = useState(false);
+  const [account, setAccount] = useState(loadAccount);
+  const [email, setEmail] = useState(account?.email || '');
+  const [password, setPassword] = useState('');
+  const [birthdate, setBirthdate] = useState(account?.birthdate || '');
+  const [savedMsg, setSavedMsg] = useState(false);
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -33,6 +56,14 @@ export default function MainMenu({ player, onPlay, onCollection, onWarehouse, on
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, []);
+
+  const handleSaveAccount = () => {
+    if (!email || !birthdate || !password) return;
+    saveAccount(email, birthdate);
+    setAccount({ email, birthdate });
+    setSavedMsg(true);
+    setTimeout(() => setSavedMsg(false), 3000);
+  };
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-background relative overflow-hidden">
@@ -82,6 +113,82 @@ export default function MainMenu({ player, onPlay, onCollection, onWarehouse, on
         <div className="bg-background/80 backdrop-blur rounded-lg px-4 py-2 text-sm font-bold text-foreground">
           💰 {player.coins} {t('mult.coins')}
         </div>
+      </div>
+
+      {/* Account panel - bottom left */}
+      <div className="absolute bottom-4 left-4 z-20 max-w-[280px]">
+        {account && !accountOpen ? (
+          <button
+            onClick={() => setAccountOpen(true)}
+            className="flex items-center gap-2 bg-background/80 backdrop-blur rounded-lg px-3 py-2 text-xs text-foreground hover:bg-background/95 transition-colors border border-border"
+          >
+            <User className="w-3.5 h-3.5 text-primary" />
+            <span className="truncate">{account.email}</span>
+            <ChevronUp className="w-3 h-3 text-muted-foreground" />
+          </button>
+        ) : (
+          <motion.div
+            initial={account ? { opacity: 1 } : { opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-card/95 backdrop-blur border border-border rounded-xl p-4 shadow-xl"
+          >
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-bold text-foreground flex items-center gap-1.5">
+                <User className="w-4 h-4 text-primary" />
+                {t('account.title')}
+              </h3>
+              {account && (
+                <button onClick={() => setAccountOpen(false)} className="text-muted-foreground hover:text-foreground">
+                  <ChevronDown className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+
+            {savedMsg && (
+              <p className="text-xs text-primary font-medium mb-2">{t('account.saved')}</p>
+            )}
+
+            <div className="space-y-2">
+              <div>
+                <label className="text-xs text-muted-foreground">{t('account.email')}</label>
+                <Input
+                  type="email"
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  placeholder="email@exemplo.com"
+                  className="h-8 text-xs"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground">{t('account.password')}</label>
+                <Input
+                  type="password"
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="h-8 text-xs"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground">{t('account.birthdate')}</label>
+                <Input
+                  type="date"
+                  value={birthdate}
+                  onChange={e => setBirthdate(e.target.value)}
+                  className="h-8 text-xs"
+                />
+              </div>
+              <Button
+                size="sm"
+                onClick={handleSaveAccount}
+                disabled={!email || !password || !birthdate}
+                className="w-full text-xs h-8"
+              >
+                {t('account.save')}
+              </Button>
+            </div>
+          </motion.div>
+        )}
       </div>
 
       <motion.div
