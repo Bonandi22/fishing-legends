@@ -121,6 +121,15 @@ const translations = {
   'roulette.won': { pt: 'Você ganhou!', en: 'You won!', es: '¡Ganaste!', fr: 'Vous avez gagné !', de: 'Du hast gewonnen!', ja: '当たり！' },
   'roulette.used': { pt: 'Você já girou a roleta hoje! Volte amanhã.', en: 'You already spun today! Come back tomorrow.', es: '¡Ya giraste hoy! Vuelve mañana.', fr: 'Vous avez déjà tourné aujourd\'hui ! Revenez demain.', de: 'Du hast heute schon gedreht! Komm morgen wieder.', ja: '今日はもう回しました！明日また来てね。' },
   'roulette.daily': { pt: 'Você pode girar a roleta 1 vez por dia', en: 'You can spin the roulette once per day', es: 'Puedes girar la ruleta 1 vez al día', fr: 'Vous pouvez tourner la roulette 1 fois par jour', de: 'Du kannst das Roulette 1 mal pro Tag drehen', ja: 'ルーレットは1日1回回せます' },
+
+  // Account
+  'account.title': { pt: 'Minha Conta', en: 'My Account', es: 'Mi Cuenta', fr: 'Mon Compte', de: 'Mein Konto', ja: 'マイアカウント' },
+  'account.email': { pt: 'E-mail', en: 'Email', es: 'Correo', fr: 'E-mail', de: 'E-Mail', ja: 'メール' },
+  'account.password': { pt: 'Senha', en: 'Password', es: 'Contraseña', fr: 'Mot de passe', de: 'Passwort', ja: 'パスワード' },
+  'account.birthdate': { pt: 'Data de Nascimento', en: 'Date of Birth', es: 'Fecha de Nacimiento', fr: 'Date de naissance', de: 'Geburtsdatum', ja: '生年月日' },
+  'account.save': { pt: 'Salvar Conta', en: 'Save Account', es: 'Guardar Cuenta', fr: 'Sauvegarder', de: 'Konto speichern', ja: 'アカウント保存' },
+  'account.saved': { pt: '✅ Conta salva!', en: '✅ Account saved!', es: '✅ ¡Cuenta guardada!', fr: '✅ Compte sauvegardé !', de: '✅ Konto gespeichert!', ja: '✅ アカウント保存済み！' },
+  'account.loggedAs': { pt: 'Logado como', en: 'Logged in as', es: 'Conectado como', fr: 'Connecté en tant que', de: 'Angemeldet als', ja: 'ログイン中' },
 } as const;
 
 type TransKey = keyof typeof translations;
