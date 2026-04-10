@@ -324,12 +324,14 @@ interface Props {
   bobberVisible: boolean;
   bobberPosition: [number, number, number];
   onWaterClick: (point: THREE.Vector3) => void;
+  activeSkin?: string;
 }
 
-export function FishingScene3D({ location, bobberVisible, bobberPosition, onWaterClick }: Props) {
+export function FishingScene3D({ location, bobberVisible, bobberPosition, onWaterClick, activeSkin }: Props) {
   const cam = getCameraConfig(location.type);
   const sky = getSkyConfig(location.type);
   const fog = getFogConfig(location.type);
+  const skin = ROD_SKINS.find(s => s.id === activeSkin) || ROD_SKINS[0];
 
   const clickPlaneSize = location.type === 'ocean' ? 140 : location.type === 'river' ? [18, 100] : 42;
 
@@ -372,7 +374,7 @@ export function FishingScene3D({ location, bobberVisible, bobberPosition, onWate
       </mesh>
 
       <FishingBobber visible={bobberVisible} position={bobberPosition} />
-      <FishingRod />
+      <FishingRod skin={skin} />
 
       <OrbitControls
         maxPolarAngle={Math.PI / 2.2}
