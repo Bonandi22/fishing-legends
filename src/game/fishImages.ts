@@ -42,6 +42,8 @@ import arraiaDoce from '@/assets/fish/arraia-doce.png';
 import lucio from '@/assets/fish/lucio.png';
 import dragaoNegro from '@/assets/fish/dragao-negro.png';
 import peixeVela from '@/assets/fish/peixe-vela.png';
+import cascudo from '@/assets/fish/cascudo.png';
+import acara from '@/assets/fish/acara.png';
 
 export const FISH_IMAGES: Record<string, string> = {
   'tilapia': tilapia,
@@ -88,4 +90,6 @@ export const FISH_IMAGES: Record<string, string> = {
   'lucio': lucio,
   'dragao-negro': dragaoNegro,
   'peixe-vela': peixeVela,
+  'cascudo': cascudo,
+  'acara': acara,
 };
