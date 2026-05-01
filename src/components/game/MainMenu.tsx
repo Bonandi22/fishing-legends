@@ -25,16 +25,20 @@ const LANGS: Lang[] = ['pt', 'en', 'es', 'fr', 'de', 'ja'];
 
 const ACCOUNT_KEY = 'fishing-game-account';
 
-function loadAccount() {
+interface Account { email: string; birthdate: string; username?: string; country?: string; }
+
+const COUNTRIES = ['🇧🇷', '🇵🇹', '🇺🇸', '🇪🇸', '🇫🇷', '🇩🇪', '🇮🇹', '🇬🇧', '🇯🇵', '🇰🇷', '🇲🇽', '🇦🇷', '🇨🇦', '🇦🇺', '🇨🇳', '🌍'];
+
+function loadAccount(): Account | null {
   try {
     const saved = localStorage.getItem(ACCOUNT_KEY);
-    if (saved) return JSON.parse(saved) as { email: string; birthdate: string };
+    if (saved) return JSON.parse(saved) as Account;
   } catch {}
   return null;
 }
 
-function saveAccount(email: string, birthdate: string) {
-  localStorage.setItem(ACCOUNT_KEY, JSON.stringify({ email, birthdate }));
+function saveAccount(acc: Account) {
+  localStorage.setItem(ACCOUNT_KEY, JSON.stringify(acc));
 }
 
 export default function MainMenu({ player, onPlay, onCollection, onWarehouse, onSubmarine, onMultiplier, onSkins, onRoulette, onRanking, onReset, musicPlaying, onToggleMusic }: Props) {
@@ -43,11 +47,16 @@ export default function MainMenu({ player, onPlay, onCollection, onWarehouse, on
   const langRef = useRef<HTMLDivElement>(null);
 
   const [accountModalOpen, setAccountModalOpen] = useState(false);
-  const [account, setAccount] = useState(loadAccount);
+  const [account, setAccount] = useState<Account | null>(loadAccount);
   const [email, setEmail] = useState(account?.email || '');
   const [password, setPassword] = useState('');
   const [birthdate, setBirthdate] = useState(account?.birthdate || '');
+  const [username, setUsername] = useState(account?.username || '');
+  const [country, setCountry] = useState(account?.country || '🌍');
   const [savedMsg, setSavedMsg] = useState(false);
+  // After credentials are saved, prompt for username if missing
+  const needsUsername = !!account && !account.username;
+  const [step, setStep] = useState<'credentials' | 'username'>(needsUsername ? 'username' : 'credentials');
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -57,12 +66,30 @@ export default function MainMenu({ player, onPlay, onCollection, onWarehouse, on
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-  const handleSaveAccount = () => {
+  // When opening modal, jump to right step
+  useEffect(() => {
+    if (accountModalOpen) {
+      setStep(account && !account.username ? 'username' : 'credentials');
+    }
+  }, [accountModalOpen, account]);
+
+  const handleSaveCredentials = () => {
     if (!email || !birthdate || !password) return;
-    saveAccount(email, birthdate);
-    setAccount({ email, birthdate });
+    const acc: Account = { email, birthdate, username: account?.username, country: account?.country };
+    saveAccount(acc);
+    setAccount(acc);
     setSavedMsg(true);
     setTimeout(() => setSavedMsg(false), 3000);
+    if (!acc.username) setStep('username');
+  };
+
+  const handleSaveUsername = () => {
+    if (!username.trim() || !account) return;
+    const acc: Account = { ...account, username: username.trim().slice(0, 20), country };
+    saveAccount(acc);
+    setAccount(acc);
+    setSavedMsg(true);
+    setTimeout(() => { setSavedMsg(false); setAccountModalOpen(false); }, 1200);
   };
 
   return (
