@@ -31,6 +31,23 @@ const translations = {
   'menu.multiplier': { pt: '⚡ Multiplicador', en: '⚡ Multiplier', es: '⚡ Multiplicador', fr: '⚡ Multiplicateur', de: '⚡ Multiplikator', ja: '⚡ マルチプライヤー' },
   'menu.skins': { pt: '🎨 Skins', en: '🎨 Skins', es: '🎨 Skins', fr: '🎨 Skins', de: '🎨 Skins', ja: '🎨 スキン' },
   'menu.roulette': { pt: '🎰 Roleta', en: '🎰 Roulette', es: '🎰 Ruleta', fr: '🎰 Roulette', de: '🎰 Roulette', ja: '🎰 ルーレット' },
+  'menu.ranking': { pt: '🏆 Ranking', en: '🏆 Ranking', es: '🏆 Clasificación', fr: '🏆 Classement', de: '🏆 Rangliste', ja: '🏆 ランキング' },
+  'menu.register': { pt: '📝 Cadastro', en: '📝 Register', es: '📝 Registro', fr: '📝 Inscription', de: '📝 Registrieren', ja: '📝 登録' },
+
+  // Ranking
+  'rank.title': { pt: 'Ranking Global', en: 'Global Ranking', es: 'Clasificación Global', fr: 'Classement Global', de: 'Globale Rangliste', ja: 'グローバルランキング' },
+  'rank.subtitle': { pt: 'Top 100 melhores pescadores do mundo', en: 'Top 100 anglers in the world', es: 'Top 100 mejores pescadores', fr: 'Top 100 des meilleurs pêcheurs', de: 'Top 100 der besten Angler', ja: '世界トップ100の釣り師' },
+  'rank.player': { pt: 'Jogador', en: 'Player', es: 'Jugador', fr: 'Joueur', de: 'Spieler', ja: 'プレイヤー' },
+  'rank.level': { pt: 'Nv.', en: 'Lv.', es: 'Nv.', fr: 'Niv.', de: 'Lv.', ja: 'Lv.' },
+  'rank.fish': { pt: 'Peixes', en: 'Fish', es: 'Peces', fr: 'Poissons', de: 'Fische', ja: '魚' },
+  'rank.profile': { pt: 'Ver Perfil', en: 'View Profile', es: 'Ver Perfil', fr: 'Voir Profil', de: 'Profil ansehen', ja: 'プロフィールを見る' },
+  'rank.yourPosition': { pt: 'Sua Posição', en: 'Your Position', es: 'Tu Posición', fr: 'Votre Position', de: 'Deine Position', ja: 'あなたの順位' },
+  'rank.fishCaught': { pt: 'Peixes pescados', en: 'Fish caught', es: 'Peces pescados', fr: 'Poissons pêchés', de: 'Gefangene Fische', ja: '釣った魚' },
+  'rank.skinsOwned': { pt: 'Skins possuídas', en: 'Skins owned', es: 'Skins poseídas', fr: 'Skins possédés', de: 'Besessene Skins', ja: '所有スキン' },
+  'rank.multipliersUsed': { pt: 'Multiplicadores usados', en: 'Multipliers used', es: 'Multiplicadores usados', fr: 'Multiplicateurs utilisés', de: 'Verwendete Multiplikatoren', ja: '使用したマルチプライヤー' },
+
+  // Roulette extras
+  'roulette.duplicate': { pt: 'Skin duplicada! Convertida em moedas.', en: 'Duplicate skin! Converted to coins.', es: '¡Skin duplicada! Convertida en monedas.', fr: 'Skin en double ! Converti en pièces.', de: 'Doppelter Skin! In Münzen umgewandelt.', ja: 'スキン重複！コインに変換しました。' },
 
   // Location Select
   'loc.title': { pt: 'Escolha o Local', en: 'Choose Location', es: 'Elige el Lugar', fr: 'Choisir le Lieu', de: 'Ort wählen', ja: '場所を選ぶ' },
