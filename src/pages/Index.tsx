@@ -8,12 +8,13 @@ import SubmarineFishing from '@/components/game/SubmarineFishing';
 import MultiplierShop from '@/components/game/MultiplierShop';
 import SkinsShop from '@/components/game/SkinsShop';
 import Roulette from '@/components/game/Roulette';
+import Ranking from '@/components/game/Ranking';
 import { useGameState } from '@/game/useGameState';
 import { useBackgroundMusic } from '@/game/useBackgroundMusic';
 import { I18nProvider } from '@/game/i18n';
 import { FishingLocation, Fish } from '@/game/types';
 
-type Screen = 'menu' | 'locations' | 'fishing' | 'collection' | 'warehouse' | 'submarine' | 'multiplier' | 'skins' | 'roulette';
+type Screen = 'menu' | 'locations' | 'fishing' | 'collection' | 'warehouse' | 'submarine' | 'multiplier' | 'skins' | 'roulette' | 'ranking';
 
 const IndexInner = () => {
   const {
@@ -58,6 +59,9 @@ const IndexInner = () => {
   if (screen === 'roulette') {
     return <Roulette player={player} onAddCoins={addCoins} onAddSkin={addSkin} onAddMultiplier={addMultiplier} onSetLastRouletteDate={setLastRouletteDate} onBack={() => setScreen('menu')} />;
   }
+  if (screen === 'ranking') {
+    return <Ranking player={player} onBack={() => setScreen('menu')} />;
+  }
 
   return (
     <MainMenu
@@ -69,6 +73,7 @@ const IndexInner = () => {
       onMultiplier={() => setScreen('multiplier')}
       onSkins={() => setScreen('skins')}
       onRoulette={() => setScreen('roulette')}
+      onRanking={() => setScreen('ranking')}
       onReset={resetProgress}
       musicPlaying={musicPlaying}
       onToggleMusic={toggleMusic}

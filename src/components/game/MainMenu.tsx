@@ -1,9 +1,9 @@
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { PlayerState } from '@/game/types';
 import { useI18n, Lang, LANG_LABELS } from '@/game/i18n';
-import { Volume2, VolumeX, Globe, ChevronDown, User, ChevronUp } from 'lucide-react';
+import { Volume2, VolumeX, Globe, ChevronDown, User } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 
 interface Props {
@@ -15,6 +15,7 @@ interface Props {
   onMultiplier: () => void;
   onSkins: () => void;
   onRoulette: () => void;
+  onRanking: () => void;
   onReset: () => void;
   musicPlaying: boolean;
   onToggleMusic: () => void;
@@ -36,13 +37,12 @@ function saveAccount(email: string, birthdate: string) {
   localStorage.setItem(ACCOUNT_KEY, JSON.stringify({ email, birthdate }));
 }
 
-export default function MainMenu({ player, onPlay, onCollection, onWarehouse, onSubmarine, onMultiplier, onSkins, onRoulette, onReset, musicPlaying, onToggleMusic }: Props) {
+export default function MainMenu({ player, onPlay, onCollection, onWarehouse, onSubmarine, onMultiplier, onSkins, onRoulette, onRanking, onReset, musicPlaying, onToggleMusic }: Props) {
   const { lang, setLang, t } = useI18n();
   const [langOpen, setLangOpen] = useState(false);
   const langRef = useRef<HTMLDivElement>(null);
 
-  // Account state
-  const [accountOpen, setAccountOpen] = useState(false);
+  const [accountModalOpen, setAccountModalOpen] = useState(false);
   const [account, setAccount] = useState(loadAccount);
   const [email, setEmail] = useState(account?.email || '');
   const [password, setPassword] = useState('');
@@ -115,81 +115,64 @@ export default function MainMenu({ player, onPlay, onCollection, onWarehouse, on
         </div>
       </div>
 
-      {/* Account panel - bottom left */}
-      <div className="absolute bottom-4 left-4 z-20 max-w-[280px]">
-        {account && !accountOpen ? (
-          <button
-            onClick={() => setAccountOpen(true)}
-            className="flex items-center gap-2 bg-background/80 backdrop-blur rounded-lg px-3 py-2 text-xs text-foreground hover:bg-background/95 transition-colors border border-border"
-          >
-            <User className="w-3.5 h-3.5 text-primary" />
-            <span className="truncate">{account.email}</span>
-            <ChevronUp className="w-3 h-3 text-muted-foreground" />
-          </button>
-        ) : (
+      {/* Register button - bottom left */}
+      <div className="absolute bottom-4 left-4 z-20">
+        <Button onClick={() => setAccountModalOpen(true)} variant="outline" size="sm" className="bg-background/80 backdrop-blur gap-1.5">
+          <User className="w-4 h-4" />
+          {account ? <span className="truncate max-w-[140px]">{account.email}</span> : t('menu.register')}
+        </Button>
+      </div>
+
+      {/* Account modal */}
+      <AnimatePresence>
+        {accountModalOpen && (
           <motion.div
-            initial={account ? { opacity: 1 } : { opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-card/95 backdrop-blur border border-border rounded-xl p-4 shadow-xl"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
+            onClick={() => setAccountModalOpen(false)}
           >
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-bold text-foreground flex items-center gap-1.5">
-                <User className="w-4 h-4 text-primary" />
-                {t('account.title')}
-              </h3>
-              {account && (
-                <button onClick={() => setAccountOpen(false)} className="text-muted-foreground hover:text-foreground">
-                  <ChevronDown className="w-4 h-4" />
-                </button>
+            <motion.div
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-card border-2 border-primary rounded-2xl p-6 max-w-sm w-full shadow-2xl"
+            >
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-bold text-foreground flex items-center gap-2">
+                  <User className="w-5 h-5 text-primary" />
+                  {t('account.title')}
+                </h2>
+                <button onClick={() => setAccountModalOpen(false)} className="text-muted-foreground hover:text-foreground text-2xl leading-none">×</button>
+              </div>
+
+              {savedMsg && (
+                <p className="text-sm text-primary font-medium mb-3 bg-primary/10 rounded-lg px-3 py-2">{t('account.saved')}</p>
               )}
-            </div>
 
-            {savedMsg && (
-              <p className="text-xs text-primary font-medium mb-2">{t('account.saved')}</p>
-            )}
-
-            <div className="space-y-2">
-              <div>
-                <label className="text-xs text-muted-foreground">{t('account.email')}</label>
-                <Input
-                  type="email"
-                  value={email}
-                  onChange={e => setEmail(e.target.value)}
-                  placeholder="email@exemplo.com"
-                  className="h-8 text-xs"
-                />
+              <div className="space-y-3">
+                <div>
+                  <label className="text-xs text-muted-foreground">{t('account.email')}</label>
+                  <Input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="email@exemplo.com" />
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground">{t('account.password')}</label>
+                  <Input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" />
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground">{t('account.birthdate')}</label>
+                  <Input type="date" value={birthdate} onChange={e => setBirthdate(e.target.value)} />
+                </div>
+                <Button onClick={handleSaveAccount} disabled={!email || !password || !birthdate} className="w-full">
+                  {t('account.save')}
+                </Button>
               </div>
-              <div>
-                <label className="text-xs text-muted-foreground">{t('account.password')}</label>
-                <Input
-                  type="password"
-                  value={password}
-                  onChange={e => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  className="h-8 text-xs"
-                />
-              </div>
-              <div>
-                <label className="text-xs text-muted-foreground">{t('account.birthdate')}</label>
-                <Input
-                  type="date"
-                  value={birthdate}
-                  onChange={e => setBirthdate(e.target.value)}
-                  className="h-8 text-xs"
-                />
-              </div>
-              <Button
-                size="sm"
-                onClick={handleSaveAccount}
-                disabled={!email || !password || !birthdate}
-                className="w-full text-xs h-8"
-              >
-                {t('account.save')}
-              </Button>
-            </div>
+            </motion.div>
           </motion.div>
         )}
-      </div>
+      </AnimatePresence>
 
       <motion.div
         className="z-10 text-center"
@@ -246,9 +229,14 @@ export default function MainMenu({ player, onPlay, onCollection, onWarehouse, on
               {t('menu.skins')}
             </Button>
           </div>
-          <Button onClick={onRoulette} variant="outline" size="lg" className="w-64 h-12 font-bold">
-            {t('menu.roulette')}
-          </Button>
+          <div className="flex gap-3">
+            <Button onClick={onRoulette} variant="outline" size="lg" className="w-[122px] h-12 text-xs font-bold">
+              {t('menu.roulette')}
+            </Button>
+            <Button onClick={onRanking} variant="outline" size="lg" className="w-[122px] h-12 text-xs font-bold">
+              {t('menu.ranking')}
+            </Button>
+          </div>
           {player.level > 1 && (
             <Button onClick={onReset} variant="ghost" size="sm" className="text-muted-foreground mt-2">
               {t('menu.reset')}

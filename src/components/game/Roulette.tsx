@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect } from 'react';
+import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { PlayerState, ROD_SKINS } from '@/game/types';
@@ -7,7 +7,7 @@ import { useI18n } from '@/game/i18n';
 interface Props {
   player: PlayerState;
   onAddCoins: (amount: number) => void;
-  onAddSkin: (skinId: string) => void;
+  onAddSkin: (skinId: string) => boolean;
   onAddMultiplier: (type: 'luck' | 'strength') => void;
   onSetLastRouletteDate: (date: string) => void;
   onBack: () => void;
@@ -31,19 +31,24 @@ export default function Roulette({ player, onAddCoins, onAddSkin, onAddMultiplie
   const today = new Date().toISOString().slice(0, 10);
   const alreadySpun = player.lastRouletteDate === today;
 
-  const unownedSkins = ROD_SKINS.filter(s => !player.ownedSkins.includes(s.id) && s.price > 0);
-  const randomSkin = unownedSkins.length > 0 ? unownedSkins[Math.floor(Math.random() * unownedSkins.length)] : null;
-
-  const prizes: Prize[] = [
-    { label: '100 💰', emoji: '💰', color: '#FFD700', action: () => onAddCoins(100) },
-    { label: '🍀 ' + t('mult.luck'), emoji: '🍀', color: '#4CAF50', action: () => onAddMultiplier('luck') },
-    { label: '250 💰', emoji: '💰', color: '#FFA000', action: () => onAddCoins(250) },
-    { label: '💪 ' + t('mult.strength'), emoji: '💪', color: '#F44336', action: () => onAddMultiplier('strength') },
-    { label: '500 💰', emoji: '💰', color: '#FF9800', action: () => onAddCoins(500) },
-    { label: randomSkin ? `${randomSkin.emoji} ${randomSkin.name}` : '1000 💰', emoji: randomSkin?.emoji || '💰', color: randomSkin?.color || '#E91E63', action: () => randomSkin ? onAddSkin(randomSkin.id) : onAddCoins(1000) },
-    { label: '1000 💰', emoji: '💰', color: '#9C27B0', action: () => onAddCoins(1000) },
-    { label: '150 💰', emoji: '💰', color: '#00BCD4', action: () => onAddCoins(150) },
-  ];
+  // Freeze prizes for the lifetime of the component to ensure the prize matches the arrow.
+  const prizes = useMemo<Prize[]>(() => {
+    const unowned = ROD_SKINS.filter(s => !player.ownedSkins.includes(s.id) && s.price > 0);
+    const randomSkin = unowned.length > 0 ? unowned[Math.floor(Math.random() * unowned.length)] : null;
+    return [
+      { label: '100 💰', emoji: '💰', color: '#FFD700', action: () => onAddCoins(100) },
+      { label: '🍀 ' + t('mult.luck'), emoji: '🍀', color: '#4CAF50', action: () => onAddMultiplier('luck') },
+      { label: '250 💰', emoji: '💰', color: '#FFA000', action: () => onAddCoins(250) },
+      { label: '💪 ' + t('mult.strength'), emoji: '💪', color: '#F44336', action: () => onAddMultiplier('strength') },
+      { label: '500 💰', emoji: '💰', color: '#FF9800', action: () => onAddCoins(500) },
+      randomSkin
+        ? { label: `${randomSkin.emoji} ${randomSkin.name}`, emoji: randomSkin.emoji, color: randomSkin.color, action: () => onAddSkin(randomSkin.id) }
+        : { label: '1000 💰', emoji: '💰', color: '#E91E63', action: () => onAddCoins(1000) },
+      { label: '1000 💰', emoji: '💰', color: '#9C27B0', action: () => onAddCoins(1000) },
+      { label: '150 💰', emoji: '💰', color: '#00BCD4', action: () => onAddCoins(150) },
+    ];
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const drawWheel = useCallback((angle: number) => {
     const canvas = canvasRef.current;
@@ -117,11 +122,13 @@ export default function Roulette({ player, onAddCoins, onAddSkin, onAddMultiplie
     setSpinning(true);
     setResult(null);
 
-    const winIndex = Math.floor(Math.random() * prizes.length);
     const sliceAngle = (2 * Math.PI) / prizes.length;
-    // Target: the arrow (top, -π/2) should point to the middle of winIndex slice
-    const targetAngle = -winIndex * sliceAngle - sliceAngle / 2 - Math.PI / 2;
-    const totalRotation = targetAngle + Math.PI * 2 * (5 + Math.random() * 3);
+    const winIndex = Math.floor(Math.random() * prizes.length);
+    // Place the middle of the winning slice exactly at the arrow (top = -π/2).
+    // Use only INTEGER full extra rotations so the angle is exact.
+    const baseTarget = -winIndex * sliceAngle - sliceAngle / 2 - Math.PI / 2;
+    const extraTurns = 5 + Math.floor(Math.random() * 4);
+    const totalRotation = baseTarget + Math.PI * 2 * extraTurns;
 
     const startAngle = angleRef.current;
     const startTime = performance.now();
@@ -130,7 +137,6 @@ export default function Roulette({ player, onAddCoins, onAddSkin, onAddMultiplie
     const animate = (now: number) => {
       const elapsed = now - startTime;
       const progress = Math.min(elapsed / duration, 1);
-      // Ease out cubic
       const eased = 1 - Math.pow(1 - progress, 3);
       const currentAngle = startAngle + (totalRotation - startAngle) * eased;
       angleRef.current = currentAngle;
@@ -141,8 +147,15 @@ export default function Roulette({ player, onAddCoins, onAddSkin, onAddMultiplie
       } else {
         setSpinning(false);
         onSetLastRouletteDate(today);
-        prizes[winIndex].action();
-        setResult(prizes[winIndex]);
+        // Determine the actual winner from the angle the arrow points at,
+        // ensuring the prize matches what the user sees.
+        const TWO_PI = Math.PI * 2;
+        const finalAngle = ((angleRef.current % TWO_PI) + TWO_PI) % TWO_PI;
+        const arrowAngle = ((-Math.PI / 2 - finalAngle) % TWO_PI + TWO_PI) % TWO_PI;
+        const actualIndex = Math.floor(arrowAngle / sliceAngle) % prizes.length;
+        const prize = prizes[actualIndex] ?? prizes[winIndex];
+        prize.action();
+        setResult(prize);
       }
     };
 

@@ -126,11 +126,17 @@ export function useGameState() {
     setPlayer(prev => ({ ...prev, coins: prev.coins + amount }));
   }, []);
 
-  const addSkin = useCallback((skinId: string) => {
+  const addSkin = useCallback((skinId: string): boolean => {
+    let gained = true;
     setPlayer(prev => {
-      if (prev.ownedSkins.includes(skinId)) return prev;
+      if (prev.ownedSkins.includes(skinId)) {
+        gained = false;
+        // Duplicate -> convert to 500 coins
+        return { ...prev, coins: prev.coins + 500 };
+      }
       return { ...prev, ownedSkins: [...prev.ownedSkins, skinId] };
     });
+    return gained;
   }, []);
 
   const addMultiplier = useCallback((type: 'luck' | 'strength') => {
