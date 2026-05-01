@@ -122,11 +122,13 @@ export default function Roulette({ player, onAddCoins, onAddSkin, onAddMultiplie
     setSpinning(true);
     setResult(null);
 
-    const winIndex = Math.floor(Math.random() * prizes.length);
     const sliceAngle = (2 * Math.PI) / prizes.length;
-    // Target: the arrow (top, -π/2) should point to the middle of winIndex slice
-    const targetAngle = -winIndex * sliceAngle - sliceAngle / 2 - Math.PI / 2;
-    const totalRotation = targetAngle + Math.PI * 2 * (5 + Math.random() * 3);
+    const winIndex = Math.floor(Math.random() * prizes.length);
+    // Place the middle of the winning slice exactly at the arrow (top = -π/2).
+    // Use only INTEGER full extra rotations so the angle is exact.
+    const baseTarget = -winIndex * sliceAngle - sliceAngle / 2 - Math.PI / 2;
+    const extraTurns = 5 + Math.floor(Math.random() * 4);
+    const totalRotation = baseTarget + Math.PI * 2 * extraTurns;
 
     const startAngle = angleRef.current;
     const startTime = performance.now();
@@ -135,7 +137,6 @@ export default function Roulette({ player, onAddCoins, onAddSkin, onAddMultiplie
     const animate = (now: number) => {
       const elapsed = now - startTime;
       const progress = Math.min(elapsed / duration, 1);
-      // Ease out cubic
       const eased = 1 - Math.pow(1 - progress, 3);
       const currentAngle = startAngle + (totalRotation - startAngle) * eased;
       angleRef.current = currentAngle;
@@ -146,8 +147,15 @@ export default function Roulette({ player, onAddCoins, onAddSkin, onAddMultiplie
       } else {
         setSpinning(false);
         onSetLastRouletteDate(today);
-        prizes[winIndex].action();
-        setResult(prizes[winIndex]);
+        // Determine the actual winner from the angle the arrow points at,
+        // ensuring the prize matches what the user sees.
+        const TWO_PI = Math.PI * 2;
+        const finalAngle = ((angleRef.current % TWO_PI) + TWO_PI) % TWO_PI;
+        const arrowAngle = ((-Math.PI / 2 - finalAngle) % TWO_PI + TWO_PI) % TWO_PI;
+        const actualIndex = Math.floor(arrowAngle / sliceAngle) % prizes.length;
+        const prize = prizes[actualIndex] ?? prizes[winIndex];
+        prize.action();
+        setResult(prize);
       }
     };
 
