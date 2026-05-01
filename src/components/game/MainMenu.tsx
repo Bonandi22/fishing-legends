@@ -25,16 +25,20 @@ const LANGS: Lang[] = ['pt', 'en', 'es', 'fr', 'de', 'ja'];
 
 const ACCOUNT_KEY = 'fishing-game-account';
 
-function loadAccount() {
+interface Account { email: string; birthdate: string; username?: string; country?: string; }
+
+const COUNTRIES = ['🇧🇷', '🇵🇹', '🇺🇸', '🇪🇸', '🇫🇷', '🇩🇪', '🇮🇹', '🇬🇧', '🇯🇵', '🇰🇷', '🇲🇽', '🇦🇷', '🇨🇦', '🇦🇺', '🇨🇳', '🌍'];
+
+function loadAccount(): Account | null {
   try {
     const saved = localStorage.getItem(ACCOUNT_KEY);
-    if (saved) return JSON.parse(saved) as { email: string; birthdate: string };
+    if (saved) return JSON.parse(saved) as Account;
   } catch {}
   return null;
 }
 
-function saveAccount(email: string, birthdate: string) {
-  localStorage.setItem(ACCOUNT_KEY, JSON.stringify({ email, birthdate }));
+function saveAccount(acc: Account) {
+  localStorage.setItem(ACCOUNT_KEY, JSON.stringify(acc));
 }
 
 export default function MainMenu({ player, onPlay, onCollection, onWarehouse, onSubmarine, onMultiplier, onSkins, onRoulette, onRanking, onReset, musicPlaying, onToggleMusic }: Props) {
@@ -43,11 +47,16 @@ export default function MainMenu({ player, onPlay, onCollection, onWarehouse, on
   const langRef = useRef<HTMLDivElement>(null);
 
   const [accountModalOpen, setAccountModalOpen] = useState(false);
-  const [account, setAccount] = useState(loadAccount);
+  const [account, setAccount] = useState<Account | null>(loadAccount);
   const [email, setEmail] = useState(account?.email || '');
   const [password, setPassword] = useState('');
   const [birthdate, setBirthdate] = useState(account?.birthdate || '');
+  const [username, setUsername] = useState(account?.username || '');
+  const [country, setCountry] = useState(account?.country || '🌍');
   const [savedMsg, setSavedMsg] = useState(false);
+  // After credentials are saved, prompt for username if missing
+  const needsUsername = !!account && !account.username;
+  const [step, setStep] = useState<'credentials' | 'username'>(needsUsername ? 'username' : 'credentials');
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -57,12 +66,30 @@ export default function MainMenu({ player, onPlay, onCollection, onWarehouse, on
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-  const handleSaveAccount = () => {
+  // When opening modal, jump to right step
+  useEffect(() => {
+    if (accountModalOpen) {
+      setStep(account && !account.username ? 'username' : 'credentials');
+    }
+  }, [accountModalOpen, account]);
+
+  const handleSaveCredentials = () => {
     if (!email || !birthdate || !password) return;
-    saveAccount(email, birthdate);
-    setAccount({ email, birthdate });
+    const acc: Account = { email, birthdate, username: account?.username, country: account?.country };
+    saveAccount(acc);
+    setAccount(acc);
     setSavedMsg(true);
     setTimeout(() => setSavedMsg(false), 3000);
+    if (!acc.username) setStep('username');
+  };
+
+  const handleSaveUsername = () => {
+    if (!username.trim() || !account) return;
+    const acc: Account = { ...account, username: username.trim().slice(0, 20), country };
+    saveAccount(acc);
+    setAccount(acc);
+    setSavedMsg(true);
+    setTimeout(() => { setSavedMsg(false); setAccountModalOpen(false); }, 1200);
   };
 
   return (
@@ -119,7 +146,7 @@ export default function MainMenu({ player, onPlay, onCollection, onWarehouse, on
       <div className="absolute bottom-4 left-4 z-20">
         <Button onClick={() => setAccountModalOpen(true)} variant="outline" size="sm" className="bg-background/80 backdrop-blur gap-1.5">
           <User className="w-4 h-4" />
-          {account ? <span className="truncate max-w-[140px]">{account.email}</span> : t('menu.register')}
+          {account ? <span className="truncate max-w-[140px]">{account.username ? `${account.country || ''} ${account.username}` : account.email}</span> : t('menu.register')}
         </Button>
       </div>
 
@@ -152,23 +179,64 @@ export default function MainMenu({ player, onPlay, onCollection, onWarehouse, on
                 <p className="text-sm text-primary font-medium mb-3 bg-primary/10 rounded-lg px-3 py-2">{t('account.saved')}</p>
               )}
 
-              <div className="space-y-3">
-                <div>
-                  <label className="text-xs text-muted-foreground">{t('account.email')}</label>
-                  <Input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="email@exemplo.com" />
+              {step === 'credentials' && (
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-xs text-muted-foreground">{t('account.email')}</label>
+                    <Input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="email@exemplo.com" />
+                  </div>
+                  <div>
+                    <label className="text-xs text-muted-foreground">{t('account.password')}</label>
+                    <Input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" />
+                  </div>
+                  <div>
+                    <label className="text-xs text-muted-foreground">{t('account.birthdate')}</label>
+                    <Input type="date" value={birthdate} onChange={e => setBirthdate(e.target.value)} />
+                  </div>
+                  <Button onClick={handleSaveCredentials} disabled={!email || !password || !birthdate} className="w-full">
+                    {t('account.save')}
+                  </Button>
+                  {account?.username && (
+                    <Button variant="outline" onClick={() => setStep('username')} className="w-full">
+                      {t('account.editUsername')}
+                    </Button>
+                  )}
                 </div>
-                <div>
-                  <label className="text-xs text-muted-foreground">{t('account.password')}</label>
-                  <Input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" />
+              )}
+
+              {step === 'username' && (
+                <div className="space-y-3">
+                  <p className="text-sm text-muted-foreground">{t('account.chooseUsername')}</p>
+                  <div>
+                    <label className="text-xs text-muted-foreground">{t('account.username')}</label>
+                    <Input
+                      type="text"
+                      value={username}
+                      onChange={e => setUsername(e.target.value)}
+                      placeholder="MyAngler"
+                      maxLength={20}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-muted-foreground">{t('account.country')}</label>
+                    <div className="grid grid-cols-8 gap-1.5 mt-1">
+                      {COUNTRIES.map(c => (
+                        <button
+                          key={c}
+                          type="button"
+                          onClick={() => setCountry(c)}
+                          className={`text-xl p-1.5 rounded border-2 transition-colors ${country === c ? 'border-primary bg-primary/10' : 'border-transparent hover:border-border'}`}
+                        >
+                          {c}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <Button onClick={handleSaveUsername} disabled={!username.trim()} className="w-full">
+                    {t('account.confirmUsername')}
+                  </Button>
                 </div>
-                <div>
-                  <label className="text-xs text-muted-foreground">{t('account.birthdate')}</label>
-                  <Input type="date" value={birthdate} onChange={e => setBirthdate(e.target.value)} />
-                </div>
-                <Button onClick={handleSaveAccount} disabled={!email || !password || !birthdate} className="w-full">
-                  {t('account.save')}
-                </Button>
-              </div>
+              )}
             </motion.div>
           </motion.div>
         )}

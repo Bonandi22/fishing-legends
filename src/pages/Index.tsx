@@ -1,4 +1,5 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
+import { syncCurrentPlayer } from '@/game/leaderboard';
 import MainMenu from '@/components/game/MainMenu';
 import LocationSelect from '@/components/game/LocationSelect';
 import FishingScreen from '@/components/game/FishingScreen';
@@ -25,6 +26,9 @@ const IndexInner = () => {
   const { isPlaying: musicPlaying, toggle: toggleMusic } = useBackgroundMusic();
   const [screen, setScreen] = useState<Screen>('menu');
   const [selectedLocation, setSelectedLocation] = useState<FishingLocation | null>(null);
+
+  // Keep current player in the leaderboard in sync
+  useEffect(() => { syncCurrentPlayer(player); }, [player]);
 
   const handleSelectLocation = useCallback((loc: FishingLocation) => {
     setSelectedLocation(loc);

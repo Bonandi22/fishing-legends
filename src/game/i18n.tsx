@@ -147,6 +147,12 @@ const translations = {
   'account.save': { pt: 'Salvar Conta', en: 'Save Account', es: 'Guardar Cuenta', fr: 'Sauvegarder', de: 'Konto speichern', ja: 'アカウント保存' },
   'account.saved': { pt: '✅ Conta salva!', en: '✅ Account saved!', es: '✅ ¡Cuenta guardada!', fr: '✅ Compte sauvegardé !', de: '✅ Konto gespeichert!', ja: '✅ アカウント保存済み！' },
   'account.loggedAs': { pt: 'Logado como', en: 'Logged in as', es: 'Conectado como', fr: 'Connecté en tant que', de: 'Angemeldet als', ja: 'ログイン中' },
+  'account.username': { pt: 'Nome de usuário', en: 'Username', es: 'Nombre de usuario', fr: 'Nom d\'utilisateur', de: 'Benutzername', ja: 'ユーザー名' },
+  'account.chooseUsername': { pt: 'Escolha um nome de usuário para aparecer no ranking.', en: 'Choose a username to appear in the ranking.', es: 'Elige un nombre de usuario para aparecer en el ranking.', fr: 'Choisissez un nom d\'utilisateur pour apparaître dans le classement.', de: 'Wähle einen Benutzernamen für die Rangliste.', ja: 'ランキングに表示されるユーザー名を選んでください。' },
+  'account.country': { pt: 'País', en: 'Country', es: 'País', fr: 'Pays', de: 'Land', ja: '国' },
+  'account.confirmUsername': { pt: 'Confirmar', en: 'Confirm', es: 'Confirmar', fr: 'Confirmer', de: 'Bestätigen', ja: '確認' },
+  'account.editUsername': { pt: 'Editar nome de usuário', en: 'Edit username', es: 'Editar nombre de usuario', fr: 'Modifier le nom', de: 'Benutzername bearbeiten', ja: 'ユーザー名を編集' },
+  'rank.empty': { pt: 'Nenhum jogador no ranking ainda. Cadastre-se e jogue para aparecer aqui!', en: 'No players in the ranking yet. Register and play to appear here!', es: '¡Aún no hay jugadores! Regístrate y juega para aparecer.', fr: 'Aucun joueur encore. Inscrivez-vous et jouez !', de: 'Noch keine Spieler. Registriere dich und spiele!', ja: 'まだプレイヤーがいません。登録してプレイしましょう！' },
 } as const;
 
 type TransKey = keyof typeof translations;

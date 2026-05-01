@@ -14,7 +14,7 @@ export default function Ranking({ player, onBack }: Props) {
   const { t } = useI18n();
   const leaderboard = useMemo(() => getLeaderboard(), []);
   const playerRank = useMemo(() => getPlayerRank(player.totalFishCaught), [player.totalFishCaught]);
-  const inTop100 = playerRank <= 100;
+  const inTop100 = leaderboard.some(p => p.isCurrentPlayer);
 
   const [selected, setSelected] = useState<LeaderboardPlayer | null>(null);
   const [showProfile, setShowProfile] = useState(false);
@@ -40,8 +40,13 @@ export default function Ranking({ player, onBack }: Props) {
             <span className="text-right">{t('rank.fish')}</span>
           </div>
           <div className="max-h-[60vh] overflow-y-auto">
+            {leaderboard.length === 0 && (
+              <div className="px-4 py-10 text-center text-sm text-muted-foreground">
+                {t('rank.empty')}
+              </div>
+            )}
             {leaderboard.map((p, i) => {
-              const isPlayer = inTop100 && p.rank === playerRank;
+              const isPlayer = !!p.isCurrentPlayer;
               return (
                 <button
                   key={p.rank}
@@ -79,7 +84,7 @@ export default function Ranking({ player, onBack }: Props) {
       </div>
 
       {/* Player position when not in top 100 */}
-      {!inTop100 && (
+      {!inTop100 && playerRank > 0 && (
         <motion.div
           initial={{ opacity: 0, x: 30 }}
           animate={{ opacity: 1, x: 0 }}
