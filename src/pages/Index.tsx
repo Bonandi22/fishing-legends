@@ -59,6 +59,9 @@ const IndexInner = () => {
   if (screen === 'roulette') {
     return <Roulette player={player} onAddCoins={addCoins} onAddSkin={addSkin} onAddMultiplier={addMultiplier} onSetLastRouletteDate={setLastRouletteDate} onBack={() => setScreen('menu')} />;
   }
+  if (screen === 'ranking') {
+    return <Ranking player={player} onBack={() => setScreen('menu')} />;
+  }
 
   return (
     <MainMenu
@@ -70,6 +73,7 @@ const IndexInner = () => {
       onMultiplier={() => setScreen('multiplier')}
       onSkins={() => setScreen('skins')}
       onRoulette={() => setScreen('roulette')}
+      onRanking={() => setScreen('ranking')}
       onReset={resetProgress}
       musicPlaying={musicPlaying}
       onToggleMusic={toggleMusic}
