@@ -84,7 +84,7 @@ export default function Ranking({ player, onBack }: Props) {
       </div>
 
       {/* Player position when not in top 100 */}
-      {!inTop100 && (
+      {!inTop100 && playerRank > 0 && (
         <motion.div
           initial={{ opacity: 0, x: 30 }}
           animate={{ opacity: 1, x: 0 }}
