@@ -31,19 +31,24 @@ export default function Roulette({ player, onAddCoins, onAddSkin, onAddMultiplie
   const today = new Date().toISOString().slice(0, 10);
   const alreadySpun = player.lastRouletteDate === today;
 
-  const unownedSkins = ROD_SKINS.filter(s => !player.ownedSkins.includes(s.id) && s.price > 0);
-  const randomSkin = unownedSkins.length > 0 ? unownedSkins[Math.floor(Math.random() * unownedSkins.length)] : null;
-
-  const prizes: Prize[] = [
-    { label: '100 💰', emoji: '💰', color: '#FFD700', action: () => onAddCoins(100) },
-    { label: '🍀 ' + t('mult.luck'), emoji: '🍀', color: '#4CAF50', action: () => onAddMultiplier('luck') },
-    { label: '250 💰', emoji: '💰', color: '#FFA000', action: () => onAddCoins(250) },
-    { label: '💪 ' + t('mult.strength'), emoji: '💪', color: '#F44336', action: () => onAddMultiplier('strength') },
-    { label: '500 💰', emoji: '💰', color: '#FF9800', action: () => onAddCoins(500) },
-    { label: randomSkin ? `${randomSkin.emoji} ${randomSkin.name}` : '1000 💰', emoji: randomSkin?.emoji || '💰', color: randomSkin?.color || '#E91E63', action: () => randomSkin ? onAddSkin(randomSkin.id) : onAddCoins(1000) },
-    { label: '1000 💰', emoji: '💰', color: '#9C27B0', action: () => onAddCoins(1000) },
-    { label: '150 💰', emoji: '💰', color: '#00BCD4', action: () => onAddCoins(150) },
-  ];
+  // Freeze prizes for the lifetime of the component to ensure the prize matches the arrow.
+  const prizes = useMemo<Prize[]>(() => {
+    const unowned = ROD_SKINS.filter(s => !player.ownedSkins.includes(s.id) && s.price > 0);
+    const randomSkin = unowned.length > 0 ? unowned[Math.floor(Math.random() * unowned.length)] : null;
+    return [
+      { label: '100 💰', emoji: '💰', color: '#FFD700', action: () => onAddCoins(100) },
+      { label: '🍀 ' + t('mult.luck'), emoji: '🍀', color: '#4CAF50', action: () => onAddMultiplier('luck') },
+      { label: '250 💰', emoji: '💰', color: '#FFA000', action: () => onAddCoins(250) },
+      { label: '💪 ' + t('mult.strength'), emoji: '💪', color: '#F44336', action: () => onAddMultiplier('strength') },
+      { label: '500 💰', emoji: '💰', color: '#FF9800', action: () => onAddCoins(500) },
+      randomSkin
+        ? { label: `${randomSkin.emoji} ${randomSkin.name}`, emoji: randomSkin.emoji, color: randomSkin.color, action: () => onAddSkin(randomSkin.id) }
+        : { label: '1000 💰', emoji: '💰', color: '#E91E63', action: () => onAddCoins(1000) },
+      { label: '1000 💰', emoji: '💰', color: '#9C27B0', action: () => onAddCoins(1000) },
+      { label: '150 💰', emoji: '💰', color: '#00BCD4', action: () => onAddCoins(150) },
+    ];
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const drawWheel = useCallback((angle: number) => {
     const canvas = canvasRef.current;
