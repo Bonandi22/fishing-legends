@@ -3,7 +3,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { PlayerState } from '@/game/types';
 import { useI18n, Lang, LANG_LABELS } from '@/game/i18n';
-import { Volume2, VolumeX, Globe, ChevronDown, User } from 'lucide-react';
+import { findAccountByUsername } from '@/game/leaderboard';
+import { Volume2, VolumeX, Globe, ChevronDown, User, LogIn } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 
 interface Props {
@@ -56,7 +57,9 @@ export default function MainMenu({ player, onPlay, onCollection, onWarehouse, on
   const [savedMsg, setSavedMsg] = useState(false);
   // After credentials are saved, prompt for username if missing
   const needsUsername = !!account && !account.username;
-  const [step, setStep] = useState<'credentials' | 'username'>(needsUsername ? 'username' : 'credentials');
+  const [step, setStep] = useState<'credentials' | 'username' | 'login'>(needsUsername ? 'username' : 'credentials');
+  const [loginUsername, setLoginUsername] = useState('');
+  const [loginError, setLoginError] = useState(false);
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -70,6 +73,7 @@ export default function MainMenu({ player, onPlay, onCollection, onWarehouse, on
   useEffect(() => {
     if (accountModalOpen) {
       setStep(account && !account.username ? 'username' : 'credentials');
+      setLoginError(false);
     }
   }, [accountModalOpen, account]);
 
@@ -89,6 +93,28 @@ export default function MainMenu({ player, onPlay, onCollection, onWarehouse, on
     saveAccount(acc);
     setAccount(acc);
     setSavedMsg(true);
+    setTimeout(() => { setSavedMsg(false); setAccountModalOpen(false); }, 1200);
+  };
+
+  const handleLogin = () => {
+    const found = findAccountByUsername(loginUsername);
+    if (!found) {
+      setLoginError(true);
+      return;
+    }
+    const acc: Account = {
+      email: found.email,
+      birthdate: '',
+      username: found.username,
+      country: found.country,
+    };
+    saveAccount(acc);
+    setAccount(acc);
+    setEmail(acc.email);
+    setUsername(acc.username || '');
+    setCountry(acc.country || '🌍');
+    setSavedMsg(true);
+    setLoginError(false);
     setTimeout(() => { setSavedMsg(false); setAccountModalOpen(false); }, 1200);
   };
 
@@ -201,6 +227,40 @@ export default function MainMenu({ player, onPlay, onCollection, onWarehouse, on
                       {t('account.editUsername')}
                     </Button>
                   )}
+                  <button
+                    type="button"
+                    onClick={() => { setStep('login'); setLoginError(false); }}
+                    className="w-full text-sm text-primary hover:underline mt-1 flex items-center justify-center gap-1.5"
+                  >
+                    <LogIn className="w-3.5 h-3.5" />
+                    {t('account.haveAccount')}
+                  </button>
+                </div>
+              )}
+
+              {step === 'login' && (
+                <div className="space-y-3">
+                  <p className="text-sm text-muted-foreground">{t('account.loginTitle')}</p>
+                  <div>
+                    <label className="text-xs text-muted-foreground">{t('account.loginUsername')}</label>
+                    <Input
+                      type="text"
+                      value={loginUsername}
+                      onChange={e => { setLoginUsername(e.target.value); setLoginError(false); }}
+                      placeholder="MyAngler"
+                      maxLength={20}
+                      autoFocus
+                    />
+                  </div>
+                  {loginError && (
+                    <p className="text-sm text-destructive bg-destructive/10 rounded-lg px-3 py-2">{t('account.loginNotFound')}</p>
+                  )}
+                  <Button onClick={handleLogin} disabled={!loginUsername.trim()} className="w-full">
+                    {t('account.login')}
+                  </Button>
+                  <Button variant="outline" onClick={() => setStep('credentials')} className="w-full">
+                    {t('account.newAccount')}
+                  </Button>
                 </div>
               )}
 

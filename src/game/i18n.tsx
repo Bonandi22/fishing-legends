@@ -153,6 +153,13 @@ const translations = {
   'account.confirmUsername': { pt: 'Confirmar', en: 'Confirm', es: 'Confirmar', fr: 'Confirmer', de: 'Bestätigen', ja: '確認' },
   'account.editUsername': { pt: 'Editar nome de usuário', en: 'Edit username', es: 'Editar nombre de usuario', fr: 'Modifier le nom', de: 'Benutzername bearbeiten', ja: 'ユーザー名を編集' },
   'rank.empty': { pt: 'Nenhum jogador no ranking ainda. Cadastre-se e jogue para aparecer aqui!', en: 'No players in the ranking yet. Register and play to appear here!', es: '¡Aún no hay jugadores! Regístrate y juega para aparecer.', fr: 'Aucun joueur encore. Inscrivez-vous et jouez !', de: 'Noch keine Spieler. Registriere dich und spiele!', ja: 'まだプレイヤーがいません。登録してプレイしましょう！' },
+  'account.haveAccount': { pt: 'Já tem conta? Entrar', en: 'Already have an account? Log in', es: '¿Ya tienes cuenta? Iniciar sesión', fr: 'Déjà un compte ? Se connecter', de: 'Schon ein Konto? Anmelden', ja: 'アカウントをお持ちですか？ログイン' },
+  'account.newAccount': { pt: 'Criar nova conta', en: 'Create new account', es: 'Crear cuenta nueva', fr: 'Créer un compte', de: 'Neues Konto', ja: '新規アカウント作成' },
+  'account.login': { pt: 'Entrar', en: 'Log in', es: 'Entrar', fr: 'Se connecter', de: 'Anmelden', ja: 'ログイン' },
+  'account.loginTitle': { pt: 'Entrar na conta', en: 'Log in to account', es: 'Iniciar sesión', fr: 'Connexion', de: 'Anmeldung', ja: 'ログイン' },
+  'account.loginUsername': { pt: 'Nome de utilizador da conta salva', en: 'Username of saved account', es: 'Nombre de usuario guardado', fr: 'Nom d\'utilisateur enregistré', de: 'Benutzername des gespeicherten Kontos', ja: '保存されたユーザー名' },
+  'account.loginNotFound': { pt: 'Conta não encontrada com esse nome de utilizador.', en: 'No account found with that username.', es: 'No se encontró la cuenta.', fr: 'Compte introuvable.', de: 'Konto nicht gefunden.', ja: 'アカウントが見つかりません。' },
+  'account.loggedIn': { pt: '✅ Entrou com sucesso!', en: '✅ Logged in successfully!', es: '✅ ¡Sesión iniciada!', fr: '✅ Connecté !', de: '✅ Angemeldet!', ja: '✅ ログインしました！' },
 } as const;
 
 type TransKey = keyof typeof translations;

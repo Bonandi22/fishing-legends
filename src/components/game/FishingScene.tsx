@@ -279,6 +279,163 @@ function FishingRod({ skin }: { skin: RodSkin }) {
           <meshStandardMaterial color={skin.accentColor} roughness={0.5} metalness={0.1} emissive={emissiveColor} emissiveIntensity={emissiveIntensity * 0.5} />
         </mesh>
       ))}
+      {/* Unique skin charm — dangles from grip area */}
+      <SkinCharm skin={skin} />
+    </group>
+  );
+}
+
+/* ═══════ UNIQUE CHARM PER SKIN ═══════ */
+function SkinCharm({ skin }: { skin: RodSkin }) {
+  const ref = useRef<THREE.Group>(null);
+  useFrame(({ clock }) => {
+    if (!ref.current) return;
+    const t = clock.getElapsedTime();
+    ref.current.rotation.z = Math.sin(t * 2) * 0.25;
+    ref.current.rotation.y = Math.sin(t * 1.3) * 0.3;
+  });
+
+  // Each skin has a distinctive 3D ornament hanging from the rod butt
+  const renderOrnament = () => {
+    switch (skin.id) {
+      case 'shark':
+        // Shark tooth
+        return (
+          <mesh rotation={[0, 0, Math.PI]}>
+            <coneGeometry args={[0.018, 0.05, 4]} />
+            <meshStandardMaterial color="#f5f5f0" roughness={0.4} metalness={0.2} />
+          </mesh>
+        );
+      case 'fish':
+        // Small fish-shaped lure
+        return (
+          <group>
+            <mesh>
+              <sphereGeometry args={[0.022, 12, 8]} />
+              <meshPhysicalMaterial color={skin.accentColor} metalness={0.7} roughness={0.2} clearcoat={0.8} />
+            </mesh>
+            <mesh position={[0, 0, 0.025]}>
+              <coneGeometry args={[0.018, 0.03, 6]} />
+              <meshStandardMaterial color={skin.rodColor} metalness={0.5} roughness={0.3} />
+            </mesh>
+            <mesh position={[0.012, 0.005, -0.01]}>
+              <sphereGeometry args={[0.004, 6, 6]} />
+              <meshStandardMaterial color="#ffffff" emissive="#000000" />
+            </mesh>
+          </group>
+        );
+      case 'octopus':
+        // Octopus head with little tentacles
+        return (
+          <group>
+            <mesh>
+              <sphereGeometry args={[0.025, 12, 12]} />
+              <meshPhysicalMaterial color={skin.color} roughness={0.3} clearcoat={0.6} />
+            </mesh>
+            {[0, 1, 2, 3, 4, 5].map(i => {
+              const a = (i / 6) * Math.PI * 2;
+              return (
+                <mesh key={i} position={[Math.cos(a) * 0.018, -0.015, Math.sin(a) * 0.018]} rotation={[0.4, 0, 0]}>
+                  <cylinderGeometry args={[0.003, 0.001, 0.03, 6]} />
+                  <meshStandardMaterial color={skin.color} roughness={0.4} />
+                </mesh>
+              );
+            })}
+          </group>
+        );
+      case 'dragon':
+        // Dragon claw / spiked horn
+        return (
+          <group>
+            <mesh rotation={[0, 0, Math.PI]}>
+              <coneGeometry args={[0.014, 0.06, 6]} />
+              <meshPhysicalMaterial color={skin.accentColor} metalness={0.7} roughness={0.2} emissive={skin.emissive} emissiveIntensity={0.4} />
+            </mesh>
+            <mesh position={[0, -0.01, 0]}>
+              <torusGeometry args={[0.018, 0.004, 8, 12]} />
+              <meshStandardMaterial color={skin.rodColor} metalness={0.8} roughness={0.2} emissive={skin.emissive} emissiveIntensity={0.3} />
+            </mesh>
+          </group>
+        );
+      case 'phoenix':
+        // Flame-shaped charm with glow
+        return (
+          <group>
+            <mesh>
+              <coneGeometry args={[0.02, 0.05, 8]} />
+              <meshPhysicalMaterial color={skin.accentColor} emissive={skin.emissive} emissiveIntensity={0.8} roughness={0.3} />
+            </mesh>
+            <pointLight color={skin.emissive || '#ff6600'} intensity={0.4} distance={0.5} />
+          </group>
+        );
+      case 'kraken':
+        // Tentacle with suction cups + glow
+        return (
+          <group>
+            <mesh rotation={[0.3, 0, 0]}>
+              <cylinderGeometry args={[0.012, 0.005, 0.06, 8]} />
+              <meshPhysicalMaterial color={skin.accentColor} emissive={skin.emissive} emissiveIntensity={0.5} roughness={0.4} />
+            </mesh>
+            {[0, 1, 2].map(i => (
+              <mesh key={i} position={[0, -0.015 - i * 0.015, 0.005 + i * 0.005]}>
+                <sphereGeometry args={[0.004, 6, 6]} />
+                <meshStandardMaterial color="#ffffff" />
+              </mesh>
+            ))}
+          </group>
+        );
+      case 'gold':
+        // Gold coin medallion
+        return (
+          <group>
+            <mesh rotation={[0, 0, Math.PI / 2]}>
+              <cylinderGeometry args={[0.022, 0.022, 0.005, 24]} />
+              <meshPhysicalMaterial color={skin.color} metalness={1} roughness={0.05} clearcoat={1} emissive={skin.emissive} emissiveIntensity={0.3} />
+            </mesh>
+            <mesh rotation={[0, 0, Math.PI / 2]} position={[0, 0, 0.003]}>
+              <torusGeometry args={[0.016, 0.002, 8, 24]} />
+              <meshStandardMaterial color="#fff8b0" metalness={1} roughness={0.1} />
+            </mesh>
+          </group>
+        );
+      case 'diamond':
+        // Diamond gem
+        return (
+          <group>
+            <mesh rotation={[Math.PI, 0, 0]}>
+              <octahedronGeometry args={[0.025, 0]} />
+              <meshPhysicalMaterial color={skin.color} metalness={0.2} roughness={0.05} clearcoat={1} clearcoatRoughness={0} transmission={0.6} thickness={0.5} ior={2.4} emissive={skin.emissive} emissiveIntensity={0.2} />
+            </mesh>
+            <pointLight color={skin.emissive || '#00ccff'} intensity={0.3} distance={0.4} />
+          </group>
+        );
+      default:
+        // Default: simple wooden bobber charm
+        return (
+          <mesh>
+            <sphereGeometry args={[0.018, 10, 10]} />
+            <meshStandardMaterial color="#cc2020" roughness={0.4} />
+          </mesh>
+        );
+    }
+  };
+
+  return (
+    <group position={[0, -0.04, 0.7]}>
+      {/* Hanging cord */}
+      <mesh position={[0, -0.025, 0]}>
+        <cylinderGeometry args={[0.0015, 0.0015, 0.05, 4]} />
+        <meshStandardMaterial color={skin.accentColor} roughness={0.7} />
+      </mesh>
+      {/* Small clip ring */}
+      <mesh position={[0, 0, 0]} rotation={[Math.PI / 2, 0, 0]}>
+        <torusGeometry args={[0.005, 0.0015, 6, 10]} />
+        <meshStandardMaterial color={skin.accentColor} metalness={0.9} roughness={0.1} />
+      </mesh>
+      {/* Animated ornament */}
+      <group ref={ref} position={[0, -0.06, 0]}>
+        {renderOrnament()}
+      </group>
     </group>
   );
 }
