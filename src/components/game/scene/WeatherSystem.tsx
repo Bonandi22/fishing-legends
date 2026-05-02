@@ -111,7 +111,7 @@ function Lightning() {
   const flashPos = useRef<[number, number, number]>([0, 30, -20]);
   const boltRef = useRef<THREE.Group>(null);
 
-  const boltGeom = useMemo(() => {
+  const boltLine = useMemo(() => {
     // Generate procedural bolt path
     const points: THREE.Vector3[] = [];
     let x = 0, y = 0, z = 0;
@@ -121,7 +121,9 @@ function Lightning() {
       y -= 3 + Math.random() * 2;
       z += (Math.random() - 0.5) * 2;
     }
-    return new THREE.BufferGeometry().setFromPoints(points);
+    const geom = new THREE.BufferGeometry().setFromPoints(points);
+    const mat = new THREE.LineBasicMaterial({ color: '#e0e8ff', transparent: true, opacity: 0.8 });
+    return new THREE.Line(geom, mat);
   }, []);
 
   useFrame(({ clock }) => {
