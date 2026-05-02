@@ -98,6 +98,21 @@ export function getPlayerRank(playerFishCaught: number): number {
   return better + 1;
 }
 
+/** Find a saved account by username (case-insensitive). Returns the stored entry or null. */
+export function findAccountByUsername(username: string): StoredEntry | null {
+  const all = readAll();
+  const target = username.trim().toLowerCase();
+  if (!target) return null;
+  const found = Object.values(all).find(e => e.username.toLowerCase() === target);
+  return found || null;
+}
+
+/** List all saved usernames for autocomplete. */
+export function listSavedUsernames(): string[] {
+  const all = readAll();
+  return Object.values(all).map(e => e.username).filter(Boolean);
+}
+
 export function isRegistered(): boolean {
   const acc = getAccount();
   return !!(acc && acc.email && acc.username);
