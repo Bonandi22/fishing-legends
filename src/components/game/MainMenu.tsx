@@ -227,6 +227,40 @@ export default function MainMenu({ player, onPlay, onCollection, onWarehouse, on
                       {t('account.editUsername')}
                     </Button>
                   )}
+                  <button
+                    type="button"
+                    onClick={() => { setStep('login'); setLoginError(false); }}
+                    className="w-full text-sm text-primary hover:underline mt-1 flex items-center justify-center gap-1.5"
+                  >
+                    <LogIn className="w-3.5 h-3.5" />
+                    {t('account.haveAccount')}
+                  </button>
+                </div>
+              )}
+
+              {step === 'login' && (
+                <div className="space-y-3">
+                  <p className="text-sm text-muted-foreground">{t('account.loginTitle')}</p>
+                  <div>
+                    <label className="text-xs text-muted-foreground">{t('account.loginUsername')}</label>
+                    <Input
+                      type="text"
+                      value={loginUsername}
+                      onChange={e => { setLoginUsername(e.target.value); setLoginError(false); }}
+                      placeholder="MyAngler"
+                      maxLength={20}
+                      autoFocus
+                    />
+                  </div>
+                  {loginError && (
+                    <p className="text-sm text-destructive bg-destructive/10 rounded-lg px-3 py-2">{t('account.loginNotFound')}</p>
+                  )}
+                  <Button onClick={handleLogin} disabled={!loginUsername.trim()} className="w-full">
+                    {t('account.login')}
+                  </Button>
+                  <Button variant="outline" onClick={() => setStep('credentials')} className="w-full">
+                    {t('account.newAccount')}
+                  </Button>
                 </div>
               )}
 
