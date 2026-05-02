@@ -57,7 +57,9 @@ export default function MainMenu({ player, onPlay, onCollection, onWarehouse, on
   const [savedMsg, setSavedMsg] = useState(false);
   // After credentials are saved, prompt for username if missing
   const needsUsername = !!account && !account.username;
-  const [step, setStep] = useState<'credentials' | 'username'>(needsUsername ? 'username' : 'credentials');
+  const [step, setStep] = useState<'credentials' | 'username' | 'login'>(needsUsername ? 'username' : 'credentials');
+  const [loginUsername, setLoginUsername] = useState('');
+  const [loginError, setLoginError] = useState(false);
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -71,6 +73,7 @@ export default function MainMenu({ player, onPlay, onCollection, onWarehouse, on
   useEffect(() => {
     if (accountModalOpen) {
       setStep(account && !account.username ? 'username' : 'credentials');
+      setLoginError(false);
     }
   }, [accountModalOpen, account]);
 
@@ -90,6 +93,28 @@ export default function MainMenu({ player, onPlay, onCollection, onWarehouse, on
     saveAccount(acc);
     setAccount(acc);
     setSavedMsg(true);
+    setTimeout(() => { setSavedMsg(false); setAccountModalOpen(false); }, 1200);
+  };
+
+  const handleLogin = () => {
+    const found = findAccountByUsername(loginUsername);
+    if (!found) {
+      setLoginError(true);
+      return;
+    }
+    const acc: Account = {
+      email: found.email,
+      birthdate: '',
+      username: found.username,
+      country: found.country,
+    };
+    saveAccount(acc);
+    setAccount(acc);
+    setEmail(acc.email);
+    setUsername(acc.username || '');
+    setCountry(acc.country || '🌍');
+    setSavedMsg(true);
+    setLoginError(false);
     setTimeout(() => { setSavedMsg(false); setAccountModalOpen(false); }, 1200);
   };
 
