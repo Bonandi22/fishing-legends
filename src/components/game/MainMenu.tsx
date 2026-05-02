@@ -3,7 +3,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { PlayerState } from '@/game/types';
 import { useI18n, Lang, LANG_LABELS } from '@/game/i18n';
-import { Volume2, VolumeX, Globe, ChevronDown, User } from 'lucide-react';
+import { findAccountByUsername } from '@/game/leaderboard';
+import { Volume2, VolumeX, Globe, ChevronDown, User, LogIn } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 
 interface Props {
