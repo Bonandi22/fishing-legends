@@ -11,6 +11,87 @@ import * as THREE from 'three';
 
 type Phase = 'idle' | 'casting' | 'waiting' | 'hooked' | 'pulling' | 'caught' | 'lost';
 
+/* Boat POV overlay — wooden bow visible at the bottom of the screen,
+   subtle bobbing motion to simulate being on the boat. */
+function BoatOverlay() {
+  return (
+    <motion.div
+      className="absolute bottom-0 left-0 right-0 z-[5] pointer-events-none select-none"
+      animate={{ y: [0, -6, 0, 4, 0], rotate: [0, 0.3, 0, -0.25, 0] }}
+      transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut' }}
+    >
+      <svg viewBox="0 0 1200 280" preserveAspectRatio="none" className="w-full h-[26vh] min-h-[170px] block drop-shadow-2xl">
+        <defs>
+          {/* Wood plank gradient */}
+          <linearGradient id="woodDeck" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#7a4a23" />
+            <stop offset="40%" stopColor="#5e3618" />
+            <stop offset="100%" stopColor="#3a200d" />
+          </linearGradient>
+          <linearGradient id="hullSide" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#4a2a12" />
+            <stop offset="100%" stopColor="#1d0e05" />
+          </linearGradient>
+          <linearGradient id="rail" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#a06a3a" />
+            <stop offset="100%" stopColor="#704626" />
+          </linearGradient>
+          <pattern id="planks" x="0" y="0" width="80" height="280" patternUnits="userSpaceOnUse">
+            <rect width="80" height="280" fill="url(#woodDeck)" />
+            <line x1="0" y1="0" x2="0" y2="280" stroke="#2a1808" strokeWidth="2" opacity="0.6" />
+            <line x1="40" y1="0" x2="40" y2="280" stroke="#2a1808" strokeWidth="1" opacity="0.3" />
+          </pattern>
+        </defs>
+
+        {/* Boat bow shape — curved upward at sides */}
+        <path
+          d="M 0,280 L 0,150 Q 100,90 300,70 Q 600,55 900,70 Q 1100,90 1200,150 L 1200,280 Z"
+          fill="url(#planks)"
+        />
+        {/* Hull side shadow */}
+        <path
+          d="M 0,280 L 0,150 Q 100,90 300,70 Q 600,55 900,70 Q 1100,90 1200,150 L 1200,170 Q 1100,115 900,95 Q 600,80 300,95 Q 100,115 0,170 Z"
+          fill="url(#hullSide)"
+          opacity="0.55"
+        />
+        {/* Top rail (gunwale) */}
+        <path
+          d="M 0,150 Q 100,90 300,70 Q 600,55 900,70 Q 1100,90 1200,150 L 1200,162 Q 1100,102 900,82 Q 600,67 300,82 Q 100,102 0,162 Z"
+          fill="url(#rail)"
+        />
+        {/* Highlight on rail */}
+        <path
+          d="M 0,150 Q 100,90 300,70 Q 600,55 900,70 Q 1100,90 1200,150"
+          fill="none"
+          stroke="#d4a472"
+          strokeWidth="2"
+          opacity="0.7"
+        />
+        {/* Cleats / mounts */}
+        <g fill="#2a1808">
+          <rect x="180" y="78" width="22" height="14" rx="2" />
+          <rect x="998" y="78" width="22" height="14" rx="2" />
+          <circle cx="591" cy="68" r="6" />
+          <circle cx="609" cy="68" r="6" />
+        </g>
+        {/* Rope coil on deck */}
+        <g transform="translate(220,180)">
+          <ellipse cx="0" cy="0" rx="55" ry="18" fill="#c9a06a" opacity="0.85" />
+          <ellipse cx="0" cy="-6" rx="48" ry="14" fill="#a8814f" />
+          <ellipse cx="0" cy="-10" rx="38" ry="10" fill="#8a6638" />
+          <ellipse cx="0" cy="-14" rx="26" ry="6" fill="#6e4f29" />
+        </g>
+        {/* Tackle box */}
+        <g transform="translate(900,170)">
+          <rect x="-50" y="0" width="100" height="50" rx="4" fill="#2c5784" stroke="#0e3257" strokeWidth="2" />
+          <rect x="-50" y="0" width="100" height="10" fill="#3d6fa0" />
+          <rect x="-6" y="14" width="12" height="6" fill="#9aa6b3" />
+        </g>
+      </svg>
+    </motion.div>
+  );
+}
+
 interface Props {
   location: FishingLocation;
   player: PlayerState;
