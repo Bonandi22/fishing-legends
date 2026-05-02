@@ -184,6 +184,9 @@ export default function FishingScreen({ location, player, onCatch, onBack }: Pro
         activeSkin={player.activeSkin}
       />
 
+      {/* Boat POV overlay — only for ocean locations */}
+      {location.type === 'ocean' && <BoatOverlay />}
+
       {/* Lucky mode banner */}
       <AnimatePresence>
         {luckyMode && (
