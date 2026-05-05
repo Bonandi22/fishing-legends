@@ -17,76 +17,165 @@ function BoatOverlay() {
   return (
     <motion.div
       className="absolute bottom-0 left-0 right-0 z-[5] pointer-events-none select-none"
-      animate={{ y: [0, -6, 0, 4, 0], rotate: [0, 0.3, 0, -0.25, 0] }}
-      transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut' }}
+      animate={{ y: [0, -5, 0, 3, 0], rotate: [0, 0.25, 0, -0.2, 0] }}
+      transition={{ duration: 5.5, repeat: Infinity, ease: 'easeInOut' }}
     >
-      <svg viewBox="0 0 1200 280" preserveAspectRatio="none" className="w-full h-[26vh] min-h-[170px] block drop-shadow-2xl">
+      <svg viewBox="0 0 1200 320" preserveAspectRatio="none" className="w-full h-[24vh] min-h-[180px] block drop-shadow-2xl">
         <defs>
-          {/* Wood plank gradient */}
+          {/* Rich wood plank gradient with warm highlights */}
           <linearGradient id="woodDeck" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#7a4a23" />
-            <stop offset="40%" stopColor="#5e3618" />
-            <stop offset="100%" stopColor="#3a200d" />
+            <stop offset="0%" stopColor="#8a5a2c" />
+            <stop offset="20%" stopColor="#6e4220" />
+            <stop offset="55%" stopColor="#4d2d12" />
+            <stop offset="100%" stopColor="#2a1607" />
           </linearGradient>
           <linearGradient id="hullSide" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#4a2a12" />
-            <stop offset="100%" stopColor="#1d0e05" />
+            <stop offset="0%" stopColor="#3d2210" />
+            <stop offset="60%" stopColor="#1f0e04" />
+            <stop offset="100%" stopColor="#0c0502" />
           </linearGradient>
           <linearGradient id="rail" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#a06a3a" />
-            <stop offset="100%" stopColor="#704626" />
+            <stop offset="0%" stopColor="#b87a40" />
+            <stop offset="50%" stopColor="#8a5a2c" />
+            <stop offset="100%" stopColor="#5a3818" />
           </linearGradient>
-          <pattern id="planks" x="0" y="0" width="80" height="280" patternUnits="userSpaceOnUse">
-            <rect width="80" height="280" fill="url(#woodDeck)" />
-            <line x1="0" y1="0" x2="0" y2="280" stroke="#2a1808" strokeWidth="2" opacity="0.6" />
-            <line x1="40" y1="0" x2="40" y2="280" stroke="#2a1808" strokeWidth="1" opacity="0.3" />
+          <linearGradient id="railHi" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#e2b780" stopOpacity="0.95" />
+            <stop offset="100%" stopColor="#e2b780" stopOpacity="0" />
+          </linearGradient>
+          <radialGradient id="vignette" cx="50%" cy="100%" r="80%">
+            <stop offset="0%" stopColor="#000000" stopOpacity="0" />
+            <stop offset="70%" stopColor="#000000" stopOpacity="0.35" />
+            <stop offset="100%" stopColor="#000000" stopOpacity="0.7" />
+          </radialGradient>
+          {/* Wood grain pattern with knots */}
+          <pattern id="planks" x="0" y="0" width="90" height="320" patternUnits="userSpaceOnUse">
+            <rect width="90" height="320" fill="url(#woodDeck)" />
+            {/* grain streaks */}
+            <path d="M0,40 Q45,55 90,38" stroke="#3a200c" strokeWidth="0.8" fill="none" opacity="0.5" />
+            <path d="M0,90 Q45,75 90,95" stroke="#3a200c" strokeWidth="0.6" fill="none" opacity="0.4" />
+            <path d="M0,140 Q45,160 90,142" stroke="#5a3818" strokeWidth="0.5" fill="none" opacity="0.35" />
+            <path d="M0,200 Q45,185 90,205" stroke="#3a200c" strokeWidth="0.7" fill="none" opacity="0.45" />
+            <path d="M0,260 Q45,275 90,258" stroke="#2a1607" strokeWidth="0.8" fill="none" opacity="0.5" />
+            {/* knot */}
+            <ellipse cx="22" cy="160" rx="6" ry="4" fill="#1f0e04" opacity="0.55" />
+            <ellipse cx="22" cy="160" rx="3" ry="2" fill="#0c0502" opacity="0.7" />
+            {/* plank seam */}
+            <line x1="0" y1="0" x2="0" y2="320" stroke="#150802" strokeWidth="2.2" opacity="0.85" />
+            {/* nail heads */}
+            <circle cx="6" cy="120" r="1.4" fill="#2a2418" />
+            <circle cx="6" cy="240" r="1.4" fill="#2a2418" />
+            <circle cx="84" cy="120" r="1.4" fill="#2a2418" />
+            <circle cx="84" cy="240" r="1.4" fill="#2a2418" />
           </pattern>
+          {/* Caulking between planks */}
+          <filter id="softShadow" x="-20%" y="-20%" width="140%" height="140%">
+            <feGaussianBlur stdDeviation="3" />
+          </filter>
         </defs>
+
+        {/* Splash spray peeking above bow */}
+        <g opacity="0.5">
+          <ellipse cx="200" cy="68" rx="80" ry="6" fill="#e8f4ff" opacity="0.4" />
+          <ellipse cx="1000" cy="68" rx="80" ry="6" fill="#e8f4ff" opacity="0.4" />
+          <ellipse cx="600" cy="60" rx="180" ry="4" fill="#e8f4ff" opacity="0.35" />
+        </g>
 
         {/* Boat bow shape — curved upward at sides */}
         <path
-          d="M 0,280 L 0,150 Q 100,90 300,70 Q 600,55 900,70 Q 1100,90 1200,150 L 1200,280 Z"
+          d="M 0,320 L 0,170 Q 90,100 290,78 Q 600,60 910,78 Q 1110,100 1200,170 L 1200,320 Z"
           fill="url(#planks)"
         />
+        {/* Caulking lines between planks across the deck (horizontal) */}
+        <g stroke="#0e0602" strokeWidth="1.5" opacity="0.55" fill="none">
+          <path d="M 0,200 Q 600,178 1200,200" />
+          <path d="M 0,235 Q 600,218 1200,235" />
+          <path d="M 0,270 Q 600,256 1200,270" />
+          <path d="M 0,305 Q 600,294 1200,305" />
+        </g>
         {/* Hull side shadow */}
         <path
-          d="M 0,280 L 0,150 Q 100,90 300,70 Q 600,55 900,70 Q 1100,90 1200,150 L 1200,170 Q 1100,115 900,95 Q 600,80 300,95 Q 100,115 0,170 Z"
+          d="M 0,320 L 0,170 Q 90,100 290,78 Q 600,60 910,78 Q 1110,100 1200,170 L 1200,200 Q 1100,130 910,108 Q 600,90 290,108 Q 100,130 0,200 Z"
           fill="url(#hullSide)"
-          opacity="0.55"
+          opacity="0.6"
         />
         {/* Top rail (gunwale) */}
         <path
-          d="M 0,150 Q 100,90 300,70 Q 600,55 900,70 Q 1100,90 1200,150 L 1200,162 Q 1100,102 900,82 Q 600,67 300,82 Q 100,102 0,162 Z"
+          d="M 0,170 Q 90,100 290,78 Q 600,60 910,78 Q 1110,100 1200,170 L 1200,188 Q 1100,118 910,96 Q 600,78 290,96 Q 100,118 0,188 Z"
           fill="url(#rail)"
         />
-        {/* Highlight on rail */}
+        {/* Glossy varnish highlight on rail */}
         <path
-          d="M 0,150 Q 100,90 300,70 Q 600,55 900,70 Q 1100,90 1200,150"
+          d="M 0,170 Q 90,100 290,78 Q 600,60 910,78 Q 1110,100 1200,170"
           fill="none"
-          stroke="#d4a472"
-          strokeWidth="2"
-          opacity="0.7"
+          stroke="url(#railHi)"
+          strokeWidth="3"
         />
-        {/* Cleats / mounts */}
-        <g fill="#2a1808">
-          <rect x="180" y="78" width="22" height="14" rx="2" />
-          <rect x="998" y="78" width="22" height="14" rx="2" />
-          <circle cx="591" cy="68" r="6" />
-          <circle cx="609" cy="68" r="6" />
+        <path
+          d="M 0,176 Q 90,108 290,86 Q 600,68 910,86 Q 1110,108 1200,176"
+          fill="none"
+          stroke="#ffffff"
+          strokeWidth="1"
+          opacity="0.35"
+        />
+        {/* Rivets / cleats / hardware */}
+        <g>
+          {[120, 250, 380, 510, 690, 820, 950, 1080].map((x, i) => (
+            <g key={i} transform={`translate(${x},${82 + Math.abs(x - 600) * 0.04})`}>
+              <circle cx="0" cy="0" r="3.5" fill="#1a1208" />
+              <circle cx="-0.8" cy="-1" r="1.4" fill="#7a6248" opacity="0.8" />
+            </g>
+          ))}
+        </g>
+        {/* Rod holder mount — port side (rod appears to come out here) */}
+        <g transform="translate(870,86)">
+          <ellipse cx="0" cy="0" rx="22" ry="9" fill="#1a1208" />
+          <ellipse cx="0" cy="-2" rx="18" ry="6" fill="#0a0603" />
+          <rect x="-22" y="-2" width="44" height="6" rx="2" fill="#3a2a18" />
+          <circle cx="-16" cy="2" r="1.6" fill="#7a6248" />
+          <circle cx="16" cy="2" r="1.6" fill="#7a6248" />
         </g>
         {/* Rope coil on deck */}
-        <g transform="translate(220,180)">
-          <ellipse cx="0" cy="0" rx="55" ry="18" fill="#c9a06a" opacity="0.85" />
-          <ellipse cx="0" cy="-6" rx="48" ry="14" fill="#a8814f" />
-          <ellipse cx="0" cy="-10" rx="38" ry="10" fill="#8a6638" />
-          <ellipse cx="0" cy="-14" rx="26" ry="6" fill="#6e4f29" />
+        <g transform="translate(220,210)">
+          <ellipse cx="0" cy="6" rx="60" ry="10" fill="#000000" opacity="0.35" filter="url(#softShadow)" />
+          <ellipse cx="0" cy="0" rx="58" ry="18" fill="#c9a06a" />
+          <ellipse cx="0" cy="-6" rx="50" ry="14" fill="#a8814f" />
+          <ellipse cx="0" cy="-12" rx="40" ry="10" fill="#8a6638" />
+          <ellipse cx="0" cy="-17" rx="28" ry="6" fill="#6e4f29" />
+          {/* rope twist detail */}
+          <g stroke="#5a3f1f" strokeWidth="0.8" fill="none" opacity="0.7">
+            {[-50, -38, -26, -14, -2, 10, 22, 34, 46].map((dx, i) => (
+              <path key={i} d={`M${dx},-2 Q${dx + 6},2 ${dx + 12},-2`} />
+            ))}
+          </g>
         </g>
-        {/* Tackle box */}
-        <g transform="translate(900,170)">
-          <rect x="-50" y="0" width="100" height="50" rx="4" fill="#2c5784" stroke="#0e3257" strokeWidth="2" />
-          <rect x="-50" y="0" width="100" height="10" fill="#3d6fa0" />
-          <rect x="-6" y="14" width="12" height="6" fill="#9aa6b3" />
+        {/* Tackle box with handle and clasps */}
+        <g transform="translate(420,200)">
+          <rect x="-52" y="6" width="104" height="6" rx="2" fill="#000000" opacity="0.4" filter="url(#softShadow)" />
+          <rect x="-50" y="0" width="100" height="55" rx="5" fill="#2c5784" stroke="#0e3257" strokeWidth="2" />
+          <rect x="-50" y="0" width="100" height="14" fill="#3d6fa0" />
+          <rect x="-50" y="13" width="100" height="2" fill="#0e3257" />
+          <rect x="-8" y="16" width="16" height="6" rx="1" fill="#9aa6b3" stroke="#5a6470" strokeWidth="0.5" />
+          <rect x="-30" y="22" width="6" height="6" fill="#1a3554" />
+          <rect x="24" y="22" width="6" height="6" fill="#1a3554" />
+          <path d="M-30,0 Q0,-12 30,0" stroke="#1a3554" strokeWidth="2.5" fill="none" />
         </g>
+        {/* Bait bucket */}
+        <g transform="translate(1000,215)">
+          <ellipse cx="0" cy="48" rx="36" ry="6" fill="#000000" opacity="0.4" />
+          <path d="M-32,0 L-28,50 L28,50 L32,0 Z" fill="#5a6470" stroke="#2a3038" strokeWidth="1.5" />
+          <ellipse cx="0" cy="0" rx="32" ry="7" fill="#3a4048" stroke="#1a1f24" strokeWidth="1.5" />
+          <ellipse cx="0" cy="0" rx="26" ry="5" fill="#1a1f24" />
+          <path d="M-28,5 Q0,-18 28,5" stroke="#2a3038" strokeWidth="2" fill="none" />
+        </g>
+        {/* Wet patches / water reflections on deck */}
+        <g opacity="0.25">
+          <ellipse cx="600" cy="240" rx="80" ry="8" fill="#6ab3d8" />
+          <ellipse cx="350" cy="280" rx="50" ry="5" fill="#6ab3d8" />
+          <ellipse cx="780" cy="270" rx="60" ry="6" fill="#6ab3d8" />
+        </g>
+        {/* Vignette darkening at bottom corners */}
+        <rect x="0" y="0" width="1200" height="320" fill="url(#vignette)" />
       </svg>
     </motion.div>
   );

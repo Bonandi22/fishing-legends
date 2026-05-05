@@ -148,7 +148,7 @@ function FishingRod({ skin }: { skin: RodSkin }) {
 
   useFrame(({ clock }) => {
     if (!ref.current) return;
-    const offset = new THREE.Vector3(0.8, -0.6, -1.5);
+    const offset = new THREE.Vector3(0.7, -0.35, -1.3);
     offset.applyQuaternion(camera.quaternion);
     ref.current.position.copy(camera.position).add(offset);
     ref.current.quaternion.copy(camera.quaternion);
