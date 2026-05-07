@@ -148,9 +148,13 @@ function FishingRod({ skin }: { skin: RodSkin }) {
 
   useFrame(({ clock }) => {
     if (!ref.current) return;
-    // DEBUG: fixed world position to verify rod renders
-    ref.current.position.set(2, 2, 10);
-    ref.current.lookAt(0, 5, -5);
+    const offset = new THREE.Vector3(0.8, -0.6, -1.5);
+    offset.applyQuaternion(camera.quaternion);
+    ref.current.position.copy(camera.position).add(offset);
+    ref.current.quaternion.copy(camera.quaternion);
+    ref.current.rotateX(-0.65);
+    ref.current.rotateY(0.2);
+    ref.current.rotateZ(0.08);
     const t = clock.getElapsedTime();
     ref.current.rotateZ(Math.sin(t * 1.2) * 0.008);
     ref.current.rotateX(Math.sin(t * 0.9) * 0.005);
