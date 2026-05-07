@@ -164,8 +164,7 @@ function FishingRod({ skin }: { skin: RodSkin }) {
   const emissiveIntensity = skin.emissive ? 0.15 : 0;
 
   return (
-    <group ref={ref} scale={2.5}>
-      <pointLight color="#ff0000" intensity={2} distance={5} position={[0, 0, 0]} />
+    <group ref={ref}>
       {/* Cork grip - textured with multiple segments */}
       {Array.from({ length: 12 }, (_, i) => (
         <mesh key={`cork-${i}`} position={[0, 0, 0.05 + i * 0.05]} rotation={[Math.PI / 2, 0, 0]}>
