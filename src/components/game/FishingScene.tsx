@@ -529,8 +529,8 @@ export function FishingScene3D({ location, bobberVisible, bobberPosition, onWate
 
       <FishingBobber visible={bobberVisible} position={bobberPosition} />
       {/* DEBUG: simple red cube where rod should be */}
-      <mesh position={[2, 2, 10]}>
-        <boxGeometry args={[1, 1, 1]} />
+      <mesh position={[0, 3, 0]}>
+        <boxGeometry args={[2, 2, 2]} />
         <meshStandardMaterial color="red" emissive="red" emissiveIntensity={0.5} />
       </mesh>
       {/* <FishingRod skin={skin} /> */}
