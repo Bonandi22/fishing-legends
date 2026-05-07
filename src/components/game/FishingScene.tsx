@@ -532,12 +532,7 @@ export function FishingScene3D({ location, bobberVisible, bobberPosition, onWate
       </mesh>
 
       <FishingBobber visible={bobberVisible} position={bobberPosition} />
-      {/* DEBUG: simple red cube right in front of camera */}
-      <mesh position={[0, 4, 9]}>
-        <boxGeometry args={[3, 3, 3]} />
-        <meshBasicMaterial color="red" />
-      </mesh>
-      {/* <FishingRod skin={skin} /> */}
+      <FishingRod skin={skin} />
 
       <OrbitControls
         maxPolarAngle={Math.PI / 2.2}
