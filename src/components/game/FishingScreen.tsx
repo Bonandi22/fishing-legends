@@ -11,173 +11,234 @@ import * as THREE from 'three';
 
 type Phase = 'idle' | 'casting' | 'waiting' | 'hooked' | 'pulling' | 'caught' | 'lost';
 
-/* Boat POV overlay — wooden bow visible at the bottom of the screen,
-   subtle bobbing motion to simulate being on the boat. */
+/* Boat POV overlay — wooden bow with volumetric depth, perspective deck planks,
+   rim lighting and atmospheric haze for a strong 3D presence. */
 function BoatOverlay() {
   return (
-    <motion.div
-      className="absolute bottom-0 left-0 right-0 z-[5] pointer-events-none select-none"
-      animate={{ y: [0, -5, 0, 3, 0], rotate: [0, 0.25, 0, -0.2, 0] }}
-      transition={{ duration: 5.5, repeat: Infinity, ease: 'easeInOut' }}
-    >
-      <svg viewBox="0 0 1200 320" preserveAspectRatio="none" className="w-full h-[24vh] min-h-[180px] block drop-shadow-2xl">
-        <defs>
-          {/* Rich wood plank gradient with warm highlights */}
-          <linearGradient id="woodDeck" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#8a5a2c" />
-            <stop offset="20%" stopColor="#6e4220" />
-            <stop offset="55%" stopColor="#4d2d12" />
-            <stop offset="100%" stopColor="#2a1607" />
-          </linearGradient>
-          <linearGradient id="hullSide" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#3d2210" />
-            <stop offset="60%" stopColor="#1f0e04" />
-            <stop offset="100%" stopColor="#0c0502" />
-          </linearGradient>
-          <linearGradient id="rail" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#b87a40" />
-            <stop offset="50%" stopColor="#8a5a2c" />
-            <stop offset="100%" stopColor="#5a3818" />
-          </linearGradient>
-          <linearGradient id="railHi" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#e2b780" stopOpacity="0.95" />
-            <stop offset="100%" stopColor="#e2b780" stopOpacity="0" />
-          </linearGradient>
-          <radialGradient id="vignette" cx="50%" cy="100%" r="80%">
-            <stop offset="0%" stopColor="#000000" stopOpacity="0" />
-            <stop offset="70%" stopColor="#000000" stopOpacity="0.35" />
-            <stop offset="100%" stopColor="#000000" stopOpacity="0.7" />
-          </radialGradient>
-          {/* Wood grain pattern with knots */}
-          <pattern id="planks" x="0" y="0" width="90" height="320" patternUnits="userSpaceOnUse">
-            <rect width="90" height="320" fill="url(#woodDeck)" />
-            {/* grain streaks */}
-            <path d="M0,40 Q45,55 90,38" stroke="#3a200c" strokeWidth="0.8" fill="none" opacity="0.5" />
-            <path d="M0,90 Q45,75 90,95" stroke="#3a200c" strokeWidth="0.6" fill="none" opacity="0.4" />
-            <path d="M0,140 Q45,160 90,142" stroke="#5a3818" strokeWidth="0.5" fill="none" opacity="0.35" />
-            <path d="M0,200 Q45,185 90,205" stroke="#3a200c" strokeWidth="0.7" fill="none" opacity="0.45" />
-            <path d="M0,260 Q45,275 90,258" stroke="#2a1607" strokeWidth="0.8" fill="none" opacity="0.5" />
-            {/* knot */}
-            <ellipse cx="22" cy="160" rx="6" ry="4" fill="#1f0e04" opacity="0.55" />
-            <ellipse cx="22" cy="160" rx="3" ry="2" fill="#0c0502" opacity="0.7" />
-            {/* plank seam */}
-            <line x1="0" y1="0" x2="0" y2="320" stroke="#150802" strokeWidth="2.2" opacity="0.85" />
-            {/* nail heads */}
-            <circle cx="6" cy="120" r="1.4" fill="#2a2418" />
-            <circle cx="6" cy="240" r="1.4" fill="#2a2418" />
-            <circle cx="84" cy="120" r="1.4" fill="#2a2418" />
-            <circle cx="84" cy="240" r="1.4" fill="#2a2418" />
-          </pattern>
-          {/* Caulking between planks */}
-          <filter id="softShadow" x="-20%" y="-20%" width="140%" height="140%">
-            <feGaussianBlur stdDeviation="3" />
-          </filter>
-        </defs>
+    <>
+      {/* Atmospheric mist hugging the waterline behind the boat */}
+      <motion.div
+        className="absolute left-0 right-0 z-[4] pointer-events-none select-none"
+        style={{ bottom: '20vh', height: '12vh', background: 'linear-gradient(to top, rgba(200,220,235,0.35), rgba(200,220,235,0))', filter: 'blur(8px)' }}
+        animate={{ opacity: [0.55, 0.75, 0.55] }}
+        transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }}
+      />
 
-        {/* Splash spray peeking above bow */}
-        <g opacity="0.5">
-          <ellipse cx="200" cy="68" rx="80" ry="6" fill="#e8f4ff" opacity="0.4" />
-          <ellipse cx="1000" cy="68" rx="80" ry="6" fill="#e8f4ff" opacity="0.4" />
-          <ellipse cx="600" cy="60" rx="180" ry="4" fill="#e8f4ff" opacity="0.35" />
-        </g>
+      <motion.div
+        className="absolute bottom-0 left-0 right-0 z-[5] pointer-events-none select-none"
+        style={{ perspective: '900px' }}
+        animate={{ y: [0, -6, 0, 4, 0], rotate: [0, 0.3, 0, -0.25, 0] }}
+        transition={{ duration: 5.5, repeat: Infinity, ease: 'easeInOut' }}
+      >
+        <svg viewBox="0 0 1200 360" preserveAspectRatio="none" className="w-full h-[28vh] min-h-[210px] block drop-shadow-2xl">
+          <defs>
+            {/* Deck wood — warm with strong top highlight */}
+            <linearGradient id="woodDeck" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#a87242" />
+              <stop offset="12%" stopColor="#8a5a2c" />
+              <stop offset="40%" stopColor="#5e3818" />
+              <stop offset="75%" stopColor="#321a08" />
+              <stop offset="100%" stopColor="#180a02" />
+            </linearGradient>
+            {/* Hull side — dark, wet, deep */}
+            <linearGradient id="hullSide" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#3d2210" />
+              <stop offset="50%" stopColor="#1a0c04" />
+              <stop offset="100%" stopColor="#050200" />
+            </linearGradient>
+            {/* Top rail — varnished mahogany */}
+            <linearGradient id="rail" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#d49560" />
+              <stop offset="35%" stopColor="#9a6532" />
+              <stop offset="100%" stopColor="#4a2c12" />
+            </linearGradient>
+            <linearGradient id="railHi" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#fff1d4" stopOpacity="0.95" />
+              <stop offset="100%" stopColor="#fff1d4" stopOpacity="0" />
+            </linearGradient>
+            {/* Rim light coming from the sky/water reflection */}
+            <linearGradient id="rimLight" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#bfe2ff" stopOpacity="0.8" />
+              <stop offset="100%" stopColor="#bfe2ff" stopOpacity="0" />
+            </linearGradient>
+            <radialGradient id="deckLight" cx="50%" cy="0%" r="80%">
+              <stop offset="0%" stopColor="#ffe7b8" stopOpacity="0.35" />
+              <stop offset="60%" stopColor="#ffe7b8" stopOpacity="0.05" />
+              <stop offset="100%" stopColor="#000000" stopOpacity="0" />
+            </radialGradient>
+            <radialGradient id="vignette" cx="50%" cy="100%" r="80%">
+              <stop offset="0%" stopColor="#000000" stopOpacity="0" />
+              <stop offset="65%" stopColor="#000000" stopOpacity="0.45" />
+              <stop offset="100%" stopColor="#000000" stopOpacity="0.85" />
+            </radialGradient>
+            {/* Plank pattern with grain & knots */}
+            <pattern id="planks" x="0" y="0" width="90" height="360" patternUnits="userSpaceOnUse">
+              <rect width="90" height="360" fill="url(#woodDeck)" />
+              <path d="M0,40 Q45,55 90,38" stroke="#3a200c" strokeWidth="0.8" fill="none" opacity="0.55" />
+              <path d="M0,90 Q45,75 90,95" stroke="#3a200c" strokeWidth="0.6" fill="none" opacity="0.45" />
+              <path d="M0,150 Q45,170 90,148" stroke="#5a3818" strokeWidth="0.5" fill="none" opacity="0.4" />
+              <path d="M0,220 Q45,205 90,225" stroke="#3a200c" strokeWidth="0.7" fill="none" opacity="0.5" />
+              <path d="M0,290 Q45,305 90,288" stroke="#2a1607" strokeWidth="0.8" fill="none" opacity="0.55" />
+              <ellipse cx="22" cy="170" rx="6" ry="4" fill="#1f0e04" opacity="0.6" />
+              <ellipse cx="22" cy="170" rx="3" ry="2" fill="#0c0502" opacity="0.75" />
+              <ellipse cx="68" cy="270" rx="5" ry="3" fill="#1f0e04" opacity="0.55" />
+              <line x1="0" y1="0" x2="0" y2="360" stroke="#0a0401" strokeWidth="2.5" opacity="0.9" />
+              <circle cx="6" cy="120" r="1.5" fill="#2a2418" />
+              <circle cx="6" cy="260" r="1.5" fill="#2a2418" />
+              <circle cx="84" cy="120" r="1.5" fill="#2a2418" />
+              <circle cx="84" cy="260" r="1.5" fill="#2a2418" />
+            </pattern>
+            <filter id="softShadow" x="-20%" y="-20%" width="140%" height="140%">
+              <feGaussianBlur stdDeviation="3.5" />
+            </filter>
+            <filter id="innerGlow" x="-20%" y="-20%" width="140%" height="140%">
+              <feGaussianBlur stdDeviation="1.5" result="b" />
+              <feComposite in="SourceGraphic" in2="b" operator="over" />
+            </filter>
+          </defs>
 
-        {/* Boat bow shape — curved upward at sides */}
-        <path
-          d="M 0,320 L 0,170 Q 90,100 290,78 Q 600,60 910,78 Q 1110,100 1200,170 L 1200,320 Z"
-          fill="url(#planks)"
-        />
-        {/* Caulking lines between planks across the deck (horizontal) */}
-        <g stroke="#0e0602" strokeWidth="1.5" opacity="0.55" fill="none">
-          <path d="M 0,200 Q 600,178 1200,200" />
-          <path d="M 0,235 Q 600,218 1200,235" />
-          <path d="M 0,270 Q 600,256 1200,270" />
-          <path d="M 0,305 Q 600,294 1200,305" />
-        </g>
-        {/* Hull side shadow */}
-        <path
-          d="M 0,320 L 0,170 Q 90,100 290,78 Q 600,60 910,78 Q 1110,100 1200,170 L 1200,200 Q 1100,130 910,108 Q 600,90 290,108 Q 100,130 0,200 Z"
-          fill="url(#hullSide)"
-          opacity="0.6"
-        />
-        {/* Top rail (gunwale) */}
-        <path
-          d="M 0,170 Q 90,100 290,78 Q 600,60 910,78 Q 1110,100 1200,170 L 1200,188 Q 1100,118 910,96 Q 600,78 290,96 Q 100,118 0,188 Z"
-          fill="url(#rail)"
-        />
-        {/* Glossy varnish highlight on rail */}
-        <path
-          d="M 0,170 Q 90,100 290,78 Q 600,60 910,78 Q 1110,100 1200,170"
-          fill="none"
-          stroke="url(#railHi)"
-          strokeWidth="3"
-        />
-        <path
-          d="M 0,176 Q 90,108 290,86 Q 600,68 910,86 Q 1110,108 1200,176"
-          fill="none"
-          stroke="#ffffff"
-          strokeWidth="1"
-          opacity="0.35"
-        />
-        {/* Rivets / cleats / hardware */}
-        <g>
-          {[120, 250, 380, 510, 690, 820, 950, 1080].map((x, i) => (
-            <g key={i} transform={`translate(${x},${82 + Math.abs(x - 600) * 0.04})`}>
-              <circle cx="0" cy="0" r="3.5" fill="#1a1208" />
-              <circle cx="-0.8" cy="-1" r="1.4" fill="#7a6248" opacity="0.8" />
-            </g>
-          ))}
-        </g>
-        {/* Rod holder mount — port side (rod appears to come out here) */}
-        <g transform="translate(870,86)">
-          <ellipse cx="0" cy="0" rx="22" ry="9" fill="#1a1208" />
-          <ellipse cx="0" cy="-2" rx="18" ry="6" fill="#0a0603" />
-          <rect x="-22" y="-2" width="44" height="6" rx="2" fill="#3a2a18" />
-          <circle cx="-16" cy="2" r="1.6" fill="#7a6248" />
-          <circle cx="16" cy="2" r="1.6" fill="#7a6248" />
-        </g>
-        {/* Rope coil on deck */}
-        <g transform="translate(220,210)">
-          <ellipse cx="0" cy="6" rx="60" ry="10" fill="#000000" opacity="0.35" filter="url(#softShadow)" />
-          <ellipse cx="0" cy="0" rx="58" ry="18" fill="#c9a06a" />
-          <ellipse cx="0" cy="-6" rx="50" ry="14" fill="#a8814f" />
-          <ellipse cx="0" cy="-12" rx="40" ry="10" fill="#8a6638" />
-          <ellipse cx="0" cy="-17" rx="28" ry="6" fill="#6e4f29" />
-          {/* rope twist detail */}
-          <g stroke="#5a3f1f" strokeWidth="0.8" fill="none" opacity="0.7">
-            {[-50, -38, -26, -14, -2, 10, 22, 34, 46].map((dx, i) => (
-              <path key={i} d={`M${dx},-2 Q${dx + 6},2 ${dx + 12},-2`} />
-            ))}
+          {/* Splash spray peeking above bow */}
+          <g opacity="0.55">
+            <ellipse cx="200" cy="78" rx="90" ry="7" fill="#e8f4ff" opacity="0.45" />
+            <ellipse cx="1000" cy="78" rx="90" ry="7" fill="#e8f4ff" opacity="0.45" />
+            <ellipse cx="600" cy="68" rx="220" ry="5" fill="#e8f4ff" opacity="0.4" />
           </g>
-        </g>
-        {/* Tackle box with handle and clasps */}
-        <g transform="translate(420,200)">
-          <rect x="-52" y="6" width="104" height="6" rx="2" fill="#000000" opacity="0.4" filter="url(#softShadow)" />
-          <rect x="-50" y="0" width="100" height="55" rx="5" fill="#2c5784" stroke="#0e3257" strokeWidth="2" />
-          <rect x="-50" y="0" width="100" height="14" fill="#3d6fa0" />
-          <rect x="-50" y="13" width="100" height="2" fill="#0e3257" />
-          <rect x="-8" y="16" width="16" height="6" rx="1" fill="#9aa6b3" stroke="#5a6470" strokeWidth="0.5" />
-          <rect x="-30" y="22" width="6" height="6" fill="#1a3554" />
-          <rect x="24" y="22" width="6" height="6" fill="#1a3554" />
-          <path d="M-30,0 Q0,-12 30,0" stroke="#1a3554" strokeWidth="2.5" fill="none" />
-        </g>
-        {/* Bait bucket */}
-        <g transform="translate(1000,215)">
-          <ellipse cx="0" cy="48" rx="36" ry="6" fill="#000000" opacity="0.4" />
-          <path d="M-32,0 L-28,50 L28,50 L32,0 Z" fill="#5a6470" stroke="#2a3038" strokeWidth="1.5" />
-          <ellipse cx="0" cy="0" rx="32" ry="7" fill="#3a4048" stroke="#1a1f24" strokeWidth="1.5" />
-          <ellipse cx="0" cy="0" rx="26" ry="5" fill="#1a1f24" />
-          <path d="M-28,5 Q0,-18 28,5" stroke="#2a3038" strokeWidth="2" fill="none" />
-        </g>
-        {/* Wet patches / water reflections on deck */}
-        <g opacity="0.25">
-          <ellipse cx="600" cy="240" rx="80" ry="8" fill="#6ab3d8" />
-          <ellipse cx="350" cy="280" rx="50" ry="5" fill="#6ab3d8" />
-          <ellipse cx="780" cy="270" rx="60" ry="6" fill="#6ab3d8" />
-        </g>
-        {/* Vignette darkening at bottom corners */}
-        <rect x="0" y="0" width="1200" height="320" fill="url(#vignette)" />
-      </svg>
-    </motion.div>
+
+          {/* Hull side (curved skirt below the rail — gives depth) */}
+          <path
+            d="M -20,360 L -20,210 Q 90,140 290,118 Q 600,98 910,118 Q 1110,140 1220,210 L 1220,360 Z"
+            fill="url(#hullSide)"
+          />
+          {/* Wet rim light along the hull edge */}
+          <path
+            d="M 0,210 Q 90,140 290,118 Q 600,98 910,118 Q 1110,140 1200,210"
+            fill="none" stroke="url(#rimLight)" strokeWidth="6" opacity="0.7"
+          />
+
+          {/* Deck planks — main surface */}
+          <path
+            d="M 0,360 L 0,200 Q 90,128 290,104 Q 600,84 910,104 Q 1110,128 1200,200 L 1200,360 Z"
+            fill="url(#planks)"
+          />
+
+          {/* Curved caulking lines that follow perspective (planks bend toward horizon) */}
+          <g stroke="#0a0401" strokeWidth="1.6" opacity="0.65" fill="none">
+            <path d="M 0,235 Q 600,210 1200,235" />
+            <path d="M 0,265 Q 600,244 1200,265" />
+            <path d="M 0,295 Q 600,278 1200,295" />
+            <path d="M 0,325 Q 600,312 1200,325" />
+          </g>
+
+          {/* Soft warm sky light pooling on the deck */}
+          <path
+            d="M 0,360 L 0,200 Q 90,128 290,104 Q 600,84 910,104 Q 1110,128 1200,200 L 1200,360 Z"
+            fill="url(#deckLight)" opacity="0.9"
+          />
+
+          {/* Deep ambient occlusion under the rail */}
+          <path
+            d="M 0,200 Q 90,128 290,104 Q 600,84 910,104 Q 1110,128 1200,200 L 1200,238 Q 1100,160 910,138 Q 600,118 290,138 Q 100,160 0,238 Z"
+            fill="#000000" opacity="0.45"
+          />
+
+          {/* Top rail (gunwale) — thick varnished trim */}
+          <path
+            d="M 0,200 Q 90,128 290,104 Q 600,84 910,104 Q 1110,128 1200,200 L 1200,222 Q 1100,148 910,124 Q 600,104 290,124 Q 100,148 0,222 Z"
+            fill="url(#rail)"
+          />
+          {/* Glossy varnish highlight on rail */}
+          <path
+            d="M 0,200 Q 90,128 290,104 Q 600,84 910,104 Q 1110,128 1200,200"
+            fill="none" stroke="url(#railHi)" strokeWidth="3.5"
+          />
+          <path
+            d="M 0,206 Q 90,134 290,110 Q 600,90 910,110 Q 1110,134 1200,206"
+            fill="none" stroke="#ffffff" strokeWidth="1.2" opacity="0.5"
+          />
+          {/* Dark inner edge of the rail (volume shadow) */}
+          <path
+            d="M 0,222 Q 100,148 290,124 Q 600,104 910,124 Q 1100,148 1200,222"
+            fill="none" stroke="#1a0d04" strokeWidth="1.4" opacity="0.85"
+          />
+
+          {/* Brass cleats along the rail */}
+          <g>
+            {[120, 250, 380, 510, 690, 820, 950, 1080].map((x, i) => {
+              const y = 110 + Math.abs(x - 600) * 0.045;
+              return (
+                <g key={i} transform={`translate(${x},${y})`}>
+                  <ellipse cx="0" cy="3" rx="9" ry="2.5" fill="#000" opacity="0.4" />
+                  <rect x="-7" y="-3" width="14" height="6" rx="1.5" fill="#caa05a" />
+                  <rect x="-7" y="-3" width="14" height="2" fill="#f1d39a" />
+                  <circle cx="0" cy="0" r="1.2" fill="#5a3a14" />
+                </g>
+              );
+            })}
+          </g>
+
+          {/* Rod holder on starboard */}
+          <g transform="translate(870,112)">
+            <ellipse cx="0" cy="6" rx="26" ry="4" fill="#000" opacity="0.45" />
+            <ellipse cx="0" cy="0" rx="22" ry="9" fill="#1a1208" />
+            <ellipse cx="0" cy="-2" rx="18" ry="6" fill="#0a0603" />
+            <rect x="-22" y="-2" width="44" height="6" rx="2" fill="#3a2a18" />
+            <rect x="-22" y="-2" width="44" height="1.5" fill="#7a5a32" />
+            <circle cx="-16" cy="2" r="1.6" fill="#caa05a" />
+            <circle cx="16" cy="2" r="1.6" fill="#caa05a" />
+          </g>
+
+          {/* Rope coil on deck — with strong volumetric shading */}
+          <g transform="translate(220,250)">
+            <ellipse cx="0" cy="14" rx="68" ry="11" fill="#000" opacity="0.45" filter="url(#softShadow)" />
+            <ellipse cx="0" cy="2" rx="62" ry="20" fill="#c9a06a" />
+            <ellipse cx="0" cy="-4" rx="54" ry="15" fill="#a8814f" />
+            <ellipse cx="0" cy="-12" rx="44" ry="11" fill="#7a5a30" />
+            <ellipse cx="0" cy="-19" rx="32" ry="7" fill="#5a3f1f" />
+            <ellipse cx="-15" cy="-4" rx="22" ry="6" fill="#e2c08a" opacity="0.45" />
+            <g stroke="#5a3f1f" strokeWidth="0.9" fill="none" opacity="0.75">
+              {[-54, -42, -30, -18, -6, 6, 18, 30, 42, 50].map((dx, i) => (
+                <path key={i} d={`M${dx},0 Q${dx + 6},4 ${dx + 12},0`} />
+              ))}
+            </g>
+          </g>
+
+          {/* Tackle box with depth and lid */}
+          <g transform="translate(420,238)">
+            <rect x="-54" y="60" width="108" height="6" rx="2" fill="#000" opacity="0.45" filter="url(#softShadow)" />
+            <rect x="-50" y="0" width="100" height="58" rx="5" fill="#2c5784" stroke="#0e3257" strokeWidth="2" />
+            <rect x="-50" y="0" width="100" height="16" fill="#3d6fa0" />
+            <rect x="-50" y="14" width="100" height="2" fill="#0e3257" />
+            <rect x="-50" y="0" width="100" height="3" fill="#7ab0e0" opacity="0.7" />
+            <rect x="-8" y="18" width="16" height="6" rx="1" fill="#cfd6df" stroke="#5a6470" strokeWidth="0.5" />
+            <rect x="-30" y="24" width="6" height="6" fill="#1a3554" />
+            <rect x="24" y="24" width="6" height="6" fill="#1a3554" />
+            <path d="M-30,0 Q0,-13 30,0" stroke="#1a3554" strokeWidth="2.5" fill="none" />
+          </g>
+
+          {/* Bait bucket with rim shading */}
+          <g transform="translate(1000,250)">
+            <ellipse cx="0" cy="50" rx="38" ry="6" fill="#000" opacity="0.5" />
+            <path d="M-32,0 L-28,52 L28,52 L32,0 Z" fill="#5a6470" stroke="#2a3038" strokeWidth="1.5" />
+            <path d="M-30,4 L-28,48 L-22,48 L-24,4 Z" fill="#7a8490" opacity="0.5" />
+            <ellipse cx="0" cy="0" rx="32" ry="7" fill="#3a4048" stroke="#1a1f24" strokeWidth="1.5" />
+            <ellipse cx="0" cy="0" rx="26" ry="5" fill="#1a1f24" />
+            <ellipse cx="-8" cy="-1" rx="10" ry="2" fill="#5a6470" opacity="0.6" />
+            <path d="M-28,5 Q0,-20 28,5" stroke="#2a3038" strokeWidth="2.4" fill="none" />
+          </g>
+
+          {/* Wet patches with reflection sparkle */}
+          <g opacity="0.3">
+            <ellipse cx="600" cy="282" rx="90" ry="9" fill="#7ec0e6" />
+            <ellipse cx="350" cy="320" rx="55" ry="6" fill="#7ec0e6" />
+            <ellipse cx="780" cy="305" rx="65" ry="7" fill="#7ec0e6" />
+            <ellipse cx="600" cy="280" rx="40" ry="2" fill="#ffffff" opacity="0.6" />
+          </g>
+
+          {/* Heavy vignette darkening the corners for depth */}
+          <rect x="0" y="0" width="1200" height="360" fill="url(#vignette)" />
+        </svg>
+      </motion.div>
+    </>
   );
 }
 
