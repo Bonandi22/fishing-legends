@@ -149,13 +149,13 @@ function FishingRod({ skin }: { skin: RodSkin }) {
   useFrame(({ clock }) => {
     if (!ref.current) return;
     // Anchored at the lower-right of the view, pointing diagonally up-left
-    const offset = new THREE.Vector3(0.85, -0.6, -1.5);
+    const offset = new THREE.Vector3(0.95, -0.7, -2.0);
     offset.applyQuaternion(camera.quaternion);
     ref.current.position.copy(camera.position).add(offset);
     ref.current.quaternion.copy(camera.quaternion);
-    ref.current.rotateX(-1.05);  // pitch tip upward diagonally
-    ref.current.rotateY(0.25);   // yaw across to the left
-    ref.current.rotateZ(0.1);
+    ref.current.rotateX(-0.9);  // pitch tip upward diagonally
+    ref.current.rotateY(0.3);   // yaw across to the left
+    ref.current.rotateZ(0.08);
     const t = clock.getElapsedTime();
     ref.current.rotateZ(Math.sin(t * 1.2) * 0.008);
     ref.current.rotateX(Math.sin(t * 0.9) * 0.005);
