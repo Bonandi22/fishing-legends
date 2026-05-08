@@ -166,6 +166,11 @@ function FishingRod({ skin }: { skin: RodSkin }) {
 
   return (
     <group ref={ref}>
+      {/* DEBUG: large visible sphere to verify rod position */}
+      <mesh position={[0, 0, 0]}>
+        <sphereGeometry args={[0.15, 16, 16]} />
+        <meshStandardMaterial color="#ff0000" emissive="#ff0000" emissiveIntensity={0.5} />
+      </mesh>
       {/* Cork grip - textured with multiple segments */}
       {Array.from({ length: 12 }, (_, i) => (
         <mesh key={`cork-${i}`} position={[0, 0, 0.05 + i * 0.05]} rotation={[Math.PI / 2, 0, 0]}>
