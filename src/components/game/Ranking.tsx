@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
-import { PlayerState, ROD_SKINS } from '@/game/types';
+import { PlayerState, ROD_SKINS, BOAT_SKINS } from '@/game/types';
 import { useI18n } from '@/game/i18n';
 import { getLeaderboard, getPlayerRank, LeaderboardPlayer } from '@/game/leaderboard';
 
@@ -20,6 +20,7 @@ export default function Ranking({ player, onBack }: Props) {
   const [showProfile, setShowProfile] = useState(false);
 
   const skinById = (id: string) => ROD_SKINS.find(s => s.id === id);
+  const boatById = (id: string) => BOAT_SKINS.find(s => s.id === id);
 
   return (
     <div className="min-h-screen bg-background p-4 md:p-8 relative">

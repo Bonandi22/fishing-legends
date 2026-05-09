@@ -1,4 +1,4 @@
-import { PlayerState, ROD_SKINS } from './types';
+import { PlayerState, ROD_SKINS, BOAT_SKINS } from './types';
 
 export interface LeaderboardPlayer {
   rank: number;
@@ -7,6 +7,7 @@ export interface LeaderboardPlayer {
   totalFishCaught: number;
   coins: number;
   skins: string[];
+  boatSkins: string[];
   multipliers: { luck: number; strength: number };
   country: string;
   isCurrentPlayer?: boolean;
@@ -23,6 +24,7 @@ export interface StoredEntry {
   totalFishCaught: number;
   coins: number;
   skins: string[];
+  boatSkins: string[];
   multipliers: { luck: number; strength: number };
   updatedAt: number;
 }
@@ -60,6 +62,7 @@ export function syncCurrentPlayer(player: PlayerState) {
     totalFishCaught: player.totalFishCaught,
     coins: player.coins,
     skins: player.ownedSkins,
+    boatSkins: player.ownedBoatSkins,
     multipliers: { luck: 0, strength: 0 }, // not tracked yet
     updatedAt: Date.now(),
   };
@@ -80,6 +83,7 @@ export function getLeaderboard(): LeaderboardPlayer[] {
     totalFishCaught: e.totalFishCaught,
     coins: e.coins,
     skins: e.skins.filter(id => ROD_SKINS.find(s => s.id === id)),
+    boatSkins: (e.boatSkins || []).filter(id => BOAT_SKINS.find(s => s.id === id)),
     multipliers: e.multipliers,
     country: e.country,
     isCurrentPlayer: !!acc && acc.email === e.email,
