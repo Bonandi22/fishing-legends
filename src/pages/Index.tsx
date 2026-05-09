@@ -8,6 +8,7 @@ import Warehouse from '@/components/game/Warehouse';
 import SubmarineFishing from '@/components/game/SubmarineFishing';
 import MultiplierShop from '@/components/game/MultiplierShop';
 import SkinsShop from '@/components/game/SkinsShop';
+import BoatSkinsShop from '@/components/game/BoatSkinsShop';
 import Roulette from '@/components/game/Roulette';
 import Ranking from '@/components/game/Ranking';
 import { useGameState } from '@/game/useGameState';
@@ -15,12 +16,13 @@ import { useBackgroundMusic } from '@/game/useBackgroundMusic';
 import { I18nProvider } from '@/game/i18n';
 import { FishingLocation, Fish } from '@/game/types';
 
-type Screen = 'menu' | 'locations' | 'fishing' | 'collection' | 'warehouse' | 'submarine' | 'multiplier' | 'skins' | 'roulette' | 'ranking';
+type Screen = 'menu' | 'locations' | 'fishing' | 'collection' | 'warehouse' | 'submarine' | 'multiplier' | 'skins' | 'boatSkins' | 'roulette' | 'ranking';
 
 const IndexInner = () => {
   const {
     player, catchFish, resetProgress, sellWarehouse,
     buyMultiplier, buySkin, equipSkin,
+    buyBoatSkin, equipBoatSkin,
     addCoins, addSkin, addMultiplier, setLastRouletteDate,
   } = useGameState();
   const { isPlaying: musicPlaying, toggle: toggleMusic } = useBackgroundMusic();
@@ -58,7 +60,10 @@ const IndexInner = () => {
     return <MultiplierShop player={player} onBuy={buyMultiplier} onBack={() => setScreen('menu')} />;
   }
   if (screen === 'skins') {
-    return <SkinsShop player={player} onBuy={buySkin} onEquip={equipSkin} onBack={() => setScreen('menu')} />;
+    return <SkinsShop player={player} onBuy={buySkin} onEquip={equipSkin} onBack={() => setScreen('menu')} onOpenBoatVisuals={() => setScreen('boatSkins')} />;
+  }
+  if (screen === 'boatSkins') {
+    return <BoatSkinsShop player={player} onBuy={buyBoatSkin} onEquip={equipBoatSkin} onBack={() => setScreen('skins')} />;
   }
   if (screen === 'roulette') {
     return <Roulette player={player} onAddCoins={addCoins} onAddSkin={addSkin} onAddMultiplier={addMultiplier} onSetLastRouletteDate={setLastRouletteDate} onBack={() => setScreen('menu')} />;
