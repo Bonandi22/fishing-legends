@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
-import { PlayerState, ROD_SKINS } from '@/game/types';
+import { PlayerState, ROD_SKINS, BOAT_SKINS } from '@/game/types';
 import { useI18n } from '@/game/i18n';
 import { getLeaderboard, getPlayerRank, LeaderboardPlayer } from '@/game/leaderboard';
 
@@ -20,6 +20,7 @@ export default function Ranking({ player, onBack }: Props) {
   const [showProfile, setShowProfile] = useState(false);
 
   const skinById = (id: string) => ROD_SKINS.find(s => s.id === id);
+  const boatById = (id: string) => BOAT_SKINS.find(s => s.id === id);
 
   return (
     <div className="min-h-screen bg-background p-4 md:p-8 relative">
@@ -150,6 +151,33 @@ export default function Ranking({ player, onBack }: Props) {
                         title={s.name}
                       >
                         {s.emoji}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="mb-4">
+                <p className="text-sm font-bold text-foreground mb-2">🛶 {t('rank.boatsOwned')} ({selected.boatSkins.length})</p>
+                <div className="flex flex-wrap gap-2">
+                  {selected.boatSkins.map(id => {
+                    const b = boatById(id);
+                    if (!b) return null;
+                    return (
+                      <div
+                        key={id}
+                        className="w-12 h-10 rounded-md flex items-center justify-center text-base relative overflow-hidden"
+                        style={{
+                          background: `linear-gradient(to bottom, ${b.hull[0]}, ${b.hull[2]})`,
+                          border: `2px solid ${b.rail[1]}`,
+                        }}
+                        title={b.name}
+                      >
+                        <div
+                          className="absolute left-1 right-1 bottom-0 h-5 rounded-t-md"
+                          style={{ background: `linear-gradient(to bottom, ${b.deck[0]}, ${b.deck[3]})` }}
+                        />
+                        <span className="relative z-10">{b.emoji}</span>
                       </div>
                     );
                   })}

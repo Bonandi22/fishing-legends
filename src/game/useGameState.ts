@@ -16,6 +16,8 @@ const defaultState: PlayerState = {
   coins: 0,
   activeSkin: 'default',
   ownedSkins: ['default'],
+  activeBoatSkin: 'classic',
+  ownedBoatSkins: ['classic'],
   luckMultiplierEnd: null,
   strengthMultiplierEnd: null,
   lastRouletteDate: null,
@@ -122,6 +124,24 @@ export function useGameState() {
     });
   }, []);
 
+  const buyBoatSkin = useCallback((skinId: string, price: number) => {
+    setPlayer(prev => {
+      if (prev.coins < price || prev.ownedBoatSkins.includes(skinId)) return prev;
+      return {
+        ...prev,
+        coins: prev.coins - price,
+        ownedBoatSkins: [...prev.ownedBoatSkins, skinId],
+      };
+    });
+  }, []);
+
+  const equipBoatSkin = useCallback((skinId: string) => {
+    setPlayer(prev => {
+      if (!prev.ownedBoatSkins.includes(skinId)) return prev;
+      return { ...prev, activeBoatSkin: skinId };
+    });
+  }, []);
+
   const addCoins = useCallback((amount: number) => {
     setPlayer(prev => ({ ...prev, coins: prev.coins + amount }));
   }, []);
@@ -160,6 +180,7 @@ export function useGameState() {
   return {
     player, catchFish, resetProgress, sellWarehouse,
     buyMultiplier, buySkin, equipSkin,
+    buyBoatSkin, equipBoatSkin,
     addCoins, addSkin, addMultiplier, setLastRouletteDate,
   };
 }
