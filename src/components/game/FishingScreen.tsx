@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
-import { FishingScene3D } from './FishingScene';
+import { FishingScene3D, RodOverlayCanvas } from './FishingScene';
 import PullMinigame from './PullMinigame';
 import { FishingLocation, Fish, PlayerState } from '@/game/types';
 import { FISH_IMAGES } from '@/game/fishImages';
