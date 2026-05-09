@@ -151,12 +151,13 @@ function FishingRod({ skin }: { skin: RodSkin }) {
     // Anchored at the lower-right of the view, pointing diagonally up-left
     // Anchor handle at lower-right of the view; tip points diagonally up-left
     // Anchor handle at lower-right; tip points slightly up, mostly forward
-    const offset = new THREE.Vector3(0.6, -0.85, -1.05);
+    // Anchor handle further to the right and a bit higher
+    const offset = new THREE.Vector3(0.95, -0.7, -1.05);
     offset.applyQuaternion(camera.quaternion);
     ref.current.position.copy(camera.position).add(offset);
     ref.current.quaternion.copy(camera.quaternion);
-    ref.current.rotateX(0.55);   // gentler tip-up
-    ref.current.rotateY(0.22);   // slight yaw to the left
+    ref.current.rotateX(0.5);    // gentle tip-up
+    ref.current.rotateY(0.32);   // yaw toward center
     ref.current.rotateZ(-0.05);
     const t = clock.getElapsedTime();
     ref.current.rotateZ(Math.sin(t * 1.2) * 0.008);
