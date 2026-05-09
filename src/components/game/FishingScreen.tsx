@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { FishingScene3D, RodOverlayCanvas } from './FishingScene';
 import PullMinigame from './PullMinigame';
-import { FishingLocation, Fish, PlayerState } from '@/game/types';
+import { FishingLocation, Fish, PlayerState, BOAT_SKINS, BoatSkin } from '@/game/types';
 import { FISH_IMAGES } from '@/game/fishImages';
 import { rollFish, rollWeight, getWaitTime } from '@/game/fishingLogic';
 import { useI18n, getRarityLabel } from '@/game/i18n';
@@ -472,7 +472,7 @@ export default function FishingScreen({ location, player, onCatch, onBack }: Pro
       />
 
       {/* Boat POV overlay — only for ocean locations */}
-      {location.type === 'ocean' && <BoatOverlay />}
+      {location.type === 'ocean' && <BoatOverlay skinId={player.activeBoatSkin} />}
 
       {/* Rod overlay — rendered ABOVE the boat so the rod appears in front */}
       <div className="absolute inset-0 z-[6] pointer-events-none">
