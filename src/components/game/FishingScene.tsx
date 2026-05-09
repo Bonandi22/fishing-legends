@@ -547,3 +547,20 @@ export function FishingScene3D({ location, bobberVisible, bobberPosition, onWate
     </Canvas>
   );
 }
+
+/* ═══════ ROD OVERLAY CANVAS — renders the rod above the boat overlay ═══════ */
+export function RodOverlayCanvas({ activeSkin }: { activeSkin?: string }) {
+  const skin = ROD_SKINS.find(s => s.id === activeSkin) || ROD_SKINS[0];
+  return (
+    <Canvas
+      camera={{ position: [0, 0, 0.01], fov: 55 }}
+      style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}
+      gl={{ alpha: true, antialias: true }}
+    >
+      <ambientLight intensity={0.7} />
+      <directionalLight position={[2, 3, 2]} intensity={1.2} />
+      <pointLight position={[1, 1, 1]} intensity={0.5} color="#ffeedd" />
+      <FishingRod skin={skin} />
+    </Canvas>
+  );
+}
