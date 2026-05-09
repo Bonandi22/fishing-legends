@@ -474,6 +474,11 @@ export default function FishingScreen({ location, player, onCatch, onBack }: Pro
       {/* Boat POV overlay — only for ocean locations */}
       {location.type === 'ocean' && <BoatOverlay />}
 
+      {/* Rod overlay — rendered ABOVE the boat so the rod appears in front */}
+      <div className="absolute inset-0 z-[6] pointer-events-none">
+        <RodOverlayCanvas activeSkin={player.activeSkin} />
+      </div>
+
       {/* Lucky mode banner */}
       <AnimatePresence>
         {luckyMode && (
