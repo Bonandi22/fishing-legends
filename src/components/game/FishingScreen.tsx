@@ -61,6 +61,23 @@ function BoatOverlay() {
               <stop offset="0%" stopColor="#bfe2ff" stopOpacity="0.8" />
               <stop offset="100%" stopColor="#bfe2ff" stopOpacity="0" />
             </linearGradient>
+            {/* Water reflection bouncing onto the lower hull */}
+            <linearGradient id="waterBounce" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#7ec0e6" stopOpacity="0" />
+              <stop offset="55%" stopColor="#7ec0e6" stopOpacity="0.35" />
+              <stop offset="100%" stopColor="#bfe2ff" stopOpacity="0.55" />
+            </linearGradient>
+            {/* Side bulkhead — port/starboard interior walls receding */}
+            <linearGradient id="sideWall" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%" stopColor="#1a0d04" />
+              <stop offset="60%" stopColor="#3a200c" />
+              <stop offset="100%" stopColor="#5a3418" />
+            </linearGradient>
+            <linearGradient id="sideWallR" x1="1" y1="0" x2="0" y2="0">
+              <stop offset="0%" stopColor="#1a0d04" />
+              <stop offset="60%" stopColor="#3a200c" />
+              <stop offset="100%" stopColor="#5a3418" />
+            </linearGradient>
             <radialGradient id="deckLight" cx="50%" cy="0%" r="80%">
               <stop offset="0%" stopColor="#ffe7b8" stopOpacity="0.35" />
               <stop offset="60%" stopColor="#ffe7b8" stopOpacity="0.05" />
