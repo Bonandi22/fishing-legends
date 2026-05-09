@@ -9,9 +9,10 @@ interface Props {
   onBuy: (skinId: string, price: number) => void;
   onEquip: (skinId: string) => void;
   onBack: () => void;
+  onOpenBoatVisuals: () => void;
 }
 
-export default function SkinsShop({ player, onBuy, onEquip, onBack }: Props) {
+export default function SkinsShop({ player, onBuy, onEquip, onBack, onOpenBoatVisuals }: Props) {
   const { t } = useI18n();
 
   return (
@@ -23,6 +24,12 @@ export default function SkinsShop({ player, onBuy, onEquip, onBack }: Props) {
             <p className="text-muted-foreground">💰 {player.coins} {t('mult.coins')}</p>
           </div>
           <Button variant="outline" onClick={onBack}>{t('loc.back')}</Button>
+        </div>
+
+        <div className="mb-4">
+          <Button onClick={onOpenBoatVisuals} size="lg" className="w-full font-bold">
+            {t('skins.visual')}
+          </Button>
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">

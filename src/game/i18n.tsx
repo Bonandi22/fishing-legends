@@ -130,6 +130,9 @@ const translations = {
   'skins.buy': { pt: 'Comprar', en: 'Buy', es: 'Comprar', fr: 'Acheter', de: 'Kaufen', ja: '購入' },
   'skins.equip': { pt: 'Equipar', en: 'Equip', es: 'Equipar', fr: 'Équiper', de: 'Ausrüsten', ja: '装備' },
   'skins.equipped': { pt: 'Equipado', en: 'Equipped', es: 'Equipado', fr: 'Équipé', de: 'Ausgerüstet', ja: '装備中' },
+  'skins.visual': { pt: '🛶 Visual do Barco', en: '🛶 Boat Visual', es: '🛶 Visual del Barco', fr: '🛶 Visuel du Bateau', de: '🛶 Boot-Design', ja: '🛶 ボートビジュアル' },
+  'boat.title': { pt: '🛶 Visuais do Barco', en: '🛶 Boat Visuals', es: '🛶 Visuales del Barco', fr: '🛶 Visuels du Bateau', de: '🛶 Boot-Designs', ja: '🛶 ボートビジュアル' },
+  'rank.boatsOwned': { pt: 'Visuais de barco', en: 'Boat visuals', es: 'Visuales de barco', fr: 'Visuels de bateau', de: 'Boot-Designs', ja: 'ボートビジュアル' },
 
   // Roulette
   'roulette.title': { pt: '🎰 Roleta Diária', en: '🎰 Daily Roulette', es: '🎰 Ruleta Diaria', fr: '🎰 Roulette Quotidienne', de: '🎰 Tägliches Roulette', ja: '🎰 デイリールーレット' },
