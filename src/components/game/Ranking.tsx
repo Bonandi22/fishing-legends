@@ -157,6 +157,33 @@ export default function Ranking({ player, onBack }: Props) {
                 </div>
               </div>
 
+              <div className="mb-4">
+                <p className="text-sm font-bold text-foreground mb-2">🛶 {t('rank.boatsOwned')} ({selected.boatSkins.length})</p>
+                <div className="flex flex-wrap gap-2">
+                  {selected.boatSkins.map(id => {
+                    const b = boatById(id);
+                    if (!b) return null;
+                    return (
+                      <div
+                        key={id}
+                        className="w-12 h-10 rounded-md flex items-center justify-center text-base relative overflow-hidden"
+                        style={{
+                          background: `linear-gradient(to bottom, ${b.hull[0]}, ${b.hull[2]})`,
+                          border: `2px solid ${b.rail[1]}`,
+                        }}
+                        title={b.name}
+                      >
+                        <div
+                          className="absolute left-1 right-1 bottom-0 h-5 rounded-t-md"
+                          style={{ background: `linear-gradient(to bottom, ${b.deck[0]}, ${b.deck[3]})` }}
+                        />
+                        <span className="relative z-10">{b.emoji}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
               <div>
                 <p className="text-sm font-bold text-foreground mb-2">⚡ {t('rank.multipliersUsed')}</p>
                 <div className="grid grid-cols-2 gap-3">
