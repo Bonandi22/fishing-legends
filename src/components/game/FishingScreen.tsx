@@ -13,44 +13,34 @@ type Phase = 'idle' | 'casting' | 'waiting' | 'hooked' | 'pulling' | 'caught' | 
 
 /* Boat POV overlay — wooden bow with volumetric depth, perspective deck planks,
    rim lighting and atmospheric haze for a strong 3D presence. */
-function BoatOverlay() {
+function BoatOverlay({ skinId }: { skinId: string }) {
+  const skin: BoatSkin = BOAT_SKINS.find(s => s.id === skinId) || BOAT_SKINS[0];
   return (
     <>
-      {/* Atmospheric mist hugging the waterline behind the boat */}
-      <motion.div
-        className="absolute left-0 right-0 z-[4] pointer-events-none select-none"
-        style={{ bottom: '20vh', height: '12vh', background: 'linear-gradient(to top, rgba(200,220,235,0.35), rgba(200,220,235,0))', filter: 'blur(8px)' }}
-        animate={{ opacity: [0.55, 0.75, 0.55] }}
-        transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }}
-      />
-
       <motion.div
         className="absolute bottom-0 left-0 right-0 z-[5] pointer-events-none select-none"
         style={{ perspective: '900px' }}
         animate={{ y: [0, -6, 0, 4, 0], rotate: [0, 0.3, 0, -0.25, 0] }}
         transition={{ duration: 5.5, repeat: Infinity, ease: 'easeInOut' }}
       >
-        <svg viewBox="0 0 1200 360" preserveAspectRatio="none" className="w-full h-[34vh] min-h-[260px] block drop-shadow-2xl">
+        <svg viewBox="0 0 1200 360" preserveAspectRatio="none" className="w-full h-[34vh] min-h-[260px] block">
           <defs>
-            {/* Deck wood — warm with strong top highlight */}
             <linearGradient id="woodDeck" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#a87242" />
-              <stop offset="12%" stopColor="#8a5a2c" />
-              <stop offset="40%" stopColor="#5e3818" />
-              <stop offset="75%" stopColor="#321a08" />
-              <stop offset="100%" stopColor="#180a02" />
+              <stop offset="0%" stopColor={skin.deck[0]} />
+              <stop offset="12%" stopColor={skin.deck[1]} />
+              <stop offset="40%" stopColor={skin.deck[2]} />
+              <stop offset="75%" stopColor={skin.deck[3]} />
+              <stop offset="100%" stopColor={skin.deck[4]} />
             </linearGradient>
-            {/* Hull side — dark, wet, deep */}
             <linearGradient id="hullSide" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#3d2210" />
-              <stop offset="50%" stopColor="#1a0c04" />
-              <stop offset="100%" stopColor="#050200" />
+              <stop offset="0%" stopColor={skin.hull[0]} />
+              <stop offset="50%" stopColor={skin.hull[1]} />
+              <stop offset="100%" stopColor={skin.hull[2]} />
             </linearGradient>
-            {/* Top rail — varnished mahogany */}
             <linearGradient id="rail" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#d49560" />
-              <stop offset="35%" stopColor="#9a6532" />
-              <stop offset="100%" stopColor="#4a2c12" />
+              <stop offset="0%" stopColor={skin.rail[0]} />
+              <stop offset="35%" stopColor={skin.rail[1]} />
+              <stop offset="100%" stopColor={skin.rail[2]} />
             </linearGradient>
             <linearGradient id="railHi" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor="#fff1d4" stopOpacity="0.95" />
