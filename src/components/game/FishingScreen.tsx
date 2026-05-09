@@ -30,7 +30,7 @@ function BoatOverlay() {
         animate={{ y: [0, -6, 0, 4, 0], rotate: [0, 0.3, 0, -0.25, 0] }}
         transition={{ duration: 5.5, repeat: Infinity, ease: 'easeInOut' }}
       >
-        <svg viewBox="0 0 1200 360" preserveAspectRatio="none" className="w-full h-[28vh] min-h-[210px] block drop-shadow-2xl">
+        <svg viewBox="0 0 1200 360" preserveAspectRatio="none" className="w-full h-[34vh] min-h-[260px] block drop-shadow-2xl">
           <defs>
             {/* Deck wood — warm with strong top highlight */}
             <linearGradient id="woodDeck" x1="0" y1="0" x2="0" y2="1">
