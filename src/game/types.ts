@@ -61,6 +61,66 @@ export const ROD_SKINS: RodSkin[] = [
   { id: 'diamond', name: 'Diamante', emoji: '💎', price: 10000, color: '#00BCD4', rodColor: '#006064', gripColor: '#00838F', accentColor: '#80DEEA', reelColor: '#00ACC1', metalness: 0.95, emissive: '#00ccff' },
 ];
 
+export interface BoatSkin {
+  id: string;
+  name: string;
+  emoji: string;
+  price: number;
+  /** Deck (planks) gradient — top to bottom */
+  deck: [string, string, string, string, string];
+  /** Hull side gradient — top to bottom */
+  hull: [string, string, string];
+  /** Rail (gunwale) gradient — top to bottom */
+  rail: [string, string, string];
+  /** Plank caulking line color */
+  caulk: string;
+}
+
+export const BOAT_SKINS: BoatSkin[] = [
+  {
+    id: 'classic', name: 'Madeira Clássica', emoji: '🛶', price: 0,
+    deck: ['#a87242', '#8a5a2c', '#5e3818', '#321a08', '#180a02'],
+    hull: ['#3d2210', '#1a0c04', '#050200'],
+    rail: ['#d49560', '#9a6532', '#4a2c12'],
+    caulk: '#0a0401',
+  },
+  {
+    id: 'yacht', name: 'Iate de Luxo', emoji: '⛵', price: 2500,
+    deck: ['#f5f5f0', '#e0e0d8', '#c0c0b8', '#8e8e88', '#5a5a55'],
+    hull: ['#ffffff', '#d6d6d0', '#9a9a95'],
+    rail: ['#f0d8a8', '#b88a4c', '#5a3a18'],
+    caulk: '#3a3a36',
+  },
+  {
+    id: 'pirate', name: 'Navio Pirata', emoji: '🏴‍☠️', price: 3500,
+    deck: ['#5a3a1a', '#3e260f', '#241406', '#120902', '#060300'],
+    hull: ['#1a0a02', '#080300', '#000000'],
+    rail: ['#8a1010', '#5a0808', '#240202'],
+    caulk: '#000000',
+  },
+  {
+    id: 'steel', name: 'Aço Naval', emoji: '🚢', price: 4500,
+    deck: ['#7a8088', '#5a6068', '#3e444c', '#262a30', '#10131a'],
+    hull: ['#2a3038', '#15191f', '#04060a'],
+    rail: ['#9aa4ae', '#5e6872', '#2a3038'],
+    caulk: '#04060a',
+  },
+  {
+    id: 'gold', name: 'Barco Dourado', emoji: '💰', price: 7000,
+    deck: ['#fff0a8', '#e8c860', '#b08820', '#7a5808', '#3a2800'],
+    hull: ['#8a6608', '#503c04', '#1a1400'],
+    rail: ['#fff5c8', '#d4a830', '#7a5808'],
+    caulk: '#3a2800',
+  },
+  {
+    id: 'neon', name: 'Cyber Neon', emoji: '🌀', price: 9500,
+    deck: ['#1a2540', '#0c1830', '#06102a', '#040820', '#020414'],
+    hull: ['#0a1428', '#040814', '#000208'],
+    rail: ['#7df9ff', '#1a90ff', '#0a3a8a'],
+    caulk: '#7df9ff',
+  },
+];
+
 export const FISH_COIN_VALUE: Record<Rarity, number> = {
   common: 10,
   uncommon: 25,
