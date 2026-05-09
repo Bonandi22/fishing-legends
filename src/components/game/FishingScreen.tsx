@@ -251,6 +251,45 @@ function BoatOverlay() {
             <ellipse cx="600" cy="280" rx="40" ry="2" fill="#ffffff" opacity="0.6" />
           </g>
 
+          {/* Port side wall — left bulkhead receding into perspective */}
+          <path
+            d="M 0,222 L 0,360 L 145,360 L 220,150 Q 110,170 0,222 Z"
+            fill="url(#sideWall)" opacity="0.95"
+          />
+          {/* Plank lines on port wall */}
+          <g stroke="#0a0401" strokeWidth="1.2" opacity="0.7" fill="none">
+            <path d="M 0,250 Q 90,200 195,195" />
+            <path d="M 0,290 Q 90,250 175,240" />
+            <path d="M 0,325 Q 90,295 160,285" />
+          </g>
+          {/* Starboard side wall — right bulkhead */}
+          <path
+            d="M 1200,222 L 1200,360 L 1055,360 L 980,150 Q 1090,170 1200,222 Z"
+            fill="url(#sideWallR)" opacity="0.95"
+          />
+          <g stroke="#0a0401" strokeWidth="1.2" opacity="0.7" fill="none">
+            <path d="M 1200,250 Q 1110,200 1005,195" />
+            <path d="M 1200,290 Q 1110,250 1025,240" />
+            <path d="M 1200,325 Q 1110,295 1040,285" />
+          </g>
+          {/* Corner posts (vertical wooden ribs at the corners) */}
+          <rect x="0" y="218" width="14" height="142" fill="#0c0602" />
+          <rect x="2" y="218" width="3" height="142" fill="#5a3818" opacity="0.8" />
+          <rect x="1186" y="218" width="14" height="142" fill="#0c0602" />
+          <rect x="1195" y="218" width="3" height="142" fill="#5a3818" opacity="0.8" />
+
+          {/* Water reflection bouncing onto the lower hull skirt (visible just under the rail) */}
+          <path
+            d="M -20,222 Q 90,160 290,138 Q 600,118 910,138 Q 1110,160 1220,222 L 1220,300 Q 1110,260 910,250 Q 600,240 290,250 Q 90,260 -20,300 Z"
+            fill="url(#waterBounce)" opacity="0.55"
+          />
+          {/* Animated subtle water caustics on hull */}
+          <g opacity="0.35" stroke="#cfeaff" strokeWidth="0.8" fill="none">
+            <path d="M 80,260 Q 200,250 340,262" />
+            <path d="M 400,255 Q 600,245 800,255" />
+            <path d="M 860,262 Q 1000,250 1120,262" />
+          </g>
+
           {/* Heavy vignette darkening the corners for depth */}
           <rect x="0" y="0" width="1200" height="360" fill="url(#vignette)" />
         </svg>
