@@ -141,6 +141,8 @@ export interface PlayerState {
   coins: number;
   activeSkin: string;
   ownedSkins: string[];
+  activeBoatSkin: string;
+  ownedBoatSkins: string[];
   luckMultiplierEnd: number | null;
   strengthMultiplierEnd: number | null;
   lastRouletteDate: string | null;
