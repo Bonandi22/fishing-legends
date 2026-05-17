@@ -557,9 +557,11 @@ export function RodOverlayCanvas({ activeSkin }: { activeSkin?: string }) {
       style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}
       gl={{ alpha: true, antialias: true }}
     >
-      <ambientLight intensity={0.7} />
-      <directionalLight position={[2, 3, 2]} intensity={1.2} />
-      <pointLight position={[1, 1, 1]} intensity={0.5} color="#ffeedd" />
+      <ambientLight intensity={1.6} />
+      <hemisphereLight args={['#ffffff', '#5a4a30', 1.2]} />
+      <directionalLight position={[2, 3, 2]} intensity={2.2} color="#ffffff" />
+      <directionalLight position={[-2, 1, 2]} intensity={1.0} color="#cfe6ff" />
+      <pointLight position={[1, 1, 1]} intensity={1.4} color="#fff4dc" />
       <FishingRod skin={skin} />
     </Canvas>
   );
