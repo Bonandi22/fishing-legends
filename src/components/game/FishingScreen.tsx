@@ -69,14 +69,14 @@ function BoatOverlay({ skinId }: { skinId: string }) {
               <stop offset="100%" stopColor="#5a3418" />
             </linearGradient>
             <radialGradient id="deckLight" cx="50%" cy="0%" r="80%">
-              <stop offset="0%" stopColor="#ffe7b8" stopOpacity="0.35" />
-              <stop offset="60%" stopColor="#ffe7b8" stopOpacity="0.05" />
-              <stop offset="100%" stopColor="#000000" stopOpacity="0" />
+              <stop offset="0%" stopColor="#fff4d8" stopOpacity="0.65" />
+              <stop offset="60%" stopColor="#fff4d8" stopOpacity="0.25" />
+              <stop offset="100%" stopColor="#ffffff" stopOpacity="0.05" />
             </radialGradient>
             <radialGradient id="vignette" cx="50%" cy="100%" r="80%">
               <stop offset="0%" stopColor="#000000" stopOpacity="0" />
-              <stop offset="65%" stopColor="#000000" stopOpacity="0.45" />
-              <stop offset="100%" stopColor="#000000" stopOpacity="0.85" />
+              <stop offset="65%" stopColor="#000000" stopOpacity="0.15" />
+              <stop offset="100%" stopColor="#000000" stopOpacity="0.35" />
             </radialGradient>
             {/* Plank pattern with grain & knots */}
             <pattern id="planks" x="0" y="0" width="90" height="360" patternUnits="userSpaceOnUse">
@@ -142,10 +142,10 @@ function BoatOverlay({ skinId }: { skinId: string }) {
             fill="url(#deckLight)" opacity="0.9"
           />
 
-          {/* Deep ambient occlusion under the rail */}
+          {/* Soft ambient occlusion under the rail (lightened) */}
           <path
             d="M 0,200 Q 90,128 290,104 Q 600,84 910,104 Q 1110,128 1200,200 L 1200,238 Q 1100,160 910,138 Q 600,118 290,138 Q 100,160 0,238 Z"
-            fill="#000000" opacity="0.45"
+            fill="#000000" opacity="0.18"
           />
 
           {/* Top rail (gunwale) — thick varnished trim */}

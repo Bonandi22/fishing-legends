@@ -42,10 +42,34 @@ export default function SkinsShop({ player, onBuy, onEquip, onBack, onOpenBoatVi
                 <Card className={`border-2 ${equipped ? 'border-primary shadow-lg shadow-primary/20' : owned ? 'border-accent' : 'border-border'}`}>
                   <CardContent className="p-4 text-center">
                     <div
-                      className="w-16 h-16 mx-auto mb-2 rounded-xl flex items-center justify-center text-3xl"
-                      style={{ backgroundColor: skin.color + '22', border: `2px solid ${skin.color}` }}
+                      className="w-full h-20 mb-2 rounded-xl relative overflow-hidden flex items-center justify-center"
+                      style={{ background: `linear-gradient(135deg, ${skin.color}22, ${skin.color}11)`, border: `2px solid ${skin.color}` }}
                     >
-                      {skin.emoji}
+                      {/* Mini rod preview using the skin's real colors */}
+                      <div className="relative w-[78%] h-3 rotate-[-28deg]">
+                        {/* grip */}
+                        <div
+                          className="absolute left-0 top-0 h-full w-[28%] rounded-l-full"
+                          style={{ background: `linear-gradient(to bottom, ${skin.gripColor}, ${skin.rodColor})` }}
+                        />
+                        {/* reel */}
+                        <div
+                          className="absolute left-[24%] -top-1 w-3 h-5 rounded-full border"
+                          style={{ background: skin.reelColor, borderColor: skin.accentColor }}
+                        />
+                        {/* blank */}
+                        <div
+                          className="absolute right-0 top-[35%] h-[30%] w-[72%] rounded-r-full"
+                          style={{
+                            background: `linear-gradient(to right, ${skin.rodColor}, ${skin.accentColor})`,
+                            boxShadow: skin.emissive ? `0 0 8px ${skin.emissive}` : undefined,
+                          }}
+                        />
+                        {/* thread wraps */}
+                        <div className="absolute right-[18%] top-[30%] h-[40%] w-[2px]" style={{ background: skin.accentColor }} />
+                        <div className="absolute right-[42%] top-[30%] h-[40%] w-[2px]" style={{ background: skin.accentColor }} />
+                      </div>
+                      <span className="absolute top-0.5 right-1 text-sm">{skin.emoji}</span>
                     </div>
                     <p className="font-bold text-foreground text-sm">{skin.name}</p>
                     {skin.price > 0 && <p className="text-xs text-muted-foreground">💰 {skin.price}</p>}
