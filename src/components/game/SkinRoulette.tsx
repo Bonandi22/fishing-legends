@@ -33,7 +33,7 @@ export default function SkinRoulette({ player, onAddSkin, onAddBoatSkin, onSpend
   const animRef = useRef<number>(0);
 
   const prizes = useMemo<Prize[]>(() => {
-    const rods = ROD_SKINS.filter(s => s.price > 0);
+    const rods = ROD_SKINS.filter(s => s.price > 0 || s.exclusive);
     const boats = BOAT_SKINS.filter(s => s.price > 0);
     const pick = <T,>(arr: T[]) => arr[Math.floor(Math.random() * arr.length)];
 
