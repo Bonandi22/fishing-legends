@@ -86,6 +86,7 @@ const IndexInner = () => {
       onMultiplier={() => setScreen('multiplier')}
       onSkins={() => setScreen('skins')}
       onRoulette={() => setScreen('roulette')}
+      onSkinRoulette={() => setScreen('skinRoulette')}
       onRanking={() => setScreen('ranking')}
       onReset={resetProgress}
       musicPlaying={musicPlaying}
