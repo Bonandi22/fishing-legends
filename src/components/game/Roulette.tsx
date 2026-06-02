@@ -34,16 +34,20 @@ export default function Roulette({ player, onAddCoins, onAddSkin, onAddBoatSkin,
 
   // Freeze prizes for the lifetime of the component to ensure the prize matches the arrow.
   const prizes = useMemo<Prize[]>(() => {
-    const unowned = ROD_SKINS.filter(s => !player.ownedSkins.includes(s.id) && s.price > 0);
-    const randomSkin = unowned.length > 0 ? unowned[Math.floor(Math.random() * unowned.length)] : null;
+    const unownedRods = ROD_SKINS.filter(s => !player.ownedSkins.includes(s.id) && s.price > 0);
+    const randomRod = unownedRods.length > 0 ? unownedRods[Math.floor(Math.random() * unownedRods.length)] : null;
+    const unownedBoats = BOAT_SKINS.filter(s => !player.ownedBoatSkins.includes(s.id) && s.price > 0);
+    const randomBoat = unownedBoats.length > 0 ? unownedBoats[Math.floor(Math.random() * unownedBoats.length)] : null;
     return [
       { label: '100 💰', emoji: '💰', color: '#FFD700', action: () => onAddCoins(100) },
       { label: '🍀 ' + t('mult.luck'), emoji: '🍀', color: '#4CAF50', action: () => onAddMultiplier('luck') },
       { label: '250 💰', emoji: '💰', color: '#FFA000', action: () => onAddCoins(250) },
       { label: '💪 ' + t('mult.strength'), emoji: '💪', color: '#F44336', action: () => onAddMultiplier('strength') },
-      { label: '500 💰', emoji: '💰', color: '#FF9800', action: () => onAddCoins(500) },
-      randomSkin
-        ? { label: `${randomSkin.emoji} ${randomSkin.name}`, emoji: randomSkin.emoji, color: randomSkin.color, action: () => onAddSkin(randomSkin.id) }
+      randomBoat
+        ? { label: `${randomBoat.emoji} ${randomBoat.name}`, emoji: randomBoat.emoji, color: randomBoat.rail[1], action: () => onAddBoatSkin(randomBoat.id) }
+        : { label: '500 💰', emoji: '💰', color: '#FF9800', action: () => onAddCoins(500) },
+      randomRod
+        ? { label: `${randomRod.emoji} ${randomRod.name}`, emoji: randomRod.emoji, color: randomRod.color, action: () => onAddSkin(randomRod.id) }
         : { label: '1000 💰', emoji: '💰', color: '#E91E63', action: () => onAddCoins(1000) },
       { label: '1000 💰', emoji: '💰', color: '#9C27B0', action: () => onAddCoins(1000) },
       { label: '150 💰', emoji: '💰', color: '#00BCD4', action: () => onAddCoins(150) },
