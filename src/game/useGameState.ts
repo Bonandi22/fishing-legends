@@ -203,6 +203,6 @@ export function useGameState() {
     player, catchFish, resetProgress, sellWarehouse,
     buyMultiplier, buySkin, equipSkin,
     buyBoatSkin, equipBoatSkin,
-    addCoins, addSkin, addMultiplier, setLastRouletteDate,
+    addCoins, addSkin, addBoatSkin, spendCoins, addMultiplier, setLastRouletteDate,
   };
 }
