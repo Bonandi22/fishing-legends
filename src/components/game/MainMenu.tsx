@@ -16,6 +16,7 @@ interface Props {
   onMultiplier: () => void;
   onSkins: () => void;
   onRoulette: () => void;
+  onSkinRoulette: () => void;
   onRanking: () => void;
   onReset: () => void;
   musicPlaying: boolean;
@@ -42,7 +43,7 @@ function saveAccount(acc: Account) {
   localStorage.setItem(ACCOUNT_KEY, JSON.stringify(acc));
 }
 
-export default function MainMenu({ player, onPlay, onCollection, onWarehouse, onSubmarine, onMultiplier, onSkins, onRoulette, onRanking, onReset, musicPlaying, onToggleMusic }: Props) {
+export default function MainMenu({ player, onPlay, onCollection, onWarehouse, onSubmarine, onMultiplier, onSkins, onRoulette, onSkinRoulette, onRanking, onReset, musicPlaying, onToggleMusic }: Props) {
   const { lang, setLang, t } = useI18n();
   const [langOpen, setLangOpen] = useState(false);
   const langRef = useRef<HTMLDivElement>(null);
@@ -365,6 +366,9 @@ export default function MainMenu({ player, onPlay, onCollection, onWarehouse, on
               {t('menu.ranking')}
             </Button>
           </div>
+          <Button onClick={onSkinRoulette} variant="outline" size="lg" className="w-64 h-12 text-sm font-bold border-primary text-primary hover:bg-primary/10">
+            {t('menu.skinRoulette')}
+          </Button>
           {player.level > 1 && (
             <Button onClick={onReset} variant="ghost" size="sm" className="text-muted-foreground mt-2">
               {t('menu.reset')}

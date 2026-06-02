@@ -10,20 +10,21 @@ import MultiplierShop from '@/components/game/MultiplierShop';
 import SkinsShop from '@/components/game/SkinsShop';
 import BoatSkinsShop from '@/components/game/BoatSkinsShop';
 import Roulette from '@/components/game/Roulette';
+import SkinRoulette from '@/components/game/SkinRoulette';
 import Ranking from '@/components/game/Ranking';
 import { useGameState } from '@/game/useGameState';
 import { useBackgroundMusic } from '@/game/useBackgroundMusic';
 import { I18nProvider } from '@/game/i18n';
 import { FishingLocation, Fish } from '@/game/types';
 
-type Screen = 'menu' | 'locations' | 'fishing' | 'collection' | 'warehouse' | 'submarine' | 'multiplier' | 'skins' | 'boatSkins' | 'roulette' | 'ranking';
+type Screen = 'menu' | 'locations' | 'fishing' | 'collection' | 'warehouse' | 'submarine' | 'multiplier' | 'skins' | 'boatSkins' | 'roulette' | 'skinRoulette' | 'ranking';
 
 const IndexInner = () => {
   const {
     player, catchFish, resetProgress, sellWarehouse,
     buyMultiplier, buySkin, equipSkin,
     buyBoatSkin, equipBoatSkin,
-    addCoins, addSkin, addMultiplier, setLastRouletteDate,
+    addCoins, addSkin, addBoatSkin, spendCoins, addMultiplier, setLastRouletteDate,
   } = useGameState();
   const { isPlaying: musicPlaying, toggle: toggleMusic } = useBackgroundMusic();
   const [screen, setScreen] = useState<Screen>('menu');
@@ -66,7 +67,10 @@ const IndexInner = () => {
     return <BoatSkinsShop player={player} onBuy={buyBoatSkin} onEquip={equipBoatSkin} onBack={() => setScreen('skins')} />;
   }
   if (screen === 'roulette') {
-    return <Roulette player={player} onAddCoins={addCoins} onAddSkin={addSkin} onAddMultiplier={addMultiplier} onSetLastRouletteDate={setLastRouletteDate} onBack={() => setScreen('menu')} />;
+    return <Roulette player={player} onAddCoins={addCoins} onAddSkin={addSkin} onAddBoatSkin={addBoatSkin} onAddMultiplier={addMultiplier} onSetLastRouletteDate={setLastRouletteDate} onBack={() => setScreen('menu')} />;
+  }
+  if (screen === 'skinRoulette') {
+    return <SkinRoulette player={player} onAddSkin={addSkin} onAddBoatSkin={addBoatSkin} onSpend={spendCoins} onBack={() => setScreen('menu')} />;
   }
   if (screen === 'ranking') {
     return <Ranking player={player} onBack={() => setScreen('menu')} />;
@@ -82,6 +86,7 @@ const IndexInner = () => {
       onMultiplier={() => setScreen('multiplier')}
       onSkins={() => setScreen('skins')}
       onRoulette={() => setScreen('roulette')}
+      onSkinRoulette={() => setScreen('skinRoulette')}
       onRanking={() => setScreen('ranking')}
       onReset={resetProgress}
       musicPlaying={musicPlaying}
