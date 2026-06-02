@@ -10,13 +10,14 @@ import MultiplierShop from '@/components/game/MultiplierShop';
 import SkinsShop from '@/components/game/SkinsShop';
 import BoatSkinsShop from '@/components/game/BoatSkinsShop';
 import Roulette from '@/components/game/Roulette';
+import SkinRoulette from '@/components/game/SkinRoulette';
 import Ranking from '@/components/game/Ranking';
 import { useGameState } from '@/game/useGameState';
 import { useBackgroundMusic } from '@/game/useBackgroundMusic';
 import { I18nProvider } from '@/game/i18n';
 import { FishingLocation, Fish } from '@/game/types';
 
-type Screen = 'menu' | 'locations' | 'fishing' | 'collection' | 'warehouse' | 'submarine' | 'multiplier' | 'skins' | 'boatSkins' | 'roulette' | 'ranking';
+type Screen = 'menu' | 'locations' | 'fishing' | 'collection' | 'warehouse' | 'submarine' | 'multiplier' | 'skins' | 'boatSkins' | 'roulette' | 'skinRoulette' | 'ranking';
 
 const IndexInner = () => {
   const {
