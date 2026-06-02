@@ -43,7 +43,7 @@ function saveAccount(acc: Account) {
   localStorage.setItem(ACCOUNT_KEY, JSON.stringify(acc));
 }
 
-export default function MainMenu({ player, onPlay, onCollection, onWarehouse, onSubmarine, onMultiplier, onSkins, onRoulette, onRanking, onReset, musicPlaying, onToggleMusic }: Props) {
+export default function MainMenu({ player, onPlay, onCollection, onWarehouse, onSubmarine, onMultiplier, onSkins, onRoulette, onSkinRoulette, onRanking, onReset, musicPlaying, onToggleMusic }: Props) {
   const { lang, setLang, t } = useI18n();
   const [langOpen, setLangOpen] = useState(false);
   const langRef = useRef<HTMLDivElement>(null);
