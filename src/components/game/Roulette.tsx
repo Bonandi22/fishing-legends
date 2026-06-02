@@ -1,13 +1,14 @@
 import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
-import { PlayerState, ROD_SKINS } from '@/game/types';
+import { PlayerState, ROD_SKINS, BOAT_SKINS } from '@/game/types';
 import { useI18n } from '@/game/i18n';
 
 interface Props {
   player: PlayerState;
   onAddCoins: (amount: number) => void;
   onAddSkin: (skinId: string) => boolean;
+  onAddBoatSkin: (skinId: string) => boolean;
   onAddMultiplier: (type: 'luck' | 'strength') => void;
   onSetLastRouletteDate: (date: string) => void;
   onBack: () => void;
