@@ -21,7 +21,7 @@ interface Prize {
   action: () => void;
 }
 
-export default function Roulette({ player, onAddCoins, onAddSkin, onAddMultiplier, onSetLastRouletteDate, onBack }: Props) {
+export default function Roulette({ player, onAddCoins, onAddSkin, onAddBoatSkin, onAddMultiplier, onSetLastRouletteDate, onBack }: Props) {
   const { t } = useI18n();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [spinning, setSpinning] = useState(false);
