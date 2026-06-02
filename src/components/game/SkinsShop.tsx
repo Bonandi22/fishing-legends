@@ -33,7 +33,7 @@ export default function SkinsShop({ player, onBuy, onEquip, onBack, onOpenBoatVi
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-          {ROD_SKINS.map((skin, i) => {
+          {ROD_SKINS.filter(s => !s.exclusive).map((skin, i) => {
             const owned = player.ownedSkins.includes(skin.id);
             const equipped = player.activeSkin === skin.id;
 

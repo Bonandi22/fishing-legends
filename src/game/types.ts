@@ -47,6 +47,7 @@ export interface RodSkin {
   reelColor: string;      // reel body color
   metalness: number;      // rod metalness
   emissive?: string;      // optional glow
+  exclusive?: boolean;    // only obtainable via roulette
 }
 
 export const ROD_SKINS: RodSkin[] = [
@@ -59,6 +60,7 @@ export const ROD_SKINS: RodSkin[] = [
   { id: 'kraken', name: 'Kraken', emoji: '🦑', price: 5000, color: '#1A237E', rodColor: '#0D1642', gripColor: '#1A237E', accentColor: '#7C4DFF', reelColor: '#283593', metalness: 0.55, emissive: '#3311aa' },
   { id: 'gold', name: 'Ouro', emoji: '✨', price: 7500, color: '#FFD700', rodColor: '#B8860B', gripColor: '#DAA520', accentColor: '#FFD700', reelColor: '#CD950C', metalness: 0.9, emissive: '#aa8800' },
   { id: 'diamond', name: 'Diamante', emoji: '💎', price: 10000, color: '#00BCD4', rodColor: '#006064', gripColor: '#00838F', accentColor: '#80DEEA', reelColor: '#00ACC1', metalness: 0.95, emissive: '#00ccff' },
+  { id: 'celestial', name: 'Celestial', emoji: '🌌', price: 99999, color: '#a78bfa', rodColor: '#1b0a3a', gripColor: '#3b1d6e', accentColor: '#f0abfc', reelColor: '#7c3aed', metalness: 1.0, emissive: '#c026d3', exclusive: true },
 ];
 
 export interface BoatSkin {

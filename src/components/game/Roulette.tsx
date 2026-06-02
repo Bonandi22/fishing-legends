@@ -34,7 +34,7 @@ export default function Roulette({ player, onAddCoins, onAddSkin, onAddBoatSkin,
 
   // Freeze prizes for the lifetime of the component to ensure the prize matches the arrow.
   const prizes = useMemo<Prize[]>(() => {
-    const unownedRods = ROD_SKINS.filter(s => !player.ownedSkins.includes(s.id) && s.price > 0);
+    const unownedRods = ROD_SKINS.filter(s => !player.ownedSkins.includes(s.id) && (s.price > 0 || s.exclusive));
     const randomRod = unownedRods.length > 0 ? unownedRods[Math.floor(Math.random() * unownedRods.length)] : null;
     const unownedBoats = BOAT_SKINS.filter(s => !player.ownedBoatSkins.includes(s.id) && s.price > 0);
     const randomBoat = unownedBoats.length > 0 ? unownedBoats[Math.floor(Math.random() * unownedBoats.length)] : null;
