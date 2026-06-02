@@ -24,7 +24,7 @@ const IndexInner = () => {
     player, catchFish, resetProgress, sellWarehouse,
     buyMultiplier, buySkin, equipSkin,
     buyBoatSkin, equipBoatSkin,
-    addCoins, addSkin, addMultiplier, setLastRouletteDate,
+    addCoins, addSkin, addBoatSkin, spendCoins, addMultiplier, setLastRouletteDate,
   } = useGameState();
   const { isPlaying: musicPlaying, toggle: toggleMusic } = useBackgroundMusic();
   const [screen, setScreen] = useState<Screen>('menu');
