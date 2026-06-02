@@ -16,6 +16,7 @@ interface Props {
   onMultiplier: () => void;
   onSkins: () => void;
   onRoulette: () => void;
+  onSkinRoulette: () => void;
   onRanking: () => void;
   onReset: () => void;
   musicPlaying: boolean;
