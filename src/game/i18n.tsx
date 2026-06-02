@@ -141,6 +141,12 @@ const translations = {
   'roulette.won': { pt: 'Você ganhou!', en: 'You won!', es: '¡Ganaste!', fr: 'Vous avez gagné !', de: 'Du hast gewonnen!', ja: '当たり！' },
   'roulette.used': { pt: 'Você já girou a roleta hoje! Volte amanhã.', en: 'You already spun today! Come back tomorrow.', es: '¡Ya giraste hoy! Vuelve mañana.', fr: 'Vous avez déjà tourné aujourd\'hui ! Revenez demain.', de: 'Du hast heute schon gedreht! Komm morgen wieder.', ja: '今日はもう回しました！明日また来てね。' },
   'roulette.daily': { pt: 'Você pode girar a roleta 1 vez por dia', en: 'You can spin the roulette once per day', es: 'Puedes girar la ruleta 1 vez al día', fr: 'Vous pouvez tourner la roulette 1 fois par jour', de: 'Du kannst das Roulette 1 mal pro Tag drehen', ja: 'ルーレットは1日1回回せます' },
+  'menu.skinRoulette': { pt: '🎡 Roleta de Skins', en: '🎡 Skin Roulette', es: '🎡 Ruleta de Skins', fr: '🎡 Roulette de Skins', de: '🎡 Skin-Roulette', ja: '🎡 スキンルーレット' },
+  'skinRoulette.title': { pt: '🎡 Roleta de Skins', en: '🎡 Skin Roulette', es: '🎡 Ruleta de Skins', fr: '🎡 Roulette de Skins', de: '🎡 Skin-Roulette', ja: '🎡 スキンルーレット' },
+  'skinRoulette.hint': { pt: 'Cada giro custa 1500 moedas. Você só pode ganhar skins de vara ou de barco.', en: 'Each spin costs 1500 coins. You can only win rod or boat skins.', es: 'Cada giro cuesta 1500 monedas. Solo puedes ganar skins de caña o barco.', fr: 'Chaque tour coûte 1500 pièces. Vous ne pouvez gagner que des skins de canne ou de bateau.', de: 'Jede Drehung kostet 1500 Münzen. Du kannst nur Ruten- oder Bootsskins gewinnen.', ja: '1回1500コイン。竿または船のスキンのみ獲得できます。' },
+  'skinRoulette.noCoins': { pt: 'Moedas insuficientes!', en: 'Not enough coins!', es: '¡Monedas insuficientes!', fr: 'Pièces insuffisantes !', de: 'Nicht genug Münzen!', ja: 'コインが足りません！' },
+  'skinRoulette.rodWon': { pt: '(Skin de vara — duplicada vira 500 💰)', en: '(Rod skin — duplicate becomes 500 💰)', es: '(Skin de caña — duplicada se convierte en 500 💰)', fr: '(Skin de canne — doublon devient 500 💰)', de: '(Rutenskin — Duplikat wird zu 500 💰)', ja: '(竿スキン — 重複は500💰に)' },
+  'skinRoulette.boatWon': { pt: '(Skin de barco — duplicada vira 500 💰)', en: '(Boat skin — duplicate becomes 500 💰)', es: '(Skin de barco — duplicada se convierte en 500 💰)', fr: '(Skin de bateau — doublon devient 500 💰)', de: '(Bootsskin — Duplikat wird zu 500 💰)', ja: '(船スキン — 重複は500💰に)' },
 
   // Account
   'account.title': { pt: 'Minha Conta', en: 'My Account', es: 'Mi Cuenta', fr: 'Mon Compte', de: 'Mein Konto', ja: 'マイアカウント' },
