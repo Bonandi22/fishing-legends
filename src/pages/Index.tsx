@@ -67,7 +67,10 @@ const IndexInner = () => {
     return <BoatSkinsShop player={player} onBuy={buyBoatSkin} onEquip={equipBoatSkin} onBack={() => setScreen('skins')} />;
   }
   if (screen === 'roulette') {
-    return <Roulette player={player} onAddCoins={addCoins} onAddSkin={addSkin} onAddMultiplier={addMultiplier} onSetLastRouletteDate={setLastRouletteDate} onBack={() => setScreen('menu')} />;
+    return <Roulette player={player} onAddCoins={addCoins} onAddSkin={addSkin} onAddBoatSkin={addBoatSkin} onAddMultiplier={addMultiplier} onSetLastRouletteDate={setLastRouletteDate} onBack={() => setScreen('menu')} />;
+  }
+  if (screen === 'skinRoulette') {
+    return <SkinRoulette player={player} onAddSkin={addSkin} onAddBoatSkin={addBoatSkin} onSpend={spendCoins} onBack={() => setScreen('menu')} />;
   }
   if (screen === 'ranking') {
     return <Ranking player={player} onBack={() => setScreen('menu')} />;
