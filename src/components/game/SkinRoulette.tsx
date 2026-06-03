@@ -153,14 +153,12 @@ export default function SkinRoulette({ player, onAddSkin, onAddBoatSkin, onSpend
         animRef.current = requestAnimationFrame(animate);
       } else {
         setSpinning(false);
-        const TWO_PI = Math.PI * 2;
         const finalAngle = ((angleRef.current % TWO_PI) + TWO_PI) % TWO_PI;
         const arrowAngle = ((-Math.PI / 2 - finalAngle) % TWO_PI + TWO_PI) % TWO_PI;
         const actualIndex = Math.floor(arrowAngle / sliceAngle) % prizes.length;
         const prize = prizes[actualIndex] ?? prizes[winIndex];
         prize.action();
         setResult(prize);
-        // refresh slots for next spin
         setVersion(v => v + 1);
       }
     };
