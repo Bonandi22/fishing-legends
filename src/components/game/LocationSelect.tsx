@@ -28,36 +28,43 @@ const locationImages: Record<string, string> = {
 interface Props {
   playerLevel: number;
   unlockedLocations: string[];
+  world?: 1 | 2;
   onSelect: (location: FishingLocation) => void;
   onBack: () => void;
 }
 
-export default function LocationSelect({ playerLevel, unlockedLocations, onSelect, onBack }: Props) {
+export default function LocationSelect({ playerLevel, unlockedLocations, world = 1, onSelect, onBack }: Props) {
   const { t } = useI18n();
   const typeLabels: Record<string, string> = { ocean: t('loc.ocean'), river: t('loc.river'), lake: t('loc.lake') };
+  const visibleLocations = LOCATIONS.filter(l => (l.world ?? 1) === world);
 
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
       <div className="max-w-5xl mx-auto">
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-foreground">{t('loc.title')}</h1>
-            <p className="text-muted-foreground">{t('loc.level')} {playerLevel} — {unlockedLocations.length}/{LOCATIONS.length} {t('loc.unlocked')}</p>
+            <h1 className="text-3xl font-bold text-foreground">{t('loc.title')} {world === 2 && <span className="text-primary">— Mundo 2</span>}</h1>
+            <p className="text-muted-foreground">{t('loc.level')} {playerLevel} — {visibleLocations.filter(l => unlockedLocations.includes(l.id)).length}/{visibleLocations.length} {t('loc.unlocked')}</p>
           </div>
           <Button variant="outline" onClick={onBack}>{t('loc.back')}</Button>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {LOCATIONS.map((loc, i) => {
+          {visibleLocations.map((loc, i) => {
             const unlocked = unlockedLocations.includes(loc.id);
+            const img = locationImages[loc.id];
             return (
               <motion.div key={loc.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
                 <Card
                   className={`cursor-pointer transition-all border-2 overflow-hidden ${unlocked ? 'hover:border-primary hover:shadow-lg hover:shadow-primary/10 border-border' : 'opacity-50 border-border cursor-not-allowed'}`}
                   onClick={() => unlocked && onSelect(loc)}
                 >
-                  <div className="relative h-36 overflow-hidden">
-                    <img src={locationImages[loc.id]} alt={loc.name} className="w-full h-full object-cover" loading="lazy" width={768} height={512} />
+                  <div className="relative h-36 overflow-hidden" style={!img ? { background: `linear-gradient(135deg, ${loc.waterColor}, ${loc.skyColor})` } : undefined}>
+                    {img ? (
+                      <img src={img} alt={loc.name} className="w-full h-full object-cover" loading="lazy" width={768} height={512} />
+                    ) : (
+                      <div className="absolute inset-0 flex items-center justify-center text-6xl">{loc.emoji}</div>
+                    )}
                     {!unlocked && (
                       <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
                         <Lock className="w-8 h-8 text-white/70" />
