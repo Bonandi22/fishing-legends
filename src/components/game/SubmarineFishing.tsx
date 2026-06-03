@@ -390,23 +390,37 @@ export default function SubmarineFishing({ player, onCatch, onBack }: Props) {
               alt={sf.fish.name}
               className="w-full h-full object-contain drop-shadow-lg pointer-events-none"
               draggable={false}
+              style={{ transformOrigin: '30% 50%' }}
               animate={{
-                scaleY: [1, 0.9, 1, 1.05, 1],
-                rotate: [-3, 3, -3],
+                // Multi-keyframe swim cycle simulating distinct poses
+                scaleX: [1, 1.06, 1, 0.94, 1, 1.06, 1],
+                scaleY: [1, 0.92, 1, 1.08, 1, 0.92, 1],
+                skewX: [0, 8, 0, -8, 0, 8, 0],
+                rotate: [-4, -1, 3, 1, -3, -1, -4],
+                y: [0, -1.5, 0, 1.5, 0, -1.5, 0],
               }}
               transition={{
-                scaleY: { duration: 0.6, repeat: Infinity, ease: 'easeInOut' },
-                rotate: { duration: 1.2, repeat: Infinity, ease: 'easeInOut' },
+                duration: 0.7,
+                repeat: Infinity,
+                ease: 'easeInOut',
+                times: [0, 0.16, 0.33, 0.5, 0.66, 0.83, 1],
               }}
             />
           ) : (
             <motion.span
               className="block text-center leading-none"
-              style={{ fontSize: sf.size * 0.7 }}
-              animate={{ scaleY: [1, 0.9, 1, 1.05, 1], rotate: [-3, 3, -3] }}
+              style={{ fontSize: sf.size * 0.7, transformOrigin: '30% 50%' }}
+              animate={{
+                scaleX: [1, 1.06, 1, 0.94, 1, 1.06, 1],
+                scaleY: [1, 0.92, 1, 1.08, 1, 0.92, 1],
+                skewX: [0, 8, 0, -8, 0, 8, 0],
+                rotate: [-4, -1, 3, 1, -3, -1, -4],
+              }}
               transition={{
-                scaleY: { duration: 0.6, repeat: Infinity, ease: 'easeInOut' },
-                rotate: { duration: 1.2, repeat: Infinity, ease: 'easeInOut' },
+                duration: 0.7,
+                repeat: Infinity,
+                ease: 'easeInOut',
+                times: [0, 0.16, 0.33, 0.5, 0.66, 0.83, 1],
               }}
             >
               {sf.fish.emoji}
