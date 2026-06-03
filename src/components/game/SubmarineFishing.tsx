@@ -385,16 +385,32 @@ export default function SubmarineFishing({ player, onCatch, onBack }: Props) {
           onClick={() => handleFishClick(sf)}
         >
           {FISH_IMAGES[sf.fish.id] ? (
-            <img
+            <motion.img
               src={FISH_IMAGES[sf.fish.id]}
               alt={sf.fish.name}
               className="w-full h-full object-contain drop-shadow-lg pointer-events-none"
               draggable={false}
+              animate={{
+                scaleY: [1, 0.9, 1, 1.05, 1],
+                rotate: [-3, 3, -3],
+              }}
+              transition={{
+                scaleY: { duration: 0.6, repeat: Infinity, ease: 'easeInOut' },
+                rotate: { duration: 1.2, repeat: Infinity, ease: 'easeInOut' },
+              }}
             />
           ) : (
-            <span className="text-4xl block text-center leading-none" style={{ fontSize: sf.size * 0.7 }}>
+            <motion.span
+              className="block text-center leading-none"
+              style={{ fontSize: sf.size * 0.7 }}
+              animate={{ scaleY: [1, 0.9, 1, 1.05, 1], rotate: [-3, 3, -3] }}
+              transition={{
+                scaleY: { duration: 0.6, repeat: Infinity, ease: 'easeInOut' },
+                rotate: { duration: 1.2, repeat: Infinity, ease: 'easeInOut' },
+              }}
+            >
               {sf.fish.emoji}
-            </span>
+            </motion.span>
           )}
         </motion.div>
       ))}
