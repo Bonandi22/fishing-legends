@@ -127,13 +127,18 @@ export default function SkinRoulette({ player, onAddSkin, onAddBoatSkin, onSpend
     setSpinning(true);
     setResult(null);
 
-    const sliceAngle = (2 * Math.PI) / prizes.length;
+    const TWO_PI = Math.PI * 2;
+    const sliceAngle = TWO_PI / prizes.length;
     const winIndex = Math.floor(Math.random() * prizes.length);
-    const baseTarget = -winIndex * sliceAngle - sliceAngle / 2 - Math.PI / 2;
-    const extraTurns = 5 + Math.floor(Math.random() * 4);
-    const totalRotation = baseTarget + Math.PI * 2 * extraTurns;
-
+    // Angle (mod 2π) such that the arrow at -π/2 lands on the middle of winIndex slice
+    const targetMod = ((-winIndex * sliceAngle - sliceAngle / 2 - Math.PI / 2) % TWO_PI + TWO_PI) % TWO_PI;
     const startAngle = angleRef.current;
+    const startMod = ((startAngle % TWO_PI) + TWO_PI) % TWO_PI;
+    let delta = targetMod - startMod;
+    if (delta <= 0) delta += TWO_PI;
+    const extraTurns = 5 + Math.floor(Math.random() * 4);
+    const totalRotation = startAngle + extraTurns * TWO_PI + delta;
+
     const startTime = performance.now();
     const duration = 4000;
 
@@ -148,14 +153,12 @@ export default function SkinRoulette({ player, onAddSkin, onAddBoatSkin, onSpend
         animRef.current = requestAnimationFrame(animate);
       } else {
         setSpinning(false);
-        const TWO_PI = Math.PI * 2;
         const finalAngle = ((angleRef.current % TWO_PI) + TWO_PI) % TWO_PI;
         const arrowAngle = ((-Math.PI / 2 - finalAngle) % TWO_PI + TWO_PI) % TWO_PI;
         const actualIndex = Math.floor(arrowAngle / sliceAngle) % prizes.length;
         const prize = prizes[actualIndex] ?? prizes[winIndex];
         prize.action();
         setResult(prize);
-        // refresh slots for next spin
         setVersion(v => v + 1);
       }
     };
