@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input';
 import { PlayerState } from '@/game/types';
 import { useI18n, Lang, LANG_LABELS } from '@/game/i18n';
 import { findAccountByUsername } from '@/game/leaderboard';
-import { Volume2, VolumeX, Globe, ChevronDown, User, LogIn } from 'lucide-react';
+import { Volume2, VolumeX, Globe, ChevronDown, User, LogIn, Lock } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 
 interface Props {
@@ -21,6 +21,8 @@ interface Props {
   onReset: () => void;
   musicPlaying: boolean;
   onToggleMusic: () => void;
+  world: 1 | 2;
+  onSwitchWorld: () => void;
 }
 
 const LANGS: Lang[] = ['pt', 'en', 'es', 'fr', 'de', 'ja'];
@@ -43,7 +45,7 @@ function saveAccount(acc: Account) {
   localStorage.setItem(ACCOUNT_KEY, JSON.stringify(acc));
 }
 
-export default function MainMenu({ player, onPlay, onCollection, onWarehouse, onSubmarine, onMultiplier, onSkins, onRoulette, onSkinRoulette, onRanking, onReset, musicPlaying, onToggleMusic }: Props) {
+export default function MainMenu({ player, onPlay, onCollection, onWarehouse, onSubmarine, onMultiplier, onSkins, onRoulette, onSkinRoulette, onRanking, onReset, musicPlaying, onToggleMusic, world, onSwitchWorld }: Props) {
   const { lang, setLang, t } = useI18n();
   const [langOpen, setLangOpen] = useState(false);
   const langRef = useRef<HTMLDivElement>(null);
@@ -162,11 +164,22 @@ export default function MainMenu({ player, onPlay, onCollection, onWarehouse, on
         </Button>
       </div>
 
-      {/* Coins display */}
-      <div className="absolute top-4 left-4 z-20">
+      {/* Coins display + World toggle */}
+      <div className="absolute top-4 left-4 z-20 flex items-center gap-2">
         <div className="bg-background/80 backdrop-blur rounded-lg px-4 py-2 text-sm font-bold text-foreground">
           💰 {player.coins} {t('mult.coins')}
         </div>
+        <Button
+          variant={world === 2 ? 'default' : 'outline'}
+          size="sm"
+          onClick={onSwitchWorld}
+          disabled={player.level < 12}
+          className="bg-background/80 backdrop-blur gap-1.5"
+          title={player.level < 12 ? 'Desbloqueia no nível 12' : ''}
+        >
+          {player.level < 12 ? <Lock className="w-3.5 h-3.5" /> : <Globe className="w-3.5 h-3.5" />}
+          {world === 1 ? 'Mundo 2' : 'Mundo 1'}
+        </Button>
       </div>
 
       {/* Register button - bottom left */}

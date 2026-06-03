@@ -66,6 +66,28 @@ export const FISH: Fish[] = [
   { id: 'tamboril', name: 'Tamboril Abissal', rarity: 'abyssal', waterType: 'saltwater', minWeight: 5, maxWeight: 50, xp: 480, description: 'Criatura das trevas com sua luz hipnotizante.', emoji: '🌟' },
   { id: 'marlim-azul', name: 'Marlim-azul', rarity: 'abyssal', waterType: 'saltwater', minWeight: 100, maxWeight: 800, xp: 650, description: 'O troféu supremo da pesca oceânica.', emoji: '🌟' },
   { id: 'dragao-negro', name: 'Dragão Negro', rarity: 'abyssal', waterType: 'saltwater', minWeight: 2, maxWeight: 15, xp: 520, description: 'Criatura bioluminescente das trevas abissais, com presas terríveis.', emoji: '🌟' },
+
+  // ====== MUNDO 2 — EXCLUSIVOS (Nv. 12+) ======
+  // Common
+  { id: 'caranha', name: 'Caranha', rarity: 'common', waterType: 'freshwater', minWeight: 1, maxWeight: 6, xp: 18, description: 'Peixe robusto de águas tropicais do Mundo 2.', emoji: '🐟' },
+  { id: 'pampo', name: 'Pampo', rarity: 'common', waterType: 'saltwater', minWeight: 0.5, maxWeight: 4, xp: 16, description: 'Prata reluzente das águas mais profundas.', emoji: '🐟' },
+  { id: 'papa-terra', name: 'Papa-terra', rarity: 'common', waterType: 'saltwater', minWeight: 0.2, maxWeight: 1.5, xp: 14, description: 'Pequeno costeiro de movimento rápido.', emoji: '🐟' },
+  // Uncommon
+  { id: 'traira', name: 'Traíra', rarity: 'uncommon', waterType: 'freshwater', minWeight: 1, maxWeight: 6, xp: 42, description: 'Predador voraz das águas paradas.', emoji: '🐠' },
+  { id: 'badejo', name: 'Badejo', rarity: 'uncommon', waterType: 'saltwater', minWeight: 3, maxWeight: 15, xp: 44, description: 'Habitante dos recifes profundos.', emoji: '🐠' },
+  { id: 'enchova-negra', name: 'Enchova Negra', rarity: 'uncommon', waterType: 'saltwater', minWeight: 1, maxWeight: 7, xp: 40, description: 'Variante escura e agressiva da enchova.', emoji: '🐠' },
+  // Mythic
+  { id: 'piraiba', name: 'Piraíba', rarity: 'mythic', waterType: 'freshwater', minWeight: 50, maxWeight: 200, xp: 80, description: 'Bagre colossal das águas misteriosas.', emoji: '✨' },
+  { id: 'marlim-branco', name: 'Marlim-branco', rarity: 'mythic', waterType: 'saltwater', minWeight: 20, maxWeight: 80, xp: 78, description: 'Acrobata veloz dos mares abertos.', emoji: '✨' },
+  { id: 'pirambeba', name: 'Pirambeba', rarity: 'mythic', waterType: 'freshwater', minWeight: 1, maxWeight: 5, xp: 72, description: 'Parente raro e místico da piranha.', emoji: '✨' },
+  // Legendary
+  { id: 'cherne', name: 'Cherne', rarity: 'legendary', waterType: 'saltwater', minWeight: 30, maxWeight: 180, xp: 175, description: 'Gigante de fundo dos recifes profundos.', emoji: '🏆' },
+  { id: 'tubarao-azul', name: 'Tubarão-azul', rarity: 'legendary', waterType: 'saltwater', minWeight: 50, maxWeight: 250, xp: 200, description: 'Caçador elegante das águas oceânicas.', emoji: '🏆' },
+  { id: 'pintado-gigante', name: 'Pintado Gigante', rarity: 'legendary', waterType: 'freshwater', minWeight: 50, maxWeight: 200, xp: 165, description: 'Lendário pintado de tamanho descomunal.', emoji: '🏆' },
+  // Abyssal
+  { id: 'leviata', name: 'Leviatã', rarity: 'abyssal', waterType: 'saltwater', minWeight: 500, maxWeight: 3000, xp: 800, description: 'Besta mítica das profundezas insondáveis.', emoji: '🌟' },
+  { id: 'peixe-vampiro', name: 'Peixe-vampiro', rarity: 'abyssal', waterType: 'freshwater', minWeight: 5, maxWeight: 40, xp: 700, description: 'Presas enormes, predador das trevas fluviais.', emoji: '🌟' },
+  { id: 'kraken-jovem', name: 'Kraken Jovem', rarity: 'abyssal', waterType: 'saltwater', minWeight: 100, maxWeight: 800, xp: 850, description: 'Cria do lendário Kraken, tentáculos sombrios.', emoji: '🌟' },
 ];
 
 export const LOCATIONS: FishingLocation[] = [
@@ -157,6 +179,50 @@ export const LOCATIONS: FishingLocation[] = [
     waterColor: '#0e7490', skyColor: '#bae6fd', ambientColor: '#e0f2fe',
     fishIds: ['carpa', 'truta', 'lambari', 'dourado', 'surubim', 'acara', 'cascudo', 'dourado-real', 'matrinxa', 'lucio', 'jaú', 'arraia-doce', 'esturjao'],
     emoji: '🇮🇹'
+  },
+
+  // ===================== MUNDO 2 =====================
+  {
+    id: 'abyss-trench', name: 'Fossa Abissal', type: 'ocean', waterType: 'saltwater',
+    description: 'Águas insondáveis onde reside o Leviatã.', requiredLevel: 12,
+    waterColor: '#0a1028', skyColor: '#1e293b', ambientColor: '#334155',
+    fishIds: ['pampo', 'papa-terra', 'badejo', 'enchova-negra', 'marlim-branco', 'cherne', 'tubarao-azul', 'leviata', 'kraken-jovem'],
+    emoji: '🕳️', world: 2,
+  },
+  {
+    id: 'coral-reef-2', name: 'Recife Esmeralda', type: 'ocean', waterType: 'saltwater',
+    description: 'Recifes brilhantes e perigosos do Mundo 2.', requiredLevel: 13,
+    waterColor: '#047857', skyColor: '#86efac', ambientColor: '#bbf7d0',
+    fishIds: ['pampo', 'papa-terra', 'badejo', 'enchova-negra', 'marlim-branco', 'cherne', 'tubarao-azul', 'kraken-jovem'],
+    emoji: '🪸', world: 2,
+  },
+  {
+    id: 'mystic-river', name: 'Rio Místico', type: 'river', waterType: 'freshwater',
+    description: 'Rio neblinoso habitado por criaturas raras.', requiredLevel: 12,
+    waterColor: '#581c87', skyColor: '#c4b5fd', ambientColor: '#ddd6fe',
+    fishIds: ['caranha', 'traira', 'piraiba', 'pirambeba', 'pintado-gigante', 'peixe-vampiro'],
+    emoji: '🌫️', world: 2,
+  },
+  {
+    id: 'volcano-river', name: 'Rio Vulcânico', type: 'river', waterType: 'freshwater',
+    description: 'Águas quentes a beira de um vulcão ativo.', requiredLevel: 15,
+    waterColor: '#7f1d1d', skyColor: '#fca5a5', ambientColor: '#fecaca',
+    fishIds: ['caranha', 'traira', 'piraiba', 'pirambeba', 'pintado-gigante', 'peixe-vampiro'],
+    emoji: '🌋', world: 2,
+  },
+  {
+    id: 'frozen-lake', name: 'Lago Congelado', type: 'lake', waterType: 'freshwater',
+    description: 'Lago gelado com criaturas adormecidas no fundo.', requiredLevel: 14,
+    waterColor: '#0c4a6e', skyColor: '#e0f2fe', ambientColor: '#f0f9ff',
+    fishIds: ['caranha', 'traira', 'piraiba', 'pirambeba', 'pintado-gigante', 'peixe-vampiro'],
+    emoji: '🧊', world: 2,
+  },
+  {
+    id: 'celestial-lake', name: 'Lago Celestial', type: 'lake', waterType: 'freshwater',
+    description: 'Reflete as estrelas, habitado por seres lendários.', requiredLevel: 17,
+    waterColor: '#1e1b4b', skyColor: '#a78bfa', ambientColor: '#c4b5fd',
+    fishIds: ['caranha', 'traira', 'piraiba', 'pirambeba', 'pintado-gigante', 'peixe-vampiro'],
+    emoji: '🌌', world: 2,
   },
 ];
 

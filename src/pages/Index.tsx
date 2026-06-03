@@ -29,6 +29,15 @@ const IndexInner = () => {
   const { isPlaying: musicPlaying, toggle: toggleMusic } = useBackgroundMusic();
   const [screen, setScreen] = useState<Screen>('menu');
   const [selectedLocation, setSelectedLocation] = useState<FishingLocation | null>(null);
+  const [world, setWorld] = useState<1 | 2>(() => {
+    const saved = localStorage.getItem('fishing-game-world');
+    return saved === '2' ? 2 : 1;
+  });
+
+  useEffect(() => { localStorage.setItem('fishing-game-world', String(world)); }, [world]);
+
+  // Auto revert if player drops below level 12
+  useEffect(() => { if (player.level < 12 && world === 2) setWorld(1); }, [player.level, world]);
 
   // Keep current player in the leaderboard in sync
   useEffect(() => { syncCurrentPlayer(player); }, [player]);
@@ -43,7 +52,7 @@ const IndexInner = () => {
   }, [catchFish]);
 
   if (screen === 'locations') {
-    return <LocationSelect playerLevel={player.level} unlockedLocations={player.unlockedLocations} onSelect={handleSelectLocation} onBack={() => setScreen('menu')} />;
+    return <LocationSelect playerLevel={player.level} unlockedLocations={player.unlockedLocations} world={world} onSelect={handleSelectLocation} onBack={() => setScreen('menu')} />;
   }
   if (screen === 'fishing' && selectedLocation) {
     return <FishingScreen location={selectedLocation} player={player} onCatch={handleCatch} onBack={() => setScreen('locations')} />;
@@ -91,6 +100,8 @@ const IndexInner = () => {
       onReset={resetProgress}
       musicPlaying={musicPlaying}
       onToggleMusic={toggleMusic}
+      world={world}
+      onSwitchWorld={() => setWorld(w => (w === 1 ? 2 : 1))}
     />
   );
 };

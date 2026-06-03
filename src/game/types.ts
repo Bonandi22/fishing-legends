@@ -26,6 +26,7 @@ export interface FishingLocation {
   ambientColor: string;
   fishIds: string[];
   emoji: string;
+  world?: 1 | 2;
 }
 
 export interface CaughtFish {
