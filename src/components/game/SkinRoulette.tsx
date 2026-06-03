@@ -130,13 +130,15 @@ export default function SkinRoulette({ player, onAddSkin, onAddBoatSkin, onSpend
     const TWO_PI = Math.PI * 2;
     const sliceAngle = TWO_PI / prizes.length;
     const winIndex = Math.floor(Math.random() * prizes.length);
-    // Angle (mod 2π) such that the arrow at -π/2 lands on the middle of winIndex slice
-    const targetMod = ((-winIndex * sliceAngle - sliceAngle / 2 - Math.PI / 2) % TWO_PI + TWO_PI) % TWO_PI;
+    // Arrow points up (angle = -π/2). We want the MIDDLE of winIndex's slice to land at -π/2.
+    // Slice i middle angle on screen = angle + i*slice + slice/2  ≡  -π/2 (mod 2π)
+    // => angle ≡ -π/2 - i*slice - slice/2
+    const targetMod = ((-Math.PI / 2 - winIndex * sliceAngle - sliceAngle / 2) % TWO_PI + TWO_PI) % TWO_PI;
     const startAngle = angleRef.current;
     const startMod = ((startAngle % TWO_PI) + TWO_PI) % TWO_PI;
     let delta = targetMod - startMod;
     if (delta <= 0) delta += TWO_PI;
-    const extraTurns = 5 + Math.floor(Math.random() * 4);
+    const extraTurns = 5 + Math.floor(Math.random() * 3);
     const totalRotation = startAngle + extraTurns * TWO_PI + delta;
 
     const startTime = performance.now();
@@ -152,11 +154,11 @@ export default function SkinRoulette({ player, onAddSkin, onAddBoatSkin, onSpend
       if (progress < 1) {
         animRef.current = requestAnimationFrame(animate);
       } else {
+        // Snap exactly to target to avoid float drift
+        angleRef.current = totalRotation;
+        drawWheel(totalRotation);
         setSpinning(false);
-        const finalAngle = ((angleRef.current % TWO_PI) + TWO_PI) % TWO_PI;
-        const arrowAngle = ((-Math.PI / 2 - finalAngle) % TWO_PI + TWO_PI) % TWO_PI;
-        const actualIndex = Math.floor(arrowAngle / sliceAngle) % prizes.length;
-        const prize = prizes[actualIndex] ?? prizes[winIndex];
+        const prize = prizes[winIndex];
         prize.action();
         setResult(prize);
         setVersion(v => v + 1);
