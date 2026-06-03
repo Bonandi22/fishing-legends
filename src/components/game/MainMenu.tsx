@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input';
 import { PlayerState } from '@/game/types';
 import { useI18n, Lang, LANG_LABELS } from '@/game/i18n';
 import { findAccountByUsername } from '@/game/leaderboard';
-import { Volume2, VolumeX, Globe, ChevronDown, User, LogIn } from 'lucide-react';
+import { Volume2, VolumeX, Globe, ChevronDown, User, LogIn, Lock } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 
 interface Props {
@@ -21,6 +21,8 @@ interface Props {
   onReset: () => void;
   musicPlaying: boolean;
   onToggleMusic: () => void;
+  world: 1 | 2;
+  onSwitchWorld: () => void;
 }
 
 const LANGS: Lang[] = ['pt', 'en', 'es', 'fr', 'de', 'ja'];
