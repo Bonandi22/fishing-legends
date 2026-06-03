@@ -52,7 +52,7 @@ const IndexInner = () => {
   }, [catchFish]);
 
   if (screen === 'locations') {
-    return <LocationSelect playerLevel={player.level} unlockedLocations={player.unlockedLocations} onSelect={handleSelectLocation} onBack={() => setScreen('menu')} />;
+    return <LocationSelect playerLevel={player.level} unlockedLocations={player.unlockedLocations} world={world} onSelect={handleSelectLocation} onBack={() => setScreen('menu')} />;
   }
   if (screen === 'fishing' && selectedLocation) {
     return <FishingScreen location={selectedLocation} player={player} onCatch={handleCatch} onBack={() => setScreen('locations')} />;
@@ -100,6 +100,8 @@ const IndexInner = () => {
       onReset={resetProgress}
       musicPlaying={musicPlaying}
       onToggleMusic={toggleMusic}
+      world={world}
+      onSwitchWorld={() => setWorld(w => (w === 1 ? 2 : 1))}
     />
   );
 };
