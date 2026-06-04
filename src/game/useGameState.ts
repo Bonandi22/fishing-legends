@@ -64,7 +64,9 @@ export function useGameState() {
       const newCollection = [...prev.collection, caught];
       const heaviest = !prev.heaviestFish || weight > prev.heaviestFish.weight ? caught : prev.heaviestFish;
       const unlockedLocations = LOCATIONS.filter(l => l.requiredLevel <= level).map(l => l.id);
-      const newWarehouse = prev.warehouse.length < 15 ? [...prev.warehouse, caught] : prev.warehouse;
+      const mainFull = prev.warehouse.length >= 15;
+      const newWarehouse = mainFull ? prev.warehouse : [...prev.warehouse, caught];
+      const newAquariumWarehouse = mainFull ? [...(prev.aquariumWarehouse || []), caught] : (prev.aquariumWarehouse || []);
 
       return {
         ...prev,
@@ -74,6 +76,7 @@ export function useGameState() {
         unlockedLocations,
         heaviestFish: heaviest,
         warehouse: newWarehouse,
+        aquariumWarehouse: newAquariumWarehouse,
       };
     });
   }, []);
