@@ -18,6 +18,7 @@ interface Props {
   onRoulette: () => void;
   onSkinRoulette: () => void;
   onRanking: () => void;
+  onAquarium: () => void;
   onReset: () => void;
   musicPlaying: boolean;
   onToggleMusic: () => void;
@@ -45,7 +46,7 @@ function saveAccount(acc: Account) {
   localStorage.setItem(ACCOUNT_KEY, JSON.stringify(acc));
 }
 
-export default function MainMenu({ player, onPlay, onCollection, onWarehouse, onSubmarine, onMultiplier, onSkins, onRoulette, onSkinRoulette, onRanking, onReset, musicPlaying, onToggleMusic, world, onSwitchWorld }: Props) {
+export default function MainMenu({ player, onPlay, onCollection, onWarehouse, onSubmarine, onMultiplier, onSkins, onRoulette, onSkinRoulette, onRanking, onAquarium, onReset, musicPlaying, onToggleMusic, world, onSwitchWorld }: Props) {
   const { lang, setLang, t } = useI18n();
   const [langOpen, setLangOpen] = useState(false);
   const langRef = useRef<HTMLDivElement>(null);
@@ -381,6 +382,9 @@ export default function MainMenu({ player, onPlay, onCollection, onWarehouse, on
           </div>
           <Button onClick={onSkinRoulette} variant="outline" size="lg" className="w-64 h-12 text-sm font-bold border-primary text-primary hover:bg-primary/10">
             {t('menu.skinRoulette')}
+          </Button>
+          <Button onClick={onAquarium} size="lg" className="w-64 h-12 text-sm font-bold bg-cyan-600 hover:bg-cyan-500 text-white">
+            {t('menu.aquarium')} ({(player.aquariumWarehouse?.length || 0)} + {Object.values(player.aquariumSectors || {}).reduce((s, a) => s + (a?.length || 0), 0)})
           </Button>
           {player.level > 1 && (
             <Button onClick={onReset} variant="ghost" size="sm" className="text-muted-foreground mt-2">
