@@ -44,6 +44,24 @@ import dragaoNegro from '@/assets/fish/dragao-negro.png';
 import peixeVela from '@/assets/fish/peixe-vela.png';
 import cascudo from '@/assets/fish/cascudo.png';
 import acara from '@/assets/fish/acara.png';
+// Mundo 2
+import caranha from '@/assets/fish/caranha.png';
+import pampo from '@/assets/fish/pampo.png';
+import papaTerra from '@/assets/fish/papa-terra.png';
+import traira from '@/assets/fish/traira.png';
+import badejo from '@/assets/fish/badejo.png';
+import enchovaNegra from '@/assets/fish/enchova-negra.png';
+import piraiba from '@/assets/fish/piraiba.png';
+import marlimBranco from '@/assets/fish/marlim-branco.png';
+import pirambeba from '@/assets/fish/pirambeba.png';
+import cherne from '@/assets/fish/cherne.png';
+import tubaraoAzul from '@/assets/fish/tubarao-azul.png';
+import pintadoGigante from '@/assets/fish/pintado-gigante.png';
+import leviata from '@/assets/fish/leviata.png';
+import peixeVampiro from '@/assets/fish/peixe-vampiro.png';
+import krakenJovem from '@/assets/fish/kraken-jovem.png';
+
+
 
 export const FISH_IMAGES: Record<string, string> = {
   'tilapia': tilapia,
@@ -92,4 +110,19 @@ export const FISH_IMAGES: Record<string, string> = {
   'peixe-vela': peixeVela,
   'cascudo': cascudo,
   'acara': acara,
+  'caranha': caranha,
+  'pampo': pampo,
+  'papa-terra': papaTerra,
+  'traira': traira,
+  'badejo': badejo,
+  'enchova-negra': enchovaNegra,
+  'piraiba': piraiba,
+  'marlim-branco': marlimBranco,
+  'pirambeba': pirambeba,
+  'cherne': cherne,
+  'tubarao-azul': tubaraoAzul,
+  'pintado-gigante': pintadoGigante,
+  'leviata': leviata,
+  'peixe-vampiro': peixeVampiro,
+  'kraken-jovem': krakenJovem,
 };
