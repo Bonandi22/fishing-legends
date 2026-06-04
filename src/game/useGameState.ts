@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
-import { PlayerState, CaughtFish, Fish, getXpForLevel, FISH_COIN_VALUE, MULTIPLIER_COST, MULTIPLIER_DURATION } from './types';
+import { PlayerState, CaughtFish, Fish, getXpForLevel, FISH_COIN_VALUE, MULTIPLIER_COST, MULTIPLIER_DURATION, AQUARIUM_REWARDS } from './types';
 import { LOCATIONS } from './data';
 
 const STORAGE_KEY = 'fishing-game-state';
@@ -21,6 +21,8 @@ const defaultState: PlayerState = {
   luckMultiplierEnd: null,
   strengthMultiplierEnd: null,
   lastRouletteDate: null,
+  aquariumWarehouse: [],
+  aquariumSectors: { 1: [], 2: [], 3: [], 4: [], 5: [] },
 };
 
 function loadState(): PlayerState {

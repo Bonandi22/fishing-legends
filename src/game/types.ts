@@ -149,7 +149,19 @@ export interface PlayerState {
   luckMultiplierEnd: number | null;
   strengthMultiplierEnd: number | null;
   lastRouletteDate: string | null;
+  aquariumWarehouse: CaughtFish[];
+  aquariumSectors: Record<number, CaughtFish[]>;
 }
+
+export const AQUARIUM_REWARDS: Record<Rarity, { coins: number; xp: number }> = {
+  common: { coins: 5, xp: 5 },
+  uncommon: { coins: 15, xp: 15 },
+  mythic: { coins: 40, xp: 40 },
+  legendary: { coins: 100, xp: 80 },
+  abyssal: { coins: 250, xp: 200 },
+};
+
+export const AQUARIUM_SECTORS = [1, 2, 3, 4, 5] as const;
 
 export const WAREHOUSE_LIMIT = 15;
 export const MULTIPLIER_COST = 3000;
