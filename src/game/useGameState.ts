@@ -200,8 +200,30 @@ export function useGameState() {
     setPlayer(prev => ({ ...prev, lastRouletteDate: date }));
   }, []);
 
+  const moveAquariumFishToSector = useCallback((timestamp: number, sector: number) => {
+    setPlayer(prev => {
+      const aw = prev.aquariumWarehouse || [];
+      const idx = aw.findIndex(c => c.timestamp === timestamp);
+      if (idx < 0) return prev;
+      const caught = aw[idx];
+      const reward = AQUARIUM_REWARDS[caught.fish.rarity];
+      const { xp, level, xpToNextLevel } = levelUp(prev.xp + reward.xp, prev.level, prev.xpToNextLevel);
+      const unlockedLocations = LOCATIONS.filter(l => l.requiredLevel <= level).map(l => l.id);
+      const sectors = { ...(prev.aquariumSectors || { 1:[],2:[],3:[],4:[],5:[] }) };
+      sectors[sector] = [...(sectors[sector] || []), caught];
+      return {
+        ...prev,
+        xp, level, xpToNextLevel,
+        unlockedLocations,
+        coins: prev.coins + reward.coins,
+        aquariumWarehouse: aw.filter((_, i) => i !== idx),
+        aquariumSectors: sectors,
+      };
+    });
+  }, []);
+
   const resetProgress = useCallback(() => {
-    setPlayer({ ...defaultState });
+    setPlayer({ ...defaultState, aquariumSectors: { 1:[],2:[],3:[],4:[],5:[] } });
   }, []);
 
   return {
@@ -209,5 +231,6 @@ export function useGameState() {
     buyMultiplier, buySkin, equipSkin,
     buyBoatSkin, equipBoatSkin,
     addCoins, addSkin, addBoatSkin, spendCoins, addMultiplier, setLastRouletteDate,
+    moveAquariumFishToSector,
   };
 }
