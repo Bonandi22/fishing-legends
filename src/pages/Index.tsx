@@ -12,12 +12,13 @@ import BoatSkinsShop from '@/components/game/BoatSkinsShop';
 import Roulette from '@/components/game/Roulette';
 import SkinRoulette from '@/components/game/SkinRoulette';
 import Ranking from '@/components/game/Ranking';
+import Aquarium from '@/components/game/Aquarium';
 import { useGameState } from '@/game/useGameState';
 import { useBackgroundMusic } from '@/game/useBackgroundMusic';
 import { I18nProvider } from '@/game/i18n';
 import { FishingLocation, Fish } from '@/game/types';
 
-type Screen = 'menu' | 'locations' | 'fishing' | 'collection' | 'warehouse' | 'submarine' | 'multiplier' | 'skins' | 'boatSkins' | 'roulette' | 'skinRoulette' | 'ranking';
+type Screen = 'menu' | 'locations' | 'fishing' | 'collection' | 'warehouse' | 'submarine' | 'multiplier' | 'skins' | 'boatSkins' | 'roulette' | 'skinRoulette' | 'ranking' | 'aquarium';
 
 const IndexInner = () => {
   const {
@@ -25,6 +26,7 @@ const IndexInner = () => {
     buyMultiplier, buySkin, equipSkin,
     buyBoatSkin, equipBoatSkin,
     addCoins, addSkin, addBoatSkin, spendCoins, addMultiplier, setLastRouletteDate,
+    moveAquariumFishToSector,
   } = useGameState();
   const { isPlaying: musicPlaying, toggle: toggleMusic } = useBackgroundMusic();
   const [screen, setScreen] = useState<Screen>('menu');
@@ -84,6 +86,9 @@ const IndexInner = () => {
   if (screen === 'ranking') {
     return <Ranking player={player} onBack={() => setScreen('menu')} />;
   }
+  if (screen === 'aquarium') {
+    return <Aquarium player={player} onMoveToSector={moveAquariumFishToSector} onBack={() => setScreen('menu')} />;
+  }
 
   return (
     <MainMenu
@@ -97,6 +102,7 @@ const IndexInner = () => {
       onRoulette={() => setScreen('roulette')}
       onSkinRoulette={() => setScreen('skinRoulette')}
       onRanking={() => setScreen('ranking')}
+      onAquarium={() => setScreen('aquarium')}
       onReset={resetProgress}
       musicPlaying={musicPlaying}
       onToggleMusic={toggleMusic}

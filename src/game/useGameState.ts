@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
-import { PlayerState, CaughtFish, Fish, getXpForLevel, FISH_COIN_VALUE, MULTIPLIER_COST, MULTIPLIER_DURATION } from './types';
+import { PlayerState, CaughtFish, Fish, getXpForLevel, FISH_COIN_VALUE, MULTIPLIER_COST, MULTIPLIER_DURATION, AQUARIUM_REWARDS } from './types';
 import { LOCATIONS } from './data';
 
 const STORAGE_KEY = 'fishing-game-state';
@@ -21,6 +21,8 @@ const defaultState: PlayerState = {
   luckMultiplierEnd: null,
   strengthMultiplierEnd: null,
   lastRouletteDate: null,
+  aquariumWarehouse: [],
+  aquariumSectors: { 1: [], 2: [], 3: [], 4: [], 5: [] },
 };
 
 function loadState(): PlayerState {
@@ -62,7 +64,9 @@ export function useGameState() {
       const newCollection = [...prev.collection, caught];
       const heaviest = !prev.heaviestFish || weight > prev.heaviestFish.weight ? caught : prev.heaviestFish;
       const unlockedLocations = LOCATIONS.filter(l => l.requiredLevel <= level).map(l => l.id);
-      const newWarehouse = prev.warehouse.length < 15 ? [...prev.warehouse, caught] : prev.warehouse;
+      const mainFull = prev.warehouse.length >= 15;
+      const newWarehouse = mainFull ? prev.warehouse : [...prev.warehouse, caught];
+      const newAquariumWarehouse = mainFull ? [...(prev.aquariumWarehouse || []), caught] : (prev.aquariumWarehouse || []);
 
       return {
         ...prev,
@@ -72,6 +76,7 @@ export function useGameState() {
         unlockedLocations,
         heaviestFish: heaviest,
         warehouse: newWarehouse,
+        aquariumWarehouse: newAquariumWarehouse,
       };
     });
   }, []);
@@ -195,8 +200,30 @@ export function useGameState() {
     setPlayer(prev => ({ ...prev, lastRouletteDate: date }));
   }, []);
 
+  const moveAquariumFishToSector = useCallback((timestamp: number, sector: number) => {
+    setPlayer(prev => {
+      const aw = prev.aquariumWarehouse || [];
+      const idx = aw.findIndex(c => c.timestamp === timestamp);
+      if (idx < 0) return prev;
+      const caught = aw[idx];
+      const reward = AQUARIUM_REWARDS[caught.fish.rarity];
+      const { xp, level, xpToNextLevel } = levelUp(prev.xp + reward.xp, prev.level, prev.xpToNextLevel);
+      const unlockedLocations = LOCATIONS.filter(l => l.requiredLevel <= level).map(l => l.id);
+      const sectors = { ...(prev.aquariumSectors || { 1:[],2:[],3:[],4:[],5:[] }) };
+      sectors[sector] = [...(sectors[sector] || []), caught];
+      return {
+        ...prev,
+        xp, level, xpToNextLevel,
+        unlockedLocations,
+        coins: prev.coins + reward.coins,
+        aquariumWarehouse: aw.filter((_, i) => i !== idx),
+        aquariumSectors: sectors,
+      };
+    });
+  }, []);
+
   const resetProgress = useCallback(() => {
-    setPlayer({ ...defaultState });
+    setPlayer({ ...defaultState, aquariumSectors: { 1:[],2:[],3:[],4:[],5:[] } });
   }, []);
 
   return {
@@ -204,5 +231,6 @@ export function useGameState() {
     buyMultiplier, buySkin, equipSkin,
     buyBoatSkin, equipBoatSkin,
     addCoins, addSkin, addBoatSkin, spendCoins, addMultiplier, setLastRouletteDate,
+    moveAquariumFishToSector,
   };
 }
