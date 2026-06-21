@@ -62,6 +62,7 @@ export const ROD_SKINS: RodSkin[] = [
   { id: 'gold', name: 'Ouro', emoji: '✨', price: 7500, color: '#FFD700', rodColor: '#B8860B', gripColor: '#DAA520', accentColor: '#FFD700', reelColor: '#CD950C', metalness: 0.9, emissive: '#aa8800' },
   { id: 'diamond', name: 'Diamante', emoji: '💎', price: 10000, color: '#00BCD4', rodColor: '#006064', gripColor: '#00838F', accentColor: '#80DEEA', reelColor: '#00ACC1', metalness: 0.95, emissive: '#00ccff' },
   { id: 'celestial', name: 'Celestial', emoji: '🌌', price: 99999, color: '#a78bfa', rodColor: '#1b0a3a', gripColor: '#3b1d6e', accentColor: '#f0abfc', reelColor: '#7c3aed', metalness: 1.0, emissive: '#c026d3', exclusive: true },
+  { id: 'daily_aurora', name: 'Aurora Diária', emoji: '🌠', price: 99999, color: '#34d399', rodColor: '#062e2b', gripColor: '#0f766e', accentColor: '#a7f3d0', reelColor: '#10b981', metalness: 0.95, emissive: '#22c55e', exclusive: true },
 ];
 
 export interface BoatSkin {
