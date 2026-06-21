@@ -13,12 +13,13 @@ import Roulette from '@/components/game/Roulette';
 import SkinRoulette from '@/components/game/SkinRoulette';
 import Ranking from '@/components/game/Ranking';
 import Aquarium from '@/components/game/Aquarium';
+import DailyGifts from '@/components/game/DailyGifts';
 import { useGameState } from '@/game/useGameState';
 import { useBackgroundMusic } from '@/game/useBackgroundMusic';
 import { I18nProvider } from '@/game/i18n';
 import { FishingLocation, Fish } from '@/game/types';
 
-type Screen = 'menu' | 'locations' | 'fishing' | 'collection' | 'warehouse' | 'submarine' | 'multiplier' | 'skins' | 'boatSkins' | 'roulette' | 'skinRoulette' | 'ranking' | 'aquarium';
+type Screen = 'menu' | 'locations' | 'fishing' | 'collection' | 'warehouse' | 'submarine' | 'multiplier' | 'skins' | 'boatSkins' | 'roulette' | 'skinRoulette' | 'ranking' | 'aquarium' | 'dailyGifts';
 
 const IndexInner = () => {
   const {
