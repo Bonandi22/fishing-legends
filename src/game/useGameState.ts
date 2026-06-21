@@ -23,6 +23,8 @@ const defaultState: PlayerState = {
   lastRouletteDate: null,
   aquariumWarehouse: [],
   aquariumSectors: { 1: [], 2: [], 3: [], 4: [], 5: [] },
+  dailyGiftsLastClaim: null,
+  dailyGiftsDay: 1,
 };
 
 function loadState(): PlayerState {
