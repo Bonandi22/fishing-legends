@@ -171,7 +171,28 @@ export default function MainMenu({ player, onPlay, onCollection, onWarehouse, on
           {musicPlaying ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
           {t('settings.music')}
         </Button>
+        <div ref={trackRef} className="relative">
+          <Button variant="outline" size="sm" onClick={() => setTrackOpen(o => !o)} className="bg-background/80 backdrop-blur gap-1.5">
+            <Music className="w-4 h-4" />
+            {MUSIC_TRACKS.find(t => t.id === musicTrack)?.label ?? 'Música'}
+            <ChevronDown className="w-3 h-3" />
+          </Button>
+          {trackOpen && (
+            <div className="absolute right-0 mt-1 bg-card border border-border rounded-lg shadow-xl py-1 min-w-[170px] z-50">
+              {MUSIC_TRACKS.map(tr => (
+                <button
+                  key={tr.id}
+                  onClick={() => { onSetMusicTrack(tr.id); setTrackOpen(false); }}
+                  className={`w-full text-left px-3 py-1.5 text-sm hover:bg-accent transition-colors ${tr.id === musicTrack ? 'font-bold text-primary' : 'text-foreground'}`}
+                >
+                  {tr.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
+
 
       {/* Coins display + World toggle */}
       <div className="absolute top-4 left-4 z-20 flex items-center gap-2">
