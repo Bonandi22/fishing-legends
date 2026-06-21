@@ -123,6 +123,13 @@ export const BOAT_SKINS: BoatSkin[] = [
     hull: ['#0a1428', '#040814', '#000208'],
     rail: ['#7df9ff', '#1a90ff', '#0a3a8a'],
     caulk: '#7df9ff',
+  {
+    id: 'daily_leviathan', name: 'Leviatã Diário', emoji: '🐋', price: 99999,
+    deck: ['#1e3a8a', '#1e40af', '#1d4ed8', '#172554', '#0c1638'],
+    hull: ['#0c1638', '#050a1c', '#000208'],
+    rail: ['#67e8f9', '#06b6d4', '#0e7490'],
+    caulk: '#67e8f9',
+    exclusive: true,
   },
 ];
 
