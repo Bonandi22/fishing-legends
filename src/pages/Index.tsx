@@ -29,7 +29,7 @@ const IndexInner = () => {
     addCoins, addSkin, addBoatSkin, spendCoins, addMultiplier, setLastRouletteDate,
     moveAquariumFishToSector, claimDailyGift,
   } = useGameState();
-  const { isPlaying: musicPlaying, toggle: toggleMusic } = useBackgroundMusic();
+  const { isPlaying: musicPlaying, toggle: toggleMusic, trackId: musicTrack, setTrack: setMusicTrack } = useBackgroundMusic();
   const [screen, setScreen] = useState<Screen>('menu');
   const [selectedLocation, setSelectedLocation] = useState<FishingLocation | null>(null);
   const [world, setWorld] = useState<1 | 2>(() => {
@@ -111,6 +111,8 @@ const IndexInner = () => {
       onReset={resetProgress}
       musicPlaying={musicPlaying}
       onToggleMusic={toggleMusic}
+      musicTrack={musicTrack}
+      onSetMusicTrack={setMusicTrack}
       world={world}
       onSwitchWorld={() => setWorld(w => (w === 1 ? 2 : 1))}
     />

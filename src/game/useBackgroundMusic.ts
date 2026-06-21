@@ -1,14 +1,87 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 
-// Casual lo-fi fishing game background music using Web Audio API
+// ============= Music track presets =============
+export type MusicTrackId = 'calm' | 'adventure' | 'mystery' | 'epic' | 'lofi';
+
+interface TrackPreset {
+  id: MusicTrackId;
+  label: string;
+  scale: number[];        // frequencies
+  bassMul: number;        // bass octave multiplier
+  oscA: OscillatorType;
+  oscB: OscillatorType;
+  intervalMs: number;     // base time between notes
+  intervalJitter: number; // random ms added
+  noteDur: number;        // seconds note holds
+  chordChance: number;
+  masterVol: number;
+}
+
+export const MUSIC_TRACKS: TrackPreset[] = [
+  {
+    id: 'calm',
+    label: '🌊 Calma',
+    scale: [261.63, 293.66, 329.63, 392.00, 440.00, 523.25, 587.33, 659.25],
+    bassMul: 0.5,
+    oscA: 'sine', oscB: 'triangle',
+    intervalMs: 800, intervalJitter: 400, noteDur: 1.8,
+    chordChance: 0.4, masterVol: 0.12,
+  },
+  {
+    id: 'adventure',
+    label: '⛵ Aventura',
+    scale: [196.00, 246.94, 293.66, 329.63, 392.00, 493.88, 587.33, 659.25],
+    bassMul: 0.5,
+    oscA: 'triangle', oscB: 'sawtooth',
+    intervalMs: 450, intervalJitter: 150, noteDur: 1.2,
+    chordChance: 0.5, masterVol: 0.10,
+  },
+  {
+    id: 'mystery',
+    label: '🌙 Misteriosa',
+    // minor / phrygian-ish
+    scale: [220.00, 233.08, 277.18, 311.13, 349.23, 415.30, 466.16, 554.37],
+    bassMul: 0.25,
+    oscA: 'sine', oscB: 'sine',
+    intervalMs: 1200, intervalJitter: 600, noteDur: 2.6,
+    chordChance: 0.7, masterVol: 0.11,
+  },
+  {
+    id: 'epic',
+    label: '⚔️ Épica',
+    scale: [130.81, 174.61, 196.00, 220.00, 261.63, 329.63, 392.00, 523.25],
+    bassMul: 0.5,
+    oscA: 'sawtooth', oscB: 'triangle',
+    intervalMs: 380, intervalJitter: 120, noteDur: 1.4,
+    chordChance: 0.8, masterVol: 0.09,
+  },
+  {
+    id: 'lofi',
+    label: '🎧 Lo-fi',
+    scale: [261.63, 311.13, 349.23, 392.00, 466.16, 523.25, 622.25, 698.46],
+    bassMul: 0.5,
+    oscA: 'sine', oscB: 'square',
+    intervalMs: 950, intervalJitter: 350, noteDur: 2.0,
+    chordChance: 0.55, masterVol: 0.10,
+  },
+];
+
+const DEFAULT_TRACK: MusicTrackId = 'calm';
+
 export function useBackgroundMusic() {
   const [isPlaying, setIsPlaying] = useState(() => {
     return localStorage.getItem('game-music') !== 'off';
   });
+  const [trackId, setTrackId] = useState<MusicTrackId>(() => {
+    const stored = localStorage.getItem('game-music-track') as MusicTrackId | null;
+    return MUSIC_TRACKS.find(t => t.id === stored) ? (stored as MusicTrackId) : DEFAULT_TRACK;
+  });
+
   const ctxRef = useRef<AudioContext | null>(null);
-  const gainRef = useRef<GainNode | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval>>();
   const activeRef = useRef(false);
+  const trackRef = useRef<MusicTrackId>(trackId);
+  trackRef.current = trackId;
 
   const startMusic = useCallback(() => {
     if (activeRef.current) return;
@@ -16,35 +89,34 @@ export function useBackgroundMusic() {
       const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
       ctxRef.current = ctx;
       const masterGain = ctx.createGain();
-      masterGain.gain.value = 0.12;
       masterGain.connect(ctx.destination);
-      gainRef.current = masterGain;
 
-      // Pentatonic scale notes (peaceful)
-      const scale = [261.63, 293.66, 329.63, 392.00, 440.00, 523.25, 587.33, 659.25];
       let noteIndex = 0;
+
+      const getPreset = () =>
+        MUSIC_TRACKS.find(t => t.id === trackRef.current) ?? MUSIC_TRACKS[0];
 
       const playNote = () => {
         if (!ctxRef.current || ctxRef.current.state === 'closed') return;
+        const preset = getPreset();
+        masterGain.gain.value = preset.masterVol;
         const now = ctx.currentTime;
 
-        // Pick a note from pentatonic scale with some randomness
-        noteIndex = (noteIndex + Math.floor(Math.random() * 3) + 1) % scale.length;
-        const freq = scale[noteIndex];
+        noteIndex = (noteIndex + Math.floor(Math.random() * 3) + 1) % preset.scale.length;
+        const freq = preset.scale[noteIndex];
 
-        // Soft sine + triangle pad
         const osc1 = ctx.createOscillator();
-        osc1.type = 'sine';
+        osc1.type = preset.oscA;
         osc1.frequency.value = freq;
 
         const osc2 = ctx.createOscillator();
-        osc2.type = 'triangle';
-        osc2.frequency.value = freq * 0.5; // octave below
+        osc2.type = preset.oscB;
+        osc2.frequency.value = freq * preset.bassMul;
 
         const noteGain = ctx.createGain();
         noteGain.gain.setValueAtTime(0, now);
         noteGain.gain.linearRampToValueAtTime(0.3, now + 0.1);
-        noteGain.gain.exponentialRampToValueAtTime(0.01, now + 1.8);
+        noteGain.gain.exponentialRampToValueAtTime(0.01, now + preset.noteDur);
 
         osc1.connect(noteGain);
         osc2.connect(noteGain);
@@ -52,48 +124,44 @@ export function useBackgroundMusic() {
 
         osc1.start(now);
         osc2.start(now);
-        osc1.stop(now + 2);
-        osc2.stop(now + 2);
+        osc1.stop(now + preset.noteDur + 0.2);
+        osc2.stop(now + preset.noteDur + 0.2);
 
-        // Occasional chord
-        if (Math.random() > 0.6) {
-          const chordFreq = scale[(noteIndex + 2) % scale.length];
+        if (Math.random() < preset.chordChance) {
+          const chordFreq = preset.scale[(noteIndex + 2) % preset.scale.length];
           const osc3 = ctx.createOscillator();
           osc3.type = 'sine';
           osc3.frequency.value = chordFreq;
           const cg = ctx.createGain();
           cg.gain.setValueAtTime(0, now + 0.05);
           cg.gain.linearRampToValueAtTime(0.15, now + 0.15);
-          cg.gain.exponentialRampToValueAtTime(0.01, now + 1.5);
+          cg.gain.exponentialRampToValueAtTime(0.01, now + preset.noteDur * 0.85);
           osc3.connect(cg);
           cg.connect(masterGain);
           osc3.start(now + 0.05);
-          osc3.stop(now + 1.8);
+          osc3.stop(now + preset.noteDur);
         }
       };
 
-      // Play a note every ~800ms with slight variation
-      const scheduleNotes = () => {
+      const tick = () => {
         playNote();
-        intervalRef.current = setInterval(() => {
-          playNote();
-        }, 800 + Math.random() * 400);
+        const preset = getPreset();
+        const next = preset.intervalMs + Math.random() * preset.intervalJitter;
+        intervalRef.current = setTimeout(tick, next) as unknown as ReturnType<typeof setInterval>;
       };
-
-      scheduleNotes();
+      tick();
       activeRef.current = true;
-    } catch (e) {
+    } catch {
       console.warn('Music not available');
     }
   }, []);
 
   const stopMusic = useCallback(() => {
-    if (intervalRef.current) clearInterval(intervalRef.current);
+    if (intervalRef.current) clearTimeout(intervalRef.current as unknown as number);
     if (ctxRef.current && ctxRef.current.state !== 'closed') {
       ctxRef.current.close().catch(() => {});
     }
     ctxRef.current = null;
-    gainRef.current = null;
     activeRef.current = false;
   }, []);
 
@@ -101,28 +169,25 @@ export function useBackgroundMusic() {
     setIsPlaying(prev => {
       const next = !prev;
       localStorage.setItem('game-music', next ? 'on' : 'off');
-      if (next) {
-        startMusic();
-      } else {
-        stopMusic();
-      }
+      if (next) startMusic(); else stopMusic();
       return next;
     });
   }, [startMusic, stopMusic]);
 
-  // Auto-start on first user interaction if enabled
+  const setTrack = useCallback((id: MusicTrackId) => {
+    setTrackId(id);
+    localStorage.setItem('game-music-track', id);
+  }, []);
+
   useEffect(() => {
     if (!isPlaying) return;
-
     const handler = () => {
       startMusic();
       document.removeEventListener('click', handler);
       document.removeEventListener('touchstart', handler);
     };
-
     document.addEventListener('click', handler, { once: true });
     document.addEventListener('touchstart', handler, { once: true });
-
     return () => {
       document.removeEventListener('click', handler);
       document.removeEventListener('touchstart', handler);
@@ -130,5 +195,5 @@ export function useBackgroundMusic() {
     };
   }, [isPlaying, startMusic, stopMusic]);
 
-  return { isPlaying, toggle };
+  return { isPlaying, toggle, trackId, setTrack, tracks: MUSIC_TRACKS };
 }
