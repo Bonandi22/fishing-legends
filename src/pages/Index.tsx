@@ -90,6 +90,9 @@ const IndexInner = () => {
   if (screen === 'aquarium') {
     return <Aquarium player={player} onMoveToSector={moveAquariumFishToSector} onBack={() => setScreen('menu')} />;
   }
+  if (screen === 'dailyGifts') {
+    return <DailyGifts player={player} onClaim={claimDailyGift} onBack={() => setScreen('menu')} />;
+  }
 
   return (
     <MainMenu
@@ -104,6 +107,7 @@ const IndexInner = () => {
       onSkinRoulette={() => setScreen('skinRoulette')}
       onRanking={() => setScreen('ranking')}
       onAquarium={() => setScreen('aquarium')}
+      onDailyGifts={() => setScreen('dailyGifts')}
       onReset={resetProgress}
       musicPlaying={musicPlaying}
       onToggleMusic={toggleMusic}
