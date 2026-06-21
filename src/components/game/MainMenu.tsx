@@ -182,6 +182,18 @@ export default function MainMenu({ player, onPlay, onCollection, onWarehouse, on
           {player.level < 12 ? <Lock className="w-3.5 h-3.5" /> : <Globe className="w-3.5 h-3.5" />}
           {world === 1 ? 'Mundo 2' : 'Mundo 1'}
         </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={onDailyGifts}
+          className="bg-background/80 backdrop-blur gap-1.5 relative"
+        >
+          <Gift className="w-3.5 h-3.5" />
+          Presentes
+          {player.dailyGiftsLastClaim !== new Date().toISOString().slice(0, 10) && (
+            <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-pink-500 rounded-full animate-pulse" />
+          )}
+        </Button>
       </div>
 
       {/* Register button - bottom left */}
