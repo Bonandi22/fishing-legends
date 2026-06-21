@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input';
 import { PlayerState } from '@/game/types';
 import { useI18n, Lang, LANG_LABELS } from '@/game/i18n';
 import { findAccountByUsername } from '@/game/leaderboard';
-import { Volume2, VolumeX, Globe, ChevronDown, User, LogIn, Lock } from 'lucide-react';
+import { Volume2, VolumeX, Globe, ChevronDown, User, LogIn, Lock, Gift } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 
 interface Props {
@@ -19,6 +19,7 @@ interface Props {
   onSkinRoulette: () => void;
   onRanking: () => void;
   onAquarium: () => void;
+  onDailyGifts: () => void;
   onReset: () => void;
   musicPlaying: boolean;
   onToggleMusic: () => void;
@@ -46,7 +47,7 @@ function saveAccount(acc: Account) {
   localStorage.setItem(ACCOUNT_KEY, JSON.stringify(acc));
 }
 
-export default function MainMenu({ player, onPlay, onCollection, onWarehouse, onSubmarine, onMultiplier, onSkins, onRoulette, onSkinRoulette, onRanking, onAquarium, onReset, musicPlaying, onToggleMusic, world, onSwitchWorld }: Props) {
+export default function MainMenu({ player, onPlay, onCollection, onWarehouse, onSubmarine, onMultiplier, onSkins, onRoulette, onSkinRoulette, onRanking, onAquarium, onDailyGifts, onReset, musicPlaying, onToggleMusic, world, onSwitchWorld }: Props) {
   const { lang, setLang, t } = useI18n();
   const [langOpen, setLangOpen] = useState(false);
   const langRef = useRef<HTMLDivElement>(null);
@@ -180,6 +181,18 @@ export default function MainMenu({ player, onPlay, onCollection, onWarehouse, on
         >
           {player.level < 12 ? <Lock className="w-3.5 h-3.5" /> : <Globe className="w-3.5 h-3.5" />}
           {world === 1 ? 'Mundo 2' : 'Mundo 1'}
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={onDailyGifts}
+          className="bg-background/80 backdrop-blur gap-1.5 relative"
+        >
+          <Gift className="w-3.5 h-3.5" />
+          Presentes
+          {player.dailyGiftsLastClaim !== new Date().toISOString().slice(0, 10) && (
+            <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-pink-500 rounded-full animate-pulse" />
+          )}
         </Button>
       </div>
 

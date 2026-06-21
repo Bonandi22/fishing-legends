@@ -62,6 +62,7 @@ export const ROD_SKINS: RodSkin[] = [
   { id: 'gold', name: 'Ouro', emoji: '✨', price: 7500, color: '#FFD700', rodColor: '#B8860B', gripColor: '#DAA520', accentColor: '#FFD700', reelColor: '#CD950C', metalness: 0.9, emissive: '#aa8800' },
   { id: 'diamond', name: 'Diamante', emoji: '💎', price: 10000, color: '#00BCD4', rodColor: '#006064', gripColor: '#00838F', accentColor: '#80DEEA', reelColor: '#00ACC1', metalness: 0.95, emissive: '#00ccff' },
   { id: 'celestial', name: 'Celestial', emoji: '🌌', price: 99999, color: '#a78bfa', rodColor: '#1b0a3a', gripColor: '#3b1d6e', accentColor: '#f0abfc', reelColor: '#7c3aed', metalness: 1.0, emissive: '#c026d3', exclusive: true },
+  { id: 'daily_aurora', name: 'Aurora Diária', emoji: '🌠', price: 99999, color: '#34d399', rodColor: '#062e2b', gripColor: '#0f766e', accentColor: '#a7f3d0', reelColor: '#10b981', metalness: 0.95, emissive: '#22c55e', exclusive: true },
 ];
 
 export interface BoatSkin {
@@ -77,6 +78,7 @@ export interface BoatSkin {
   rail: [string, string, string];
   /** Plank caulking line color */
   caulk: string;
+  exclusive?: boolean;
 }
 
 export const BOAT_SKINS: BoatSkin[] = [
@@ -122,6 +124,14 @@ export const BOAT_SKINS: BoatSkin[] = [
     rail: ['#7df9ff', '#1a90ff', '#0a3a8a'],
     caulk: '#7df9ff',
   },
+  {
+    id: 'daily_leviathan', name: 'Leviatã Diário', emoji: '🐋', price: 99999,
+    deck: ['#1e3a8a', '#1e40af', '#1d4ed8', '#172554', '#0c1638'],
+    hull: ['#0c1638', '#050a1c', '#000208'],
+    rail: ['#67e8f9', '#06b6d4', '#0e7490'],
+    caulk: '#67e8f9',
+    exclusive: true,
+  },
 ];
 
 export const FISH_COIN_VALUE: Record<Rarity, number> = {
@@ -151,7 +161,25 @@ export interface PlayerState {
   lastRouletteDate: string | null;
   aquariumWarehouse: CaughtFish[];
   aquariumSectors: Record<number, CaughtFish[]>;
+  dailyGiftsLastClaim: string | null;
+  dailyGiftsDay: number; // next day to claim (1..7)
 }
+
+export type DailyGiftReward =
+  | { type: 'coins'; amount: number }
+  | { type: 'multiplier'; kind: 'luck' | 'strength' }
+  | { type: 'boatSkin'; skinId: string }
+  | { type: 'rodSkin'; skinId: string };
+
+export const DAILY_GIFTS: DailyGiftReward[] = [
+  { type: 'coins', amount: 150 },
+  { type: 'coins', amount: 300 },
+  { type: 'multiplier', kind: 'luck' },
+  { type: 'coins', amount: 600 },
+  { type: 'multiplier', kind: 'strength' },
+  { type: 'boatSkin', skinId: 'daily_leviathan' },
+  { type: 'rodSkin', skinId: 'daily_aurora' },
+];
 
 export const AQUARIUM_REWARDS: Record<Rarity, { coins: number; xp: number }> = {
   common: { coins: 5, xp: 5 },

@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
-import { PlayerState, CaughtFish, Fish, getXpForLevel, FISH_COIN_VALUE, MULTIPLIER_COST, MULTIPLIER_DURATION, AQUARIUM_REWARDS } from './types';
+import { PlayerState, CaughtFish, Fish, getXpForLevel, FISH_COIN_VALUE, MULTIPLIER_COST, MULTIPLIER_DURATION, AQUARIUM_REWARDS, DAILY_GIFTS, DailyGiftReward } from './types';
 import { LOCATIONS } from './data';
 
 const STORAGE_KEY = 'fishing-game-state';
@@ -23,6 +23,8 @@ const defaultState: PlayerState = {
   lastRouletteDate: null,
   aquariumWarehouse: [],
   aquariumSectors: { 1: [], 2: [], 3: [], 4: [], 5: [] },
+  dailyGiftsLastClaim: null,
+  dailyGiftsDay: 1,
 };
 
 function loadState(): PlayerState {
@@ -222,6 +224,39 @@ export function useGameState() {
     });
   }, []);
 
+  const claimDailyGift = useCallback((): { reward: DailyGiftReward; day: number } | null => {
+    const today = new Date().toISOString().slice(0, 10);
+    let out: { reward: DailyGiftReward; day: number } | null = null;
+    setPlayer(prev => {
+      if (prev.dailyGiftsLastClaim === today) return prev;
+      const day = prev.dailyGiftsDay || 1;
+      const reward = DAILY_GIFTS[day - 1];
+      let next = { ...prev, dailyGiftsLastClaim: today, dailyGiftsDay: day >= 7 ? 1 : day + 1 };
+      if (reward.type === 'coins') {
+        next.coins = prev.coins + reward.amount;
+      } else if (reward.type === 'multiplier') {
+        const end = Date.now() + MULTIPLIER_DURATION;
+        if (reward.kind === 'luck') next.luckMultiplierEnd = end;
+        else next.strengthMultiplierEnd = end;
+      } else if (reward.type === 'boatSkin') {
+        if (prev.ownedBoatSkins.includes(reward.skinId)) {
+          next.coins = prev.coins + 1000;
+        } else {
+          next.ownedBoatSkins = [...prev.ownedBoatSkins, reward.skinId];
+        }
+      } else if (reward.type === 'rodSkin') {
+        if (prev.ownedSkins.includes(reward.skinId)) {
+          next.coins = prev.coins + 1000;
+        } else {
+          next.ownedSkins = [...prev.ownedSkins, reward.skinId];
+        }
+      }
+      out = { reward, day };
+      return next;
+    });
+    return out;
+  }, []);
+
   const resetProgress = useCallback(() => {
     setPlayer({ ...defaultState, aquariumSectors: { 1:[],2:[],3:[],4:[],5:[] } });
   }, []);
@@ -231,6 +266,6 @@ export function useGameState() {
     buyMultiplier, buySkin, equipSkin,
     buyBoatSkin, equipBoatSkin,
     addCoins, addSkin, addBoatSkin, spendCoins, addMultiplier, setLastRouletteDate,
-    moveAquariumFishToSector,
+    moveAquariumFishToSector, claimDailyGift,
   };
 }
