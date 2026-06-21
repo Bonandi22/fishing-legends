@@ -19,6 +19,7 @@ interface Props {
   onSkinRoulette: () => void;
   onRanking: () => void;
   onAquarium: () => void;
+  onDailyGifts: () => void;
   onReset: () => void;
   musicPlaying: boolean;
   onToggleMusic: () => void;
