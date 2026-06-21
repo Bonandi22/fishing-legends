@@ -161,7 +161,25 @@ export interface PlayerState {
   lastRouletteDate: string | null;
   aquariumWarehouse: CaughtFish[];
   aquariumSectors: Record<number, CaughtFish[]>;
+  dailyGiftsLastClaim: string | null;
+  dailyGiftsDay: number; // next day to claim (1..7)
 }
+
+export type DailyGiftReward =
+  | { type: 'coins'; amount: number }
+  | { type: 'multiplier'; kind: 'luck' | 'strength' }
+  | { type: 'boatSkin'; skinId: string }
+  | { type: 'rodSkin'; skinId: string };
+
+export const DAILY_GIFTS: DailyGiftReward[] = [
+  { type: 'coins', amount: 150 },
+  { type: 'coins', amount: 300 },
+  { type: 'multiplier', kind: 'luck' },
+  { type: 'coins', amount: 600 },
+  { type: 'multiplier', kind: 'strength' },
+  { type: 'boatSkin', skinId: 'daily_leviathan' },
+  { type: 'rodSkin', skinId: 'daily_aurora' },
+];
 
 export const AQUARIUM_REWARDS: Record<Rarity, { coins: number; xp: number }> = {
   common: { coins: 5, xp: 5 },
