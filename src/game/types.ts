@@ -78,6 +78,7 @@ export interface BoatSkin {
   rail: [string, string, string];
   /** Plank caulking line color */
   caulk: string;
+  exclusive?: boolean;
 }
 
 export const BOAT_SKINS: BoatSkin[] = [
