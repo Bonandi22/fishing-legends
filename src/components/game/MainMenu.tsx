@@ -4,8 +4,11 @@ import { Input } from '@/components/ui/input';
 import { PlayerState } from '@/game/types';
 import { useI18n, Lang, LANG_LABELS } from '@/game/i18n';
 import { findAccountByUsername } from '@/game/leaderboard';
-import { Volume2, VolumeX, Globe, ChevronDown, User, LogIn, Lock, Gift } from 'lucide-react';
+import { Volume2, VolumeX, Globe, ChevronDown, User, LogIn, Lock, Gift, Music } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
+import type { MusicTrackId } from '@/game/useBackgroundMusic';
+import { MUSIC_TRACKS } from '@/game/useBackgroundMusic';
+
 
 interface Props {
   player: PlayerState;
@@ -23,6 +26,8 @@ interface Props {
   onReset: () => void;
   musicPlaying: boolean;
   onToggleMusic: () => void;
+  musicTrack: MusicTrackId;
+  onSetMusicTrack: (id: MusicTrackId) => void;
   world: 1 | 2;
   onSwitchWorld: () => void;
 }
@@ -47,10 +52,12 @@ function saveAccount(acc: Account) {
   localStorage.setItem(ACCOUNT_KEY, JSON.stringify(acc));
 }
 
-export default function MainMenu({ player, onPlay, onCollection, onWarehouse, onSubmarine, onMultiplier, onSkins, onRoulette, onSkinRoulette, onRanking, onAquarium, onDailyGifts, onReset, musicPlaying, onToggleMusic, world, onSwitchWorld }: Props) {
+export default function MainMenu({ player, onPlay, onCollection, onWarehouse, onSubmarine, onMultiplier, onSkins, onRoulette, onSkinRoulette, onRanking, onAquarium, onDailyGifts, onReset, musicPlaying, onToggleMusic, musicTrack, onSetMusicTrack, world, onSwitchWorld }: Props) {
   const { lang, setLang, t } = useI18n();
   const [langOpen, setLangOpen] = useState(false);
+  const [trackOpen, setTrackOpen] = useState(false);
   const langRef = useRef<HTMLDivElement>(null);
+  const trackRef = useRef<HTMLDivElement>(null);
 
   const [accountModalOpen, setAccountModalOpen] = useState(false);
   const [account, setAccount] = useState<Account | null>(loadAccount);
