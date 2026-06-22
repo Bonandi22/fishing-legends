@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { PlayerState, ROD_SKINS, BOAT_SKINS } from '@/game/types';
@@ -22,46 +22,48 @@ interface Prize {
 }
 
 const SPIN_COST = 1500;
+const WHEEL_SIZE = 320;
+const SLICE_COUNT = 8;
+
+function buildPrizes(onAddSkin: (id: string) => boolean, onAddBoatSkin: (id: string) => boolean): Prize[] {
+  const rods = ROD_SKINS.filter(s => s.price > 0 || s.exclusive);
+  const boats = BOAT_SKINS.filter(s => s.price > 0);
+  const pick = <T,>(arr: T[]) => arr[Math.floor(Math.random() * arr.length)];
+
+  const slots: Prize[] = [];
+  for (let i = 0; i < 4; i++) {
+    const r = pick(rods);
+    slots.push({
+      label: `${r.emoji} ${r.name}`, emoji: r.emoji, color: r.color, kind: 'rod', id: r.id,
+      action: () => onAddSkin(r.id),
+    });
+  }
+  for (let i = 0; i < 4; i++) {
+    const b = pick(boats);
+    slots.push({
+      label: `${b.emoji} ${b.name}`, emoji: b.emoji, color: b.rail[1], kind: 'boat', id: b.id,
+      action: () => onAddBoatSkin(b.id),
+    });
+  }
+  // shuffle
+  for (let i = slots.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [slots[i], slots[j]] = [slots[j], slots[i]];
+  }
+  return slots;
+}
 
 export default function SkinRoulette({ player, onAddSkin, onAddBoatSkin, onSpend, onBack }: Props) {
   const { t } = useI18n();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [spinning, setSpinning] = useState(false);
   const [result, setResult] = useState<Prize | null>(null);
-  const [version, setVersion] = useState(0);
   const angleRef = useRef(0);
   const animRef = useRef<number>(0);
+  const isSpinningRef = useRef(false);
+  const prizesRef = useRef<Prize[]>([]);
 
-  const prizes = useMemo<Prize[]>(() => {
-    const rods = ROD_SKINS.filter(s => s.price > 0 || s.exclusive);
-    const boats = BOAT_SKINS.filter(s => s.price > 0);
-    const pick = <T,>(arr: T[]) => arr[Math.floor(Math.random() * arr.length)];
-
-    const slots: Prize[] = [];
-    for (let i = 0; i < 4; i++) {
-      const r = pick(rods);
-      slots.push({
-        label: `${r.emoji} ${r.name}`, emoji: r.emoji, color: r.color, kind: 'rod', id: r.id,
-        action: () => onAddSkin(r.id),
-      });
-    }
-    for (let i = 0; i < 4; i++) {
-      const b = pick(boats);
-      slots.push({
-        label: `${b.emoji} ${b.name}`, emoji: b.emoji, color: b.rail[1], kind: 'boat', id: b.id,
-        action: () => onAddBoatSkin(b.id),
-      });
-    }
-    // shuffle
-    for (let i = slots.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [slots[i], slots[j]] = [slots[j], slots[i]];
-    }
-    return slots;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [version]);
-
-  const drawWheel = useCallback((angle: number) => {
+  const drawWheel = useCallback((angle: number, prizes: Prize[]) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
@@ -114,25 +116,34 @@ export default function SkinRoulette({ player, onAddSkin, onAddBoatSkin, onSpend
     ctx.strokeStyle = '#fff';
     ctx.lineWidth = 2;
     ctx.stroke();
-  }, [prizes]);
+  }, []);
 
-  useEffect(() => { drawWheel(angleRef.current); }, [drawWheel]);
+  // Build initial wheel
+  useEffect(() => {
+    prizesRef.current = buildPrizes(onAddSkin, onAddBoatSkin);
+    drawWheel(0, prizesRef.current);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   useEffect(() => () => cancelAnimationFrame(animRef.current), []);
 
   const spin = useCallback(() => {
-    if (spinning) return;
+    if (isSpinningRef.current) return;
     if (player.coins < SPIN_COST) return;
     if (!onSpend(SPIN_COST)) return;
 
+    isSpinningRef.current = true;
     setSpinning(true);
     setResult(null);
+
+    // Rebuild prizes for this spin so the visual matches the possible outcomes
+    prizesRef.current = buildPrizes(onAddSkin, onAddBoatSkin);
+    const prizes = prizesRef.current;
 
     const TWO_PI = Math.PI * 2;
     const sliceAngle = TWO_PI / prizes.length;
     const winIndex = Math.floor(Math.random() * prizes.length);
     // Arrow points up (angle = -π/2). We want the MIDDLE of winIndex's slice to land at -π/2.
-    // Slice i middle angle on screen = angle + i*slice + slice/2  ≡  -π/2 (mod 2π)
-    // => angle ≡ -π/2 - i*slice - slice/2
     const targetMod = ((-Math.PI / 2 - winIndex * sliceAngle - sliceAngle / 2) % TWO_PI + TWO_PI) % TWO_PI;
     const startAngle = angleRef.current;
     const startMod = ((startAngle % TWO_PI) + TWO_PI) % TWO_PI;
@@ -150,22 +161,22 @@ export default function SkinRoulette({ player, onAddSkin, onAddBoatSkin, onSpend
       const eased = 1 - Math.pow(1 - progress, 3);
       const currentAngle = startAngle + (totalRotation - startAngle) * eased;
       angleRef.current = currentAngle;
-      drawWheel(currentAngle);
+      drawWheel(currentAngle, prizes);
       if (progress < 1) {
         animRef.current = requestAnimationFrame(animate);
       } else {
-        // Snap exactly to target to avoid float drift
         angleRef.current = totalRotation;
-        drawWheel(totalRotation);
+        drawWheel(totalRotation, prizes);
+        isSpinningRef.current = false;
         setSpinning(false);
         const prize = prizes[winIndex];
+        // Apply reward
         prize.action();
         setResult(prize);
-        setVersion(v => v + 1);
       }
     };
     animRef.current = requestAnimationFrame(animate);
-  }, [spinning, player.coins, onSpend, prizes, drawWheel]);
+  }, [player.coins, onSpend, onAddSkin, onAddBoatSkin, drawWheel]);
 
   const canSpin = player.coins >= SPIN_COST && !spinning;
 
@@ -175,13 +186,13 @@ export default function SkinRoulette({ player, onAddSkin, onAddBoatSkin, onSpend
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-3xl font-bold text-foreground">{t('skinRoulette.title')}</h1>
-            <p className="text-muted-foreground">💰 {player.coins} {t('mult.coins')}</p>
+            <p className="text-muted-foreground">{player.coins} {t('mult.coins')}</p>
           </div>
           <Button variant="outline" onClick={onBack}>{t('loc.back')}</Button>
         </div>
 
         <div className="flex justify-center mb-6">
-          <canvas ref={canvasRef} width={320} height={320} className="rounded-full shadow-xl" />
+          <canvas ref={canvasRef} width={WHEEL_SIZE} height={WHEEL_SIZE} className="rounded-full shadow-xl" />
         </div>
 
         <div className="text-center mb-4">
@@ -191,7 +202,7 @@ export default function SkinRoulette({ player, onAddSkin, onAddBoatSkin, onSpend
             size="lg"
             className="text-lg font-bold px-10"
           >
-            {spinning ? t('roulette.spinning') : `${t('roulette.spin')} (${SPIN_COST} 💰)`}
+            {spinning ? t('roulette.spinning') : `${t('roulette.spin')} (${SPIN_COST})`}
           </Button>
           {player.coins < SPIN_COST && (
             <p className="text-destructive text-sm mt-2">{t('skinRoulette.noCoins')}</p>
@@ -219,3 +230,4 @@ export default function SkinRoulette({ player, onAddSkin, onAddBoatSkin, onSpend
     </div>
   );
 }
+
