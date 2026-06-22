@@ -22,161 +22,76 @@ interface Prize {
 }
 
 const SPIN_COST = 1500;
-const WHEEL_SIZE = 320;
-const SLICE_COUNT = 8;
 
-function buildPrizes(onAddSkin: (id: string) => boolean, onAddBoatSkin: (id: string) => boolean): Prize[] {
-  const rods = ROD_SKINS.filter(s => s.price > 0 || s.exclusive);
-  const boats = BOAT_SKINS.filter(s => s.price > 0);
-  const pick = <T,>(arr: T[]) => arr[Math.floor(Math.random() * arr.length)];
-
-  const slots: Prize[] = [];
-  for (let i = 0; i < 4; i++) {
-    const r = pick(rods);
-    slots.push({
-      label: `${r.emoji} ${r.name}`, emoji: r.emoji, color: r.color, kind: 'rod', id: r.id,
-      action: () => onAddSkin(r.id),
-    });
-  }
-  for (let i = 0; i < 4; i++) {
-    const b = pick(boats);
-    slots.push({
-      label: `${b.emoji} ${b.name}`, emoji: b.emoji, color: b.rail[1], kind: 'boat', id: b.id,
-      action: () => onAddBoatSkin(b.id),
-    });
-  }
-  // shuffle
-  for (let i = slots.length - 1; i > 0; i--) {
+function shuffle<T>(arr: T[]): T[] {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
-    [slots[i], slots[j]] = [slots[j], slots[i]];
+    [a[i], a[j]] = [a[j], a[i]];
   }
-  return slots;
+  return a;
 }
 
 export default function SkinRoulette({ player, onAddSkin, onAddBoatSkin, onSpend, onBack }: Props) {
   const { t } = useI18n();
-  const canvasRef = useRef<HTMLCanvasElement>(null);
   const [spinning, setSpinning] = useState(false);
   const [result, setResult] = useState<Prize | null>(null);
-  const angleRef = useRef(0);
-  const animRef = useRef<number>(0);
-  const isSpinningRef = useRef(false);
-  const prizesRef = useRef<Prize[]>([]);
+  const [rotation, setRotation] = useState(0);
+  const [prizes, setPrizes] = useState<Prize[]>([]);
+  const spinTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const drawWheel = useCallback((angle: number, prizes: Prize[]) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-    const size = canvas.width;
-    const cx = size / 2, cy = size / 2, r = size / 2 - 10;
-    const sliceAngle = (2 * Math.PI) / prizes.length;
-    ctx.clearRect(0, 0, size, size);
+  const buildPrizes = useCallback((): Prize[] => {
+    const rods = ROD_SKINS.filter(s => s.price > 0 || s.exclusive);
+    const boats = BOAT_SKINS.filter(s => s.price > 0);
+    const pick = <T,>(arr: T[]) => arr[Math.floor(Math.random() * arr.length)];
 
-    prizes.forEach((prize, i) => {
-      const start = angle + i * sliceAngle;
-      const end = start + sliceAngle;
-      ctx.beginPath();
-      ctx.moveTo(cx, cy);
-      ctx.arc(cx, cy, r, start, end);
-      ctx.closePath();
-      ctx.fillStyle = prize.color;
-      ctx.fill();
-      ctx.strokeStyle = '#fff';
-      ctx.lineWidth = 2;
-      ctx.stroke();
+    const slots: Prize[] = [];
+    for (let i = 0; i < 4; i++) {
+      const r = pick(rods);
+      slots.push({ label: `${r.emoji} ${r.name}`, emoji: r.emoji, color: r.color, kind: 'rod', id: r.id, action: () => onAddSkin(r.id) });
+    }
+    for (let i = 0; i < 4; i++) {
+      const b = pick(boats);
+      slots.push({ label: `${b.emoji} ${b.name}`, emoji: b.emoji, color: b.rail[1], kind: 'boat', id: b.id, action: () => onAddBoatSkin(b.id) });
+    }
+    return shuffle(slots);
+  }, [onAddSkin, onAddBoatSkin]);
 
-      ctx.save();
-      ctx.translate(cx, cy);
-      ctx.rotate(start + sliceAngle / 2);
-      ctx.textAlign = 'center';
-      ctx.fillStyle = '#fff';
-      ctx.font = 'bold 18px sans-serif';
-      ctx.shadowColor = 'rgba(0,0,0,0.6)';
-      ctx.shadowBlur = 3;
-      ctx.fillText(prize.emoji, r * 0.7, 6);
-      ctx.restore();
-    });
-
-    ctx.beginPath();
-    ctx.arc(cx, cy, 22, 0, Math.PI * 2);
-    ctx.fillStyle = '#222';
-    ctx.fill();
-    ctx.strokeStyle = '#fff';
-    ctx.lineWidth = 3;
-    ctx.stroke();
-
-    ctx.beginPath();
-    ctx.moveTo(cx - 12, 5);
-    ctx.lineTo(cx + 12, 5);
-    ctx.lineTo(cx, 30);
-    ctx.closePath();
-    ctx.fillStyle = '#ff0000';
-    ctx.fill();
-    ctx.strokeStyle = '#fff';
-    ctx.lineWidth = 2;
-    ctx.stroke();
-  }, []);
-
-  // Build initial wheel
   useEffect(() => {
-    prizesRef.current = buildPrizes(onAddSkin, onAddBoatSkin);
-    drawWheel(0, prizesRef.current);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    setPrizes(buildPrizes());
+  }, [buildPrizes]);
 
-  useEffect(() => () => cancelAnimationFrame(animRef.current), []);
+  useEffect(() => {
+    return () => {
+      if (spinTimeoutRef.current) clearTimeout(spinTimeoutRef.current);
+    };
+  }, []);
 
   const spin = useCallback(() => {
-    if (isSpinningRef.current) return;
+    if (spinning) return;
     if (player.coins < SPIN_COST) return;
     if (!onSpend(SPIN_COST)) return;
 
-    isSpinningRef.current = true;
     setSpinning(true);
     setResult(null);
 
-    // Rebuild prizes for this spin so the visual matches the possible outcomes
-    prizesRef.current = buildPrizes(onAddSkin, onAddBoatSkin);
-    const prizes = prizesRef.current;
+    const newPrizes = buildPrizes();
+    setPrizes(newPrizes);
 
-    const TWO_PI = Math.PI * 2;
-    const sliceAngle = TWO_PI / prizes.length;
-    const winIndex = Math.floor(Math.random() * prizes.length);
-    // Arrow points up (angle = -π/2). We want the MIDDLE of winIndex's slice to land at -π/2.
-    const targetMod = ((-Math.PI / 2 - winIndex * sliceAngle - sliceAngle / 2) % TWO_PI + TWO_PI) % TWO_PI;
-    const startAngle = angleRef.current;
-    const startMod = ((startAngle % TWO_PI) + TWO_PI) % TWO_PI;
-    let delta = targetMod - startMod;
-    if (delta <= 0) delta += TWO_PI;
-    const extraTurns = 5 + Math.floor(Math.random() * 3);
-    const totalRotation = startAngle + extraTurns * TWO_PI + delta;
+    const winIndex = Math.floor(Math.random() * newPrizes.length);
+    const sliceAngle = 360 / newPrizes.length;
+    const extraTurns = 5 + Math.floor(Math.random() * 4);
+    const targetRotation = rotation + extraTurns * 360 + (360 - winIndex * sliceAngle - sliceAngle / 2);
 
-    const startTime = performance.now();
-    const duration = 4000;
+    setRotation(targetRotation);
 
-    const animate = (now: number) => {
-      const elapsed = now - startTime;
-      const progress = Math.min(elapsed / duration, 1);
-      const eased = 1 - Math.pow(1 - progress, 3);
-      const currentAngle = startAngle + (totalRotation - startAngle) * eased;
-      angleRef.current = currentAngle;
-      drawWheel(currentAngle, prizes);
-      if (progress < 1) {
-        animRef.current = requestAnimationFrame(animate);
-      } else {
-        angleRef.current = totalRotation;
-        drawWheel(totalRotation, prizes);
-        isSpinningRef.current = false;
-        setSpinning(false);
-        const prize = prizes[winIndex];
-        // Apply reward
-        prize.action();
-        setResult(prize);
-      }
-    };
-    animRef.current = requestAnimationFrame(animate);
-  }, [player.coins, onSpend, onAddSkin, onAddBoatSkin, drawWheel]);
+    spinTimeoutRef.current = setTimeout(() => {
+      setSpinning(false);
+      const prize = newPrizes[winIndex];
+      prize.action();
+      setResult(prize);
+    }, 4200);
+  }, [spinning, player.coins, onSpend, buildPrizes, rotation]);
 
   const canSpin = player.coins >= SPIN_COST && !spinning;
 
@@ -191,8 +106,72 @@ export default function SkinRoulette({ player, onAddSkin, onAddBoatSkin, onSpend
           <Button variant="outline" onClick={onBack}>{t('loc.back')}</Button>
         </div>
 
+        {/* Wheel using CSS rotation for reliable animation */}
         <div className="flex justify-center mb-6">
-          <canvas ref={canvasRef} width={WHEEL_SIZE} height={WHEEL_SIZE} className="rounded-full shadow-xl" />
+          <div className="relative" style={{ width: 320, height: 320 }}>
+            <div
+              className="absolute inset-0 rounded-full shadow-xl"
+              style={{
+                transform: `rotate(${rotation}deg)`,
+                transition: spinning ? 'transform 4s cubic-bezier(0.25, 0.1, 0.25, 1)' : 'none',
+              }}
+            >
+              <svg viewBox="0 0 320 320" width="320" height="320" className="rounded-full">
+                {prizes.map((prize, i) => {
+                  const startAngle = (i * 360) / prizes.length;
+                  const endAngle = ((i + 1) * 360) / prizes.length;
+                  const largeArc = endAngle - startAngle > 180 ? 1 : 0;
+                  const r = 150;
+                  const cx = 160;
+                  const cy = 160;
+                  const rad = (deg: number) => (deg * Math.PI) / 180;
+                  const x1 = cx + r * Math.cos(rad(startAngle));
+                  const y1 = cy + r * Math.sin(rad(startAngle));
+                  const x2 = cx + r * Math.cos(rad(endAngle));
+                  const y2 = cy + r * Math.sin(rad(endAngle));
+                  const midAngle = startAngle + (endAngle - startAngle) / 2;
+                  const tx = cx + (r * 0.7) * Math.cos(rad(midAngle));
+                  const ty = cy + (r * 0.7) * Math.sin(rad(midAngle));
+                  return (
+                    <g key={i}>
+                      <path
+                        d={`M${cx},${cy} L${x1},${y1} A${r},${r} 0 ${largeArc},1 ${x2},${y2} Z`}
+                        fill={prize.color}
+                        stroke="#fff"
+                        strokeWidth="2"
+                      />
+                      <text
+                        x={tx}
+                        y={ty}
+                        textAnchor="middle"
+                        dominantBaseline="central"
+                        fill="#fff"
+                        fontSize="24"
+                        fontWeight="bold"
+                        style={{ textShadow: '0 1px 3px rgba(0,0,0,0.6)' }}
+                      >
+                        {prize.emoji}
+                      </text>
+                    </g>
+                  );
+                })}
+                <circle cx="160" cy="160" r="22" fill="#222" stroke="#fff" strokeWidth="3" />
+              </svg>
+            </div>
+            {/* Pointer */}
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 z-10" style={{ marginTop: 4 }}>
+              <div
+                style={{
+                  width: 0,
+                  height: 0,
+                  borderLeft: '12px solid transparent',
+                  borderRight: '12px solid transparent',
+                  borderTop: '24px solid #ff0000',
+                  filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.4))',
+                }}
+              />
+            </div>
+          </div>
         </div>
 
         <div className="text-center mb-4">
@@ -230,4 +209,5 @@ export default function SkinRoulette({ player, onAddSkin, onAddBoatSkin, onSpend
     </div>
   );
 }
+
 
