@@ -80,8 +80,14 @@ export default function SkinRoulette({ player, onAddSkin, onAddBoatSkin, onSpend
 
     const winIndex = Math.floor(Math.random() * newPrizes.length);
     const sliceAngle = 360 / newPrizes.length;
+    const midAngle = winIndex * sliceAngle + sliceAngle / 2;
+    // Pointer sits at top (270° in SVG coords where 0° is right, clockwise).
+    // We want the winning slice's mid angle to align with the pointer after rotation R:
+    //   (midAngle + R) mod 360 === 270  =>  R mod 360 = (270 - midAngle + 360) mod 360
+    const targetMod = ((270 - midAngle) % 360 + 360) % 360;
     const extraTurns = 5 + Math.floor(Math.random() * 4);
-    const targetRotation = rotation + extraTurns * 360 + (360 - winIndex * sliceAngle - sliceAngle / 2);
+    const base = rotation - (rotation % 360) + extraTurns * 360;
+    const targetRotation = base + targetMod;
 
     setRotation(targetRotation);
 
