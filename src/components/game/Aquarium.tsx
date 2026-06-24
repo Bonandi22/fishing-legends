@@ -143,19 +143,27 @@ export default function Aquarium({ player, onMoveToSector, onBack }: Props) {
             ) : (
               currentFish.map((c, i) => {
                 const img = FISH_IMAGES[c.fish.id];
-                const top = ((i * 53) % 80) + 5;
-                const dur = 12 + ((i * 7) % 10);
+                const seed = (c.timestamp + i * 131) % 10000;
+                const rand = (n: number) => {
+                  const v = Math.sin(seed * (n + 1) * 12.9898) * 43758.5453;
+                  return v - Math.floor(v);
+                };
+                const xs = [rand(1), rand(2), rand(3), rand(4), rand(5), rand(1)].map(v => `${4 + v * 86}%`);
+                const ys = [rand(6), rand(7), rand(8), rand(9), rand(10), rand(6)].map(v => `${4 + v * 82}%`);
+                const dur = 22 + (seed % 18);
+                const flip = rand(11) > 0.5;
                 return (
                   <motion.div
                     key={c.timestamp + '-' + i}
                     className="absolute"
-                    style={{ top: `${top}%`, left: '-15%' }}
-                    animate={{ x: ['0%', '850%'] }}
-                    transition={{ duration: dur, repeat: Infinity, ease: 'linear', delay: i * 0.5 }}
+                    style={{ top: 0, left: 0 }}
+                    animate={{ left: xs, top: ys }}
+                    transition={{ duration: dur, repeat: Infinity, ease: 'easeInOut', times: [0, 0.2, 0.4, 0.6, 0.8, 1] }}
                   >
                     <motion.div
-                      animate={{ y: [0, -6, 0, 6, 0] }}
+                      animate={{ y: [0, -6, 0, 6, 0], rotate: [-3, 3, -3] }}
                       transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
+                      style={{ transform: flip ? 'scaleX(-1)' : undefined }}
                     >
                       {img ? (
                         <img src={img} alt={c.fish.name} className="w-20 h-20 object-contain drop-shadow-xl" />
