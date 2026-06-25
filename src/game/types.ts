@@ -1,6 +1,6 @@
 export type WaterType = 'saltwater' | 'freshwater';
 export type LocationType = 'ocean' | 'river' | 'lake';
-export type Rarity = 'common' | 'uncommon' | 'mythic' | 'legendary' | 'abyssal';
+export type Rarity = 'common' | 'uncommon' | 'mythic' | 'legendary' | 'abyssal' | 'volcanic' | 'platinum';
 
 export interface Fish {
   id: string;
@@ -140,6 +140,8 @@ export const FISH_COIN_VALUE: Record<Rarity, number> = {
   mythic: 50,
   legendary: 100,
   abyssal: 200,
+  volcanic: 300,
+  platinum: 400,
 };
 
 export interface PlayerState {
@@ -187,6 +189,8 @@ export const AQUARIUM_REWARDS: Record<Rarity, { coins: number; xp: number }> = {
   mythic: { coins: 40, xp: 40 },
   legendary: { coins: 100, xp: 80 },
   abyssal: { coins: 250, xp: 200 },
+  volcanic: { coins: 350, xp: 280 },
+  platinum: { coins: 500, xp: 380 },
 };
 
 export const AQUARIUM_SECTORS = [1, 2, 3, 4, 5] as const;
@@ -208,9 +212,11 @@ export interface PullGameState {
 export const RARITY_CONFIG: Record<Rarity, { label: string; color: string; chance: number; greenZoneSize: number; speed: number }> = {
   common: { label: 'Comum', color: '#22c55e', chance: 0.50, greenZoneSize: 0.55, speed: 1 },
   uncommon: { label: 'Incomum', color: '#3b82f6', chance: 0.22, greenZoneSize: 0.42, speed: 1.4 },
-  mythic: { label: 'Mítico', color: '#ec4899', chance: 0.15, greenZoneSize: 0.35, speed: 1.5 },
-  legendary: { label: 'Lendário', color: '#f59e0b', chance: 0.10, greenZoneSize: 0.30, speed: 1.6 },
+  mythic: { label: 'Mítico', color: '#ec4899', chance: 0.13, greenZoneSize: 0.35, speed: 1.5 },
+  legendary: { label: 'Lendário', color: '#f59e0b', chance: 0.09, greenZoneSize: 0.30, speed: 1.6 },
   abyssal: { label: 'Abissal', color: '#a855f7', chance: 0.03, greenZoneSize: 0.20, speed: 1.9 },
+  volcanic: { label: 'Vulcânica', color: '#ef4444', chance: 0.02, greenZoneSize: 0.16, speed: 2.1 },
+  platinum: { label: 'Platina', color: '#e5e7eb', chance: 0.01, greenZoneSize: 0.14, speed: 2.3 },
 };
 
 export function getXpForLevel(level: number): number {

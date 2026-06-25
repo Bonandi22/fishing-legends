@@ -30,6 +30,8 @@ let fishCounter = 0;
 function spawnFish(canvasW: number, canvasH: number, playerLevel: number): SwimmingFish {
   const available = FISH.filter(f => {
     const rand = Math.random();
+    if (f.rarity === 'platinum') return rand < 0.01;
+    if (f.rarity === 'volcanic') return rand < 0.02;
     if (f.rarity === 'abyssal') return rand < 0.03;
     if (f.rarity === 'legendary') return rand < 0.08;
     if (f.rarity === 'mythic') return rand < 0.15;
