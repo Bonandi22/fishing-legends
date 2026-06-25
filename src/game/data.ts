@@ -245,5 +245,12 @@ export function getFishById(id: string): Fish | undefined {
 }
 
 export function getFishForLocation(location: FishingLocation): Fish[] {
-  return location.fishIds.map(id => getFishById(id)).filter(Boolean) as Fish[];
+  const base = location.fishIds.map(id => getFishById(id)).filter(Boolean) as Fish[];
+  // Volcanic & platinum rarities exist in both worlds, filtered by water type
+  const extras = FISH.filter(f =>
+    (f.rarity === 'volcanic' || f.rarity === 'platinum') &&
+    f.waterType === location.waterType &&
+    !base.some(b => b.id === f.id)
+  );
+  return [...base, ...extras];
 }
