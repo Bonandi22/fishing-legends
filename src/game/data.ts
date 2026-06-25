@@ -88,6 +88,20 @@ export const FISH: Fish[] = [
   { id: 'leviata', name: 'Leviatã', rarity: 'abyssal', waterType: 'saltwater', minWeight: 500, maxWeight: 3000, xp: 800, description: 'Besta mítica das profundezas insondáveis.', emoji: '🌟' },
   { id: 'peixe-vampiro', name: 'Peixe-vampiro', rarity: 'abyssal', waterType: 'freshwater', minWeight: 5, maxWeight: 40, xp: 700, description: 'Presas enormes, predador das trevas fluviais.', emoji: '🌟' },
   { id: 'kraken-jovem', name: 'Kraken Jovem', rarity: 'abyssal', waterType: 'saltwater', minWeight: 100, maxWeight: 800, xp: 850, description: 'Cria do lendário Kraken, tentáculos sombrios.', emoji: '🌟' },
+
+  // === VOLCANIC (FOGO) ===
+  { id: 'magma-piranha', name: 'Piranha de Magma', rarity: 'volcanic', waterType: 'freshwater', minWeight: 1, maxWeight: 8, xp: 900, description: 'Piranha forjada em lava incandescente.', emoji: '🔥' },
+  { id: 'ember-eel', name: 'Enguia de Brasa', rarity: 'volcanic', waterType: 'freshwater', minWeight: 3, maxWeight: 18, xp: 950, description: 'Serpentina cuja pele queima ao toque.', emoji: '🔥' },
+  { id: 'lava-snapper', name: 'Lutjânido Vulcânico', rarity: 'volcanic', waterType: 'saltwater', minWeight: 5, maxWeight: 25, xp: 1000, description: 'Predador que respira nas fumarolas oceânicas.', emoji: '🔥' },
+  { id: 'inferno-marlin', name: 'Marlim Infernal', rarity: 'volcanic', waterType: 'saltwater', minWeight: 80, maxWeight: 400, xp: 1100, description: 'Marlim envolto em chamas eternas.', emoji: '🔥' },
+  { id: 'phoenix-koi', name: 'Koi Fênix', rarity: 'volcanic', waterType: 'freshwater', minWeight: 2, maxWeight: 12, xp: 1050, description: 'Koi lendário que renasce das cinzas.', emoji: '🔥' },
+
+  // === PLATINUM (DIAMANTE) ===
+  { id: 'platinum-trout', name: 'Truta Platina', rarity: 'platinum', waterType: 'freshwater', minWeight: 2, maxWeight: 10, xp: 1200, description: 'Escamas de platina pura cintilante.', emoji: '💎' },
+  { id: 'diamond-bass', name: 'Robalo Diamante', rarity: 'platinum', waterType: 'freshwater', minWeight: 5, maxWeight: 22, xp: 1300, description: 'Cravejado de diamantes brutos.', emoji: '💎' },
+  { id: 'crystal-tuna', name: 'Atum Cristalino', rarity: 'platinum', waterType: 'saltwater', minWeight: 50, maxWeight: 300, xp: 1400, description: 'Atum translúcido como cristal cortado.', emoji: '💎' },
+  { id: 'mithril-shark', name: 'Tubarão Mithril', rarity: 'platinum', waterType: 'saltwater', minWeight: 100, maxWeight: 600, xp: 1500, description: 'Pele blindada em mithril irreal.', emoji: '💎' },
+  { id: 'prism-arowana', name: 'Aruanã Prisma', rarity: 'platinum', waterType: 'freshwater', minWeight: 8, maxWeight: 30, xp: 1450, description: 'Reflete arco-íris como um prisma diamante.', emoji: '💎' },
 ];
 
 export const LOCATIONS: FishingLocation[] = [
