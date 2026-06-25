@@ -60,6 +60,18 @@ import pintadoGigante from '@/assets/fish/pintado-gigante.png';
 import leviata from '@/assets/fish/leviata.png';
 import peixeVampiro from '@/assets/fish/peixe-vampiro.png';
 import krakenJovem from '@/assets/fish/kraken-jovem.png';
+// Volcanic
+import magmaPiranha from '@/assets/fish/magma-piranha.png';
+import emberEel from '@/assets/fish/ember-eel.png';
+import lavaSnapper from '@/assets/fish/lava-snapper.png';
+import infernoMarlin from '@/assets/fish/inferno-marlin.png';
+import phoenixKoi from '@/assets/fish/phoenix-koi.png';
+// Platinum
+import platinumTrout from '@/assets/fish/platinum-trout.png';
+import diamondBass from '@/assets/fish/diamond-bass.png';
+import crystalTuna from '@/assets/fish/crystal-tuna.png';
+import mithrilShark from '@/assets/fish/mithril-shark.png';
+import prismArowana from '@/assets/fish/prism-arowana.png';
 
 
 
@@ -125,4 +137,14 @@ export const FISH_IMAGES: Record<string, string> = {
   'leviata': leviata,
   'peixe-vampiro': peixeVampiro,
   'kraken-jovem': krakenJovem,
+  'magma-piranha': magmaPiranha,
+  'ember-eel': emberEel,
+  'lava-snapper': lavaSnapper,
+  'inferno-marlin': infernoMarlin,
+  'phoenix-koi': phoenixKoi,
+  'platinum-trout': platinumTrout,
+  'diamond-bass': diamondBass,
+  'crystal-tuna': crystalTuna,
+  'mithril-shark': mithrilShark,
+  'prism-arowana': prismArowana,
 };
