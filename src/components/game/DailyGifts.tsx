@@ -35,6 +35,8 @@ export default function DailyGifts({ player, onClaim, onBack }: Props) {
   const today = new Date().toISOString().slice(0, 10);
   const claimedToday = player.dailyGiftsLastClaim === today;
   const currentDay = player.dailyGiftsDay || 1;
+  const currentWeek = player.dailyGiftsWeek || 1;
+  const gifts = getDailyGiftsForWeek(currentWeek);
   const [popup, setPopup] = useState<{ reward: DailyGiftReward; day: number } | null>(null);
 
   const handleClaim = () => {
