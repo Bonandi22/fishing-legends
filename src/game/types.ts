@@ -1,6 +1,6 @@
 export type WaterType = 'saltwater' | 'freshwater';
 export type LocationType = 'ocean' | 'river' | 'lake';
-export type Rarity = 'common' | 'uncommon' | 'mythic' | 'legendary' | 'abyssal' | 'volcanic' | 'platinum';
+export type Rarity = 'common' | 'uncommon' | 'mythic' | 'legendary' | 'abyssal' | 'volcanic' | 'platinum' | 'legends';
 
 export interface Fish {
   id: string;
@@ -142,6 +142,7 @@ export const FISH_COIN_VALUE: Record<Rarity, number> = {
   abyssal: 200,
   volcanic: 300,
   platinum: 400,
+  legends: 750,
 };
 
 export interface PlayerState {
@@ -208,6 +209,7 @@ export const AQUARIUM_REWARDS: Record<Rarity, { coins: number; xp: number }> = {
   abyssal: { coins: 250, xp: 200 },
   volcanic: { coins: 350, xp: 280 },
   platinum: { coins: 500, xp: 380 },
+  legends: { coins: 1000, xp: 600 },
 };
 
 export const AQUARIUM_SECTORS = [1, 2, 3, 4, 5] as const;
@@ -234,6 +236,7 @@ export const RARITY_CONFIG: Record<Rarity, { label: string; color: string; chanc
   abyssal: { label: 'Abissal', color: '#a855f7', chance: 0.03, greenZoneSize: 0.20, speed: 1.9 },
   volcanic: { label: 'Vulcânica', color: '#ef4444', chance: 0.02, greenZoneSize: 0.16, speed: 2.1 },
   platinum: { label: 'Platina', color: '#e5e7eb', chance: 0.01, greenZoneSize: 0.14, speed: 2.3 },
+  legends: { label: 'Lendas', color: '#ff45d9', chance: 0.005, greenZoneSize: 0.10, speed: 2.6 },
 };
 
 export function getXpForLevel(level: number): number {
