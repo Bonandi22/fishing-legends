@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
-import { PlayerState, DAILY_GIFTS, DailyGiftReward, ROD_SKINS, BOAT_SKINS } from '@/game/types';
+import { PlayerState, DailyGiftReward, ROD_SKINS, BOAT_SKINS, getDailyGiftsForWeek } from '@/game/types';
 import { Gift, Coins, Zap, Sparkles, Ship, Anchor, Lock, Check } from 'lucide-react';
 
 interface Props {
