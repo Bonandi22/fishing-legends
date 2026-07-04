@@ -310,18 +310,22 @@ export default function FishingScreen({ location, player, onCatch, onBack }: Pro
     return () => { if (timerRef.current) clearTimeout(timerRef.current); };
   }, []);
 
-  // Lucky mode: 2min active every 7min cycle
+  // Lucky mode: every 7min, 50% chance to trigger, lasts 1min
   useEffect(() => {
     const CYCLE = 7 * 60 * 1000;
-    const DURATION = 2 * 60 * 1000;
+    const DURATION = 1 * 60 * 1000;
 
     const startCycle = () => {
       luckyTimerRef.current = setTimeout(() => {
-        setLuckyMode(true);
-        luckyTimerRef.current = setTimeout(() => {
-          setLuckyMode(false);
+        if (Math.random() < 0.5) {
+          setLuckyMode(true);
+          luckyTimerRef.current = setTimeout(() => {
+            setLuckyMode(false);
+            startCycle();
+          }, DURATION);
+        } else {
           startCycle();
-        }, DURATION);
+        }
       }, CYCLE);
     };
 
