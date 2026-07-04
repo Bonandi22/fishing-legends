@@ -72,6 +72,13 @@ import diamondBass from '@/assets/fish/diamond-bass.png';
 import crystalTuna from '@/assets/fish/crystal-tuna.png';
 import mithrilShark from '@/assets/fish/mithril-shark.png';
 import prismArowana from '@/assets/fish/prism-arowana.png';
+// Legends
+import leviataColossal from '@/assets/fish/leviata-colossal.png';
+import krakenAncient from '@/assets/fish/kraken-ancient.png';
+import theBloop from '@/assets/fish/the-bloop.png';
+import granMaja from '@/assets/fish/gran-maja.png';
+import nessie from '@/assets/fish/nessie.png';
+import mokeleMbembe from '@/assets/fish/mokele-mbembe.png';
 
 
 
@@ -147,4 +154,10 @@ export const FISH_IMAGES: Record<string, string> = {
   'crystal-tuna': crystalTuna,
   'mithril-shark': mithrilShark,
   'prism-arowana': prismArowana,
+  'leviata-colossal': leviataColossal,
+  'kraken-ancient': krakenAncient,
+  'the-bloop': theBloop,
+  'gran-maja': granMaja,
+  'nessie': nessie,
+  'mokele-mbembe': mokeleMbembe,
 };

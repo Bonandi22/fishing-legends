@@ -102,6 +102,14 @@ export const FISH: Fish[] = [
   { id: 'crystal-tuna', name: 'Atum Cristalino', rarity: 'platinum', waterType: 'saltwater', minWeight: 50, maxWeight: 300, xp: 1400, description: 'Atum translúcido como cristal cortado.', emoji: '💎' },
   { id: 'mithril-shark', name: 'Tubarão Mithril', rarity: 'platinum', waterType: 'saltwater', minWeight: 100, maxWeight: 600, xp: 1500, description: 'Pele blindada em mithril irreal.', emoji: '💎' },
   { id: 'prism-arowana', name: 'Aruanã Prisma', rarity: 'platinum', waterType: 'freshwater', minWeight: 8, maxWeight: 30, xp: 1450, description: 'Reflete arco-íris como um prisma diamante.', emoji: '💎' },
+
+  // === LEGENDS (CRIATURAS MÍTICAS) ===
+  { id: 'leviata-colossal', name: 'Leviatã Colossal', rarity: 'legends', waterType: 'saltwater', minWeight: 3000, maxWeight: 15000, xp: 3000, description: 'A besta primordial dos abismos, cantada em mitos ancestrais.', emoji: '🐉' },
+  { id: 'kraken-ancient', name: 'Kraken Ancião', rarity: 'legends', waterType: 'saltwater', minWeight: 1500, maxWeight: 8000, xp: 2800, description: 'O senhor dos tentáculos, afunda navios com um só abraço.', emoji: '🦑' },
+  { id: 'the-bloop', name: 'The Bloop', rarity: 'legends', waterType: 'saltwater', minWeight: 2000, maxWeight: 10000, xp: 2900, description: 'Criptídeo abissal cujo som ecoa por milhares de quilômetros.', emoji: '👁️' },
+  { id: 'gran-maja', name: 'Gran Maja', rarity: 'legends', waterType: 'saltwater', minWeight: 200, maxWeight: 900, xp: 2500, description: 'Caranguejo-aranha titânico das trincheiras profundas.', emoji: '🦀' },
+  { id: 'nessie', name: 'Nessie', rarity: 'legends', waterType: 'freshwater', minWeight: 800, maxWeight: 4000, xp: 2700, description: 'Monstro plesiossauro do lendário Lago Ness.', emoji: '🐲' },
+  { id: 'mokele-mbembe', name: 'Mokele-Mbembe', rarity: 'legends', waterType: 'freshwater', minWeight: 1000, maxWeight: 5000, xp: 2750, description: 'Criptídeo saurópode dos rios profundos do Congo.', emoji: '🦕' },
 ];
 
 export const LOCATIONS: FishingLocation[] = [
@@ -248,7 +256,7 @@ export function getFishForLocation(location: FishingLocation): Fish[] {
   const base = location.fishIds.map(id => getFishById(id)).filter(Boolean) as Fish[];
   // Volcanic & platinum rarities exist in both worlds, filtered by water type
   const extras = FISH.filter(f =>
-    (f.rarity === 'volcanic' || f.rarity === 'platinum') &&
+    (f.rarity === 'volcanic' || f.rarity === 'platinum' || f.rarity === 'legends') &&
     f.waterType === location.waterType &&
     !base.some(b => b.id === f.id)
   );
