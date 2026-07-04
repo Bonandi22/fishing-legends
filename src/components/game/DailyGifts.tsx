@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
-import { PlayerState, DAILY_GIFTS, DailyGiftReward, ROD_SKINS, BOAT_SKINS } from '@/game/types';
+import { PlayerState, DailyGiftReward, ROD_SKINS, BOAT_SKINS, getDailyGiftsForWeek } from '@/game/types';
 import { Gift, Coins, Zap, Sparkles, Ship, Anchor, Lock, Check } from 'lucide-react';
 
 interface Props {
@@ -35,6 +35,8 @@ export default function DailyGifts({ player, onClaim, onBack }: Props) {
   const today = new Date().toISOString().slice(0, 10);
   const claimedToday = player.dailyGiftsLastClaim === today;
   const currentDay = player.dailyGiftsDay || 1;
+  const currentWeek = player.dailyGiftsWeek || 1;
+  const gifts = getDailyGiftsForWeek(currentWeek);
   const [popup, setPopup] = useState<{ reward: DailyGiftReward; day: number } | null>(null);
 
   const handleClaim = () => {
@@ -54,11 +56,13 @@ export default function DailyGifts({ player, onClaim, onBack }: Props) {
         </div>
 
         <p className="text-center text-white/70 mb-6">
-          Resgate uma recompensa todos os dias. Os dois últimos dias dão skins exclusivas!
+          {currentWeek <= 1
+            ? 'Resgate uma recompensa todos os dias. Os dois últimos dias dão skins exclusivas!'
+            : `Semana ${currentWeek} — recompensas em moedas e multiplicadores. Volte todo dia!`}
         </p>
 
         <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3 mb-8">
-          {DAILY_GIFTS.map((reward, i) => {
+          {gifts.map((reward, i) => {
             const day = i + 1;
             const isCurrent = day === currentDay && !claimedToday;
             const isClaimed = day < currentDay || (day === currentDay && claimedToday);

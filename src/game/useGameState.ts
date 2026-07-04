@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
-import { PlayerState, CaughtFish, Fish, getXpForLevel, FISH_COIN_VALUE, MULTIPLIER_COST, MULTIPLIER_DURATION, AQUARIUM_REWARDS, DAILY_GIFTS, DailyGiftReward } from './types';
+import { PlayerState, CaughtFish, Fish, getXpForLevel, FISH_COIN_VALUE, MULTIPLIER_COST, MULTIPLIER_DURATION, AQUARIUM_REWARDS, DAILY_GIFTS, DailyGiftReward, getDailyGiftsForWeek } from './types';
 import { LOCATIONS } from './data';
 
 const STORAGE_KEY = 'fishing-game-state';
@@ -25,6 +25,7 @@ const defaultState: PlayerState = {
   aquariumSectors: { 1: [], 2: [], 3: [], 4: [], 5: [] },
   dailyGiftsLastClaim: null,
   dailyGiftsDay: 1,
+  dailyGiftsWeek: 1,
 };
 
 function loadState(): PlayerState {
@@ -230,8 +231,12 @@ export function useGameState() {
     setPlayer(prev => {
       if (prev.dailyGiftsLastClaim === today) return prev;
       const day = prev.dailyGiftsDay || 1;
-      const reward = DAILY_GIFTS[day - 1];
-      let next = { ...prev, dailyGiftsLastClaim: today, dailyGiftsDay: day >= 7 ? 1 : day + 1 };
+      const week = prev.dailyGiftsWeek || 1;
+      const gifts = getDailyGiftsForWeek(week);
+      const reward = gifts[day - 1];
+      const nextDay = day >= 7 ? 1 : day + 1;
+      const nextWeek = day >= 7 ? week + 1 : week;
+      let next = { ...prev, dailyGiftsLastClaim: today, dailyGiftsDay: nextDay, dailyGiftsWeek: nextWeek };
       if (reward.type === 'coins') {
         next.coins = prev.coins + reward.amount;
       } else if (reward.type === 'multiplier') {
