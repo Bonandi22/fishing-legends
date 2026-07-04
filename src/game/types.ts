@@ -165,6 +165,7 @@ export interface PlayerState {
   aquariumSectors: Record<number, CaughtFish[]>;
   dailyGiftsLastClaim: string | null;
   dailyGiftsDay: number; // next day to claim (1..7)
+  dailyGiftsWeek?: number; // 1 = premium (skins), 2+ = rotation without skins
 }
 
 export type DailyGiftReward =
@@ -173,6 +174,7 @@ export type DailyGiftReward =
   | { type: 'boatSkin'; skinId: string }
   | { type: 'rodSkin'; skinId: string };
 
+// Week 1: introdutório com skins exclusivas
 export const DAILY_GIFTS: DailyGiftReward[] = [
   { type: 'coins', amount: 150 },
   { type: 'coins', amount: 300 },
@@ -182,6 +184,21 @@ export const DAILY_GIFTS: DailyGiftReward[] = [
   { type: 'boatSkin', skinId: 'daily_leviathan' },
   { type: 'rodSkin', skinId: 'daily_aurora' },
 ];
+
+// Semanas seguintes: rotação de moedas e multiplicadores, sem skins
+export const DAILY_GIFTS_ROTATION: DailyGiftReward[] = [
+  { type: 'coins', amount: 200 },
+  { type: 'coins', amount: 400 },
+  { type: 'multiplier', kind: 'luck' },
+  { type: 'coins', amount: 700 },
+  { type: 'multiplier', kind: 'strength' },
+  { type: 'coins', amount: 1000 },
+  { type: 'coins', amount: 1500 },
+];
+
+export function getDailyGiftsForWeek(week: number): DailyGiftReward[] {
+  return week <= 1 ? DAILY_GIFTS : DAILY_GIFTS_ROTATION;
+}
 
 export const AQUARIUM_REWARDS: Record<Rarity, { coins: number; xp: number }> = {
   common: { coins: 5, xp: 5 },
