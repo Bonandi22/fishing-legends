@@ -231,8 +231,12 @@ export function useGameState() {
     setPlayer(prev => {
       if (prev.dailyGiftsLastClaim === today) return prev;
       const day = prev.dailyGiftsDay || 1;
-      const reward = DAILY_GIFTS[day - 1];
-      let next = { ...prev, dailyGiftsLastClaim: today, dailyGiftsDay: day >= 7 ? 1 : day + 1 };
+      const week = prev.dailyGiftsWeek || 1;
+      const gifts = getDailyGiftsForWeek(week);
+      const reward = gifts[day - 1];
+      const nextDay = day >= 7 ? 1 : day + 1;
+      const nextWeek = day >= 7 ? week + 1 : week;
+      let next = { ...prev, dailyGiftsLastClaim: today, dailyGiftsDay: nextDay, dailyGiftsWeek: nextWeek };
       if (reward.type === 'coins') {
         next.coins = prev.coins + reward.amount;
       } else if (reward.type === 'multiplier') {
