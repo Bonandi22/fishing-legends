@@ -35,15 +35,17 @@ interface Props {
   onBack: () => void;
 }
 
-type Phase = 'select' | 'pull' | 'pulled' | 'opened' | 'lost';
+type Phase = 'pull' | 'pulled' | 'opened' | 'lost';
+
+const randomNet = () => NET_TYPES[Math.floor(Math.random() * NET_TYPES.length)];
 
 export default function NetFishing({ location, player, onCatch, onBack }: Props) {
   const { lang } = useI18n();
   const strengthActive = !!player.strengthMultiplierEnd && player.strengthMultiplierEnd > Date.now();
 
   const pool = useMemo(() => getFishForLocation(location), [location]);
-  const [phase, setPhase] = useState<Phase>('select');
-  const [net, setNet] = useState<NetType | null>(null);
+  const [phase, setPhase] = useState<Phase>('pull');
+  const [net, setNet] = useState<NetType | null>(() => randomNet());
   const [haul, setHaul] = useState<{ fish: Fish; weight: number }[]>([]);
 
   const [linePos, setLinePos] = useState(0.5);
@@ -103,7 +105,7 @@ export default function NetFishing({ location, player, onCatch, onBack }: Props)
     setPhase('opened');
   };
 
-  const reset = () => { setNet(null); setHaul([]); setPhase('select'); };
+  const reset = () => { setHaul([]); startNet(randomNet()); };
 
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
@@ -117,28 +119,11 @@ export default function NetFishing({ location, player, onCatch, onBack }: Props)
         </div>
 
         <AnimatePresence mode="wait">
-          {phase === 'select' && (
-            <motion.div key="select" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-              className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {NET_TYPES.map((n, i) => (
-                <motion.div key={n.id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}>
-                  <Card className="border-2 border-border hover:border-primary cursor-pointer transition-all" onClick={() => startNet(n)}>
-                    <CardContent className="p-4">
-                      <h3 className="font-bold text-foreground">{n.name}</h3>
-                      <p className={`text-xs font-semibold text-rarity-${n.rarity}`}>{getRarityLabel(n.rarity, lang)}</p>
-                      <p className="text-sm text-muted-foreground mt-2">Vem com {n.fishCount} {n.fishCount === 1 ? 'peixe' : 'peixes'} desta raridade</p>
-                      <p className="text-xs text-muted-foreground mt-1">Dificuldade: {i + 1}/8</p>
-                    </CardContent>
-                  </Card>
-                </motion.div>
-              ))}
-            </motion.div>
-          )}
-
           {phase === 'pull' && net && (
             <motion.div key="pull" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mt-4">
               <div className="text-center mb-6">
                 <h2 className="text-xl font-bold text-foreground">{net.name}</h2>
+                <p className="text-xs text-muted-foreground">Rede sorteada aleatoriamente</p>
                 <p className="text-muted-foreground text-sm">Aperte PUXAR quando a barra branca estiver na zona verde</p>
                 {strengthActive && <p className="text-xs text-primary font-bold mt-1">Força ativa</p>}
               </div>
