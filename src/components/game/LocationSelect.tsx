@@ -30,10 +30,12 @@ interface Props {
   unlockedLocations: string[];
   world?: 1 | 2;
   onSelect: (location: FishingLocation) => void;
+  onCastNet?: (location: FishingLocation) => void;
   onBack: () => void;
 }
 
-export default function LocationSelect({ playerLevel, unlockedLocations, world = 1, onSelect, onBack }: Props) {
+export default function LocationSelect({ playerLevel, unlockedLocations, world = 1, onSelect, onCastNet, onBack }: Props) {
+
   const { t } = useI18n();
   const typeLabels: Record<string, string> = { ocean: t('loc.ocean'), river: t('loc.river'), lake: t('loc.lake') };
   const visibleLocations = LOCATIONS.filter(l => (l.world ?? 1) === world);
