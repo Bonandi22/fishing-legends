@@ -123,6 +123,7 @@ export default function NetFishing({ location, player, onCatch, onBack }: Props)
             <motion.div key="pull" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mt-4">
               <div className="text-center mb-6">
                 <h2 className="text-xl font-bold text-foreground">{net.name}</h2>
+                <p className={`text-xs font-semibold text-rarity-${net.rarity}`}>{getRarityLabel(net.rarity, lang)} — {net.fishCount} {net.fishCount === 1 ? 'peixe' : 'peixes'}</p>
                 <p className="text-xs text-muted-foreground">Rede sorteada aleatoriamente</p>
                 <p className="text-muted-foreground text-sm">Aperte PUXAR quando a barra branca estiver na zona verde</p>
                 {strengthActive && <p className="text-xs text-primary font-bold mt-1">Força ativa</p>}
