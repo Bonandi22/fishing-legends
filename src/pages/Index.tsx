@@ -56,10 +56,10 @@ const IndexInner = () => {
   }, [catchFish]);
 
   if (screen === 'locations') {
-    return <LocationSelect playerLevel={player.level} unlockedLocations={player.unlockedLocations} world={world} onSelect={handleSelectLocation} onCastNet={(loc) => { setSelectedLocation(loc); setScreen('net'); }} onBack={() => setScreen('menu')} />;
+    return <LocationSelect playerLevel={player.level} unlockedLocations={player.unlockedLocations} world={world} onSelect={handleSelectLocation} onBack={() => setScreen('menu')} />;
   }
   if (screen === 'fishing' && selectedLocation) {
-    return <FishingScreen location={selectedLocation} player={player} onCatch={handleCatch} onBack={() => setScreen('locations')} />;
+    return <FishingScreen location={selectedLocation} player={player} onCatch={handleCatch} onBack={() => setScreen('locations')} onCastNet={() => setScreen('net')} />;
   }
   if (screen === 'net' && selectedLocation) {
     return <NetFishing location={selectedLocation} player={player} onCatch={handleCatch} onBack={() => setScreen('locations')} />;

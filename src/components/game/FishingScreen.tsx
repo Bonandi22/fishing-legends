@@ -293,9 +293,10 @@ interface Props {
   player: PlayerState;
   onCatch: (fish: Fish, weight: number, locationId: string) => void;
   onBack: () => void;
+  onCastNet?: () => void;
 }
 
-export default function FishingScreen({ location, player, onCatch, onBack }: Props) {
+export default function FishingScreen({ location, player, onCatch, onBack, onCastNet }: Props) {
   const { lang, t } = useI18n();
   const [phase, setPhase] = useState<Phase>('idle');
   const [bobberPos, setBobberPos] = useState<[number, number, number]>([0, 0, 0]);
@@ -501,6 +502,11 @@ export default function FishingScreen({ location, player, onCatch, onBack }: Pro
           <Button variant="outline" size="sm" onClick={onBack} className="bg-background/80 backdrop-blur">
             {t('fish.back')}
           </Button>
+          {location.type === 'lake' && onCastNet && (
+            <Button variant="secondary" size="sm" onClick={onCastNet} className="mt-2 block font-semibold shadow-lg">
+              Lançar a Rede
+            </Button>
+          )}
         </div>
         <div className="bg-background/80 backdrop-blur rounded-lg px-4 py-2 text-right">
           <div className="text-sm font-bold text-foreground">{location.emoji} {location.name}</div>
