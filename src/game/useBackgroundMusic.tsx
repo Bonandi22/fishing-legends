@@ -81,7 +81,8 @@ export function useBackgroundMusic() {
   const intervalRef = useRef<ReturnType<typeof setInterval>>();
   const activeRef = useRef(false);
   const trackRef = useRef<MusicTrackId>(trackId);
-  trackRef.current = trackId;
+  useEffect(() => { trackRef.current = trackId; }, [trackId]);
+
 
   const startMusic = useCallback(() => {
     if (activeRef.current) return;
