@@ -6,6 +6,7 @@ import FishingScreen from '@/components/game/FishingScreen';
 import Collection from '@/components/game/Collection';
 import Warehouse from '@/components/game/Warehouse';
 import SubmarineFishing from '@/components/game/SubmarineFishing';
+import NetFishing from '@/components/game/NetFishing';
 import MultiplierShop from '@/components/game/MultiplierShop';
 import SkinsShop from '@/components/game/SkinsShop';
 import BoatSkinsShop from '@/components/game/BoatSkinsShop';
@@ -19,7 +20,7 @@ import { useBackgroundMusic } from '@/game/useBackgroundMusic';
 import { I18nProvider } from '@/game/i18n';
 import { FishingLocation, Fish } from '@/game/types';
 
-type Screen = 'menu' | 'locations' | 'fishing' | 'collection' | 'warehouse' | 'submarine' | 'multiplier' | 'skins' | 'boatSkins' | 'roulette' | 'skinRoulette' | 'ranking' | 'aquarium' | 'dailyGifts';
+type Screen = 'menu' | 'locations' | 'fishing' | 'collection' | 'warehouse' | 'submarine' | 'multiplier' | 'skins' | 'boatSkins' | 'roulette' | 'skinRoulette' | 'ranking' | 'aquarium' | 'dailyGifts' | 'net';
 
 const IndexInner = () => {
   const {
@@ -55,10 +56,13 @@ const IndexInner = () => {
   }, [catchFish]);
 
   if (screen === 'locations') {
-    return <LocationSelect playerLevel={player.level} unlockedLocations={player.unlockedLocations} world={world} onSelect={handleSelectLocation} onBack={() => setScreen('menu')} />;
+    return <LocationSelect playerLevel={player.level} unlockedLocations={player.unlockedLocations} world={world} onSelect={handleSelectLocation} onCastNet={(loc) => { setSelectedLocation(loc); setScreen('net'); }} onBack={() => setScreen('menu')} />;
   }
   if (screen === 'fishing' && selectedLocation) {
     return <FishingScreen location={selectedLocation} player={player} onCatch={handleCatch} onBack={() => setScreen('locations')} />;
+  }
+  if (screen === 'net' && selectedLocation) {
+    return <NetFishing location={selectedLocation} player={player} onCatch={handleCatch} onBack={() => setScreen('locations')} />;
   }
   if (screen === 'collection') {
     return <Collection player={player} onBack={() => setScreen('menu')} />;

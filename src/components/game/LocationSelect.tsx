@@ -30,10 +30,12 @@ interface Props {
   unlockedLocations: string[];
   world?: 1 | 2;
   onSelect: (location: FishingLocation) => void;
+  onCastNet?: (location: FishingLocation) => void;
   onBack: () => void;
 }
 
-export default function LocationSelect({ playerLevel, unlockedLocations, world = 1, onSelect, onBack }: Props) {
+export default function LocationSelect({ playerLevel, unlockedLocations, world = 1, onSelect, onCastNet, onBack }: Props) {
+
   const { t } = useI18n();
   const typeLabels: Record<string, string> = { ocean: t('loc.ocean'), river: t('loc.river'), lake: t('loc.lake') };
   const visibleLocations = LOCATIONS.filter(l => (l.world ?? 1) === world);
@@ -81,7 +83,17 @@ export default function LocationSelect({ playerLevel, unlockedLocations, world =
                       <span className="bg-secondary px-2 py-0.5 rounded-full text-secondary-foreground">Nv. {loc.requiredLevel}</span>
                       <span className="bg-secondary px-2 py-0.5 rounded-full text-secondary-foreground">{loc.fishIds.length} {t('loc.fishCount')}</span>
                     </div>
+                    {loc.type === 'lake' && unlocked && onCastNet && (
+                      <Button
+                        variant="secondary"
+                        className="w-full mt-3 font-semibold"
+                        onClick={(e) => { e.stopPropagation(); onCastNet(loc); }}
+                      >
+                        Lançar a Rede
+                      </Button>
+                    )}
                   </CardContent>
+
                 </Card>
               </motion.div>
             );
