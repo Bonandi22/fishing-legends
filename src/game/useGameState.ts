@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
-import { PlayerState, CaughtFish, Fish, getXpForLevel, FISH_COIN_VALUE, MULTIPLIER_COST, MULTIPLIER_DURATION, AQUARIUM_REWARDS, DAILY_GIFTS, DailyGiftReward, getDailyGiftsForWeek } from './types';
+import { PlayerState, CaughtFish, Fish, getXpForLevel, FISH_COIN_VALUE, NET_LIMIT, NET_PRICE, MULTIPLIER_COST, MULTIPLIER_DURATION, AQUARIUM_REWARDS, DAILY_GIFTS, DailyGiftReward, getDailyGiftsForWeek } from './types';
 import { LOCATIONS } from './data';
 
 const STORAGE_KEY = 'fishing-game-state';
@@ -26,6 +26,7 @@ const defaultState: PlayerState = {
   dailyGiftsLastClaim: null,
   dailyGiftsDay: 1,
   dailyGiftsWeek: 1,
+  nets: 10,
 };
 
 function loadState(): PlayerState {
@@ -262,6 +263,28 @@ export function useGameState() {
     return out;
   }, []);
 
+  const useNet = useCallback((): boolean => {
+    let ok = false;
+    setPlayer(prev => {
+      const nets = prev.nets ?? NET_LIMIT;
+      if (nets <= 0) return prev;
+      ok = true;
+      return { ...prev, nets: nets - 1 };
+    });
+    return ok;
+  }, []);
+
+  const buyNet = useCallback((): boolean => {
+    let ok = false;
+    setPlayer(prev => {
+      const nets = prev.nets ?? NET_LIMIT;
+      if (nets >= NET_LIMIT || prev.coins < NET_PRICE) return prev;
+      ok = true;
+      return { ...prev, nets: nets + 1, coins: prev.coins - NET_PRICE };
+    });
+    return ok;
+  }, []);
+
   const resetProgress = useCallback(() => {
     setPlayer({ ...defaultState, aquariumSectors: { 1:[],2:[],3:[],4:[],5:[] } });
   }, []);
@@ -271,6 +294,6 @@ export function useGameState() {
     buyMultiplier, buySkin, equipSkin,
     buyBoatSkin, equipBoatSkin,
     addCoins, addSkin, addBoatSkin, spendCoins, addMultiplier, setLastRouletteDate,
-    moveAquariumFishToSector, claimDailyGift,
+    moveAquariumFishToSector, claimDailyGift, useNet, buyNet,
   };
 }

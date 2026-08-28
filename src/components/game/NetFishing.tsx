@@ -26,6 +26,7 @@ export const NET_TYPES: NetType[] = [
   { id: 'net_volcanic', name: 'Rede Vulcânica', rarity: 'volcanic', fishCount: 4, greenZoneSize: 0.18, speed: 2.5 },
   { id: 'net_platinum', name: 'Rede Platina', rarity: 'platinum', fishCount: 2, greenZoneSize: 0.14, speed: 2.8 },
   { id: 'net_legends', name: 'Rede das Lendas', rarity: 'legends', fishCount: 1, greenZoneSize: 0.10, speed: 3.2 },
+  { id: 'net_cosmic', name: 'Rede Cósmica', rarity: 'cosmic', fishCount: 1, greenZoneSize: 0.08, speed: 3.5 },
 ];
 
 interface Props {
@@ -33,13 +34,15 @@ interface Props {
   player: PlayerState;
   onCatch: (fish: Fish, weight: number, locationId: string) => void;
   onBack: () => void;
+  onUseNet?: () => boolean;
+  onOpenShop?: () => void;
 }
 
-type Phase = 'pull' | 'pulled' | 'opened' | 'lost';
+type Phase = 'pull' | 'pulled' | 'opened' | 'lost' | 'empty';
 
 const randomNet = () => NET_TYPES[Math.floor(Math.random() * NET_TYPES.length)];
 
-export default function NetFishing({ location, player, onCatch, onBack }: Props) {
+export default function NetFishing({ location, player, onCatch, onBack, onUseNet, onOpenShop }: Props) {
   const { lang } = useI18n();
   const strengthActive = !!player.strengthMultiplierEnd && player.strengthMultiplierEnd > Date.now();
 
@@ -105,7 +108,11 @@ export default function NetFishing({ location, player, onCatch, onBack }: Props)
     setPhase('opened');
   };
 
-  const reset = () => { setHaul([]); startNet(randomNet()); };
+  const reset = () => {
+    if (onUseNet && !onUseNet()) { setPhase('empty'); return; }
+    setHaul([]);
+    startNet(randomNet());
+  };
 
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
@@ -173,8 +180,19 @@ export default function NetFishing({ location, player, onCatch, onBack }: Props)
                 ))}
               </div>
               <div className="flex gap-3">
-                <Button onClick={reset} className="flex-1">Lançar outra rede</Button>
+                <Button onClick={reset} className="flex-1">Lançar outra rede ({player.nets ?? 0})</Button>
                 <Button variant="outline" onClick={onBack} className="flex-1">Voltar</Button>
+              </div>
+            </motion.div>
+          )}
+
+          {phase === 'empty' && (
+            <motion.div key="empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center mt-8">
+              <h2 className="text-2xl font-bold text-foreground mb-2">Sem redes</h2>
+              <p className="text-muted-foreground mb-6">Compre mais redes na loja para continuar.</p>
+              <div className="flex gap-3 justify-center">
+                {onOpenShop && <Button onClick={onOpenShop}>Loja de Redes</Button>}
+                <Button variant="outline" onClick={onBack}>Voltar</Button>
               </div>
             </motion.div>
           )}
