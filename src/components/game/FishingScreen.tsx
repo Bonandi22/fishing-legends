@@ -294,9 +294,10 @@ interface Props {
   onCatch: (fish: Fish, weight: number, locationId: string) => void;
   onBack: () => void;
   onCastNet?: () => void;
+  onOpenNetShop?: () => void;
 }
 
-export default function FishingScreen({ location, player, onCatch, onBack, onCastNet }: Props) {
+export default function FishingScreen({ location, player, onCatch, onBack, onCastNet, onOpenNetShop }: Props) {
   const { lang, t } = useI18n();
   const [phase, setPhase] = useState<Phase>('idle');
   const [bobberPos, setBobberPos] = useState<[number, number, number]>([0, 0, 0]);
@@ -503,9 +504,19 @@ export default function FishingScreen({ location, player, onCatch, onBack, onCas
             {t('fish.back')}
           </Button>
           {location.type === 'lake' && onCastNet && (
-            <Button variant="secondary" size="sm" onClick={onCastNet} className="mt-2 block font-semibold shadow-lg">
-              Lançar a Rede
-            </Button>
+            <div className="mt-2 flex items-center gap-2">
+              <Button variant="secondary" size="sm" onClick={onCastNet} disabled={(player.nets ?? 0) <= 0} className="font-semibold shadow-lg">
+                Lançar a Rede
+              </Button>
+              <div className="bg-background/80 backdrop-blur rounded-lg px-2 py-1 text-xs font-bold text-foreground">
+                Redes: {player.nets ?? 0}/10
+              </div>
+              {onOpenNetShop && (
+                <Button variant="outline" size="sm" onClick={onOpenNetShop} className="bg-background/80 backdrop-blur font-semibold">
+                  Loja
+                </Button>
+              )}
+            </div>
           )}
         </div>
         <div className="bg-background/80 backdrop-blur rounded-lg px-4 py-2 text-right">

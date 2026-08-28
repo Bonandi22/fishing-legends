@@ -79,6 +79,13 @@ import theBloop from '@/assets/fish/the-bloop.png';
 import granMaja from '@/assets/fish/gran-maja.png';
 import nessie from '@/assets/fish/nessie.png';
 import mokeleMbembe from '@/assets/fish/mokele-mbembe.png';
+// Cosmic
+import leviataCosmico from '@/assets/fish/leviata-cosmico.png';
+import baleiaEstelar from '@/assets/fish/baleia-estelar.png';
+import arraiaNebulosa from '@/assets/fish/arraia-nebulosa.png';
+import koiGalactico from '@/assets/fish/koi-galactico.png';
+import enguiaBuracoNegro from '@/assets/fish/enguia-buraco-negro.png';
+import peixeSupernova from '@/assets/fish/peixe-supernova.png';
 
 
 
@@ -160,4 +167,10 @@ export const FISH_IMAGES: Record<string, string> = {
   'gran-maja': granMaja,
   'nessie': nessie,
   'mokele-mbembe': mokeleMbembe,
+  'leviata-cosmico': leviataCosmico,
+  'baleia-estelar': baleiaEstelar,
+  'arraia-nebulosa': arraiaNebulosa,
+  'koi-galactico': koiGalactico,
+  'enguia-buraco-negro': enguiaBuracoNegro,
+  'peixe-supernova': peixeSupernova,
 };

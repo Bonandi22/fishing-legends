@@ -14,7 +14,7 @@ interface Props {
 export default function Collection({ player, onBack }: Props) {
   const { lang, t } = useI18n();
   const caughtIds = new Set(player.collection.map(c => c.fish.id));
-  const rarities: Rarity[] = ['common', 'uncommon', 'mythic', 'legendary', 'abyssal', 'volcanic', 'platinum', 'legends'];
+  const rarities: Rarity[] = ['common', 'uncommon', 'mythic', 'legendary', 'abyssal', 'volcanic', 'platinum', 'legends', 'cosmic'];
 
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
