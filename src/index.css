@@ -47,6 +47,7 @@
     --rarity-volcanic: 0 84% 55%;
     --rarity-platinum: 210 16% 90%;
     --rarity-legends: 315 100% 65%;
+    --rarity-cosmic: 258 90% 66%;
 
     --sidebar-background: 220 20% 10%;
     --sidebar-foreground: 200 20% 92%;
@@ -80,6 +81,7 @@
   .text-rarity-volcanic { color: hsl(var(--rarity-volcanic)); }
   .text-rarity-platinum { color: hsl(var(--rarity-platinum)); }
   .text-rarity-legends { color: hsl(var(--rarity-legends)); }
+  .text-rarity-cosmic { color: hsl(var(--rarity-cosmic)); }
   .bg-rarity-common { background-color: hsl(var(--rarity-common)); }
   .bg-rarity-uncommon { background-color: hsl(var(--rarity-uncommon)); }
   .bg-rarity-legendary { background-color: hsl(var(--rarity-legendary)); }
@@ -87,6 +89,7 @@
   .bg-rarity-volcanic { background-color: hsl(var(--rarity-volcanic)); }
   .bg-rarity-platinum { background-color: hsl(var(--rarity-platinum)); }
   .bg-rarity-legends { background-color: hsl(var(--rarity-legends)); }
+  .bg-rarity-cosmic { background-color: hsl(var(--rarity-cosmic)); }
   .border-rarity-common { border-color: hsl(var(--rarity-common)); }
   .border-rarity-uncommon { border-color: hsl(var(--rarity-uncommon)); }
   .border-rarity-legendary { border-color: hsl(var(--rarity-legendary)); }
@@ -94,4 +97,5 @@
   .border-rarity-volcanic { border-color: hsl(var(--rarity-volcanic)); }
   .border-rarity-platinum { border-color: hsl(var(--rarity-platinum)); }
   .border-rarity-legends { border-color: hsl(var(--rarity-legends)); }
+  .border-rarity-cosmic { border-color: hsl(var(--rarity-cosmic)); }
 }

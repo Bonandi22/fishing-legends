@@ -1,6 +1,6 @@
 export type WaterType = 'saltwater' | 'freshwater';
 export type LocationType = 'ocean' | 'river' | 'lake';
-export type Rarity = 'common' | 'uncommon' | 'mythic' | 'legendary' | 'abyssal' | 'volcanic' | 'platinum' | 'legends';
+export type Rarity = 'common' | 'uncommon' | 'mythic' | 'legendary' | 'abyssal' | 'volcanic' | 'platinum' | 'legends' | 'cosmic';
 
 export interface Fish {
   id: string;
@@ -143,6 +143,7 @@ export const FISH_COIN_VALUE: Record<Rarity, number> = {
   volcanic: 300,
   platinum: 400,
   legends: 750,
+  cosmic: 1200,
 };
 
 export interface PlayerState {
@@ -166,6 +167,7 @@ export interface PlayerState {
   aquariumSectors: Record<number, CaughtFish[]>;
   dailyGiftsLastClaim: string | null;
   dailyGiftsDay: number; // next day to claim (1..7)
+  nets?: number;
   dailyGiftsWeek?: number; // 1 = premium (skins), 2+ = rotation without skins
 }
 
@@ -210,11 +212,14 @@ export const AQUARIUM_REWARDS: Record<Rarity, { coins: number; xp: number }> = {
   volcanic: { coins: 350, xp: 280 },
   platinum: { coins: 500, xp: 380 },
   legends: { coins: 1000, xp: 600 },
+  cosmic: { coins: 1500, xp: 900 },
 };
 
 export const AQUARIUM_SECTORS = [1, 2, 3, 4, 5] as const;
 
 export const WAREHOUSE_LIMIT = 15;
+export const NET_LIMIT = 10;
+export const NET_PRICE = 5000;
 export const MULTIPLIER_COST = 3000;
 export const MULTIPLIER_DURATION = 60 * 1000; // 1 minute
 
@@ -237,6 +242,7 @@ export const RARITY_CONFIG: Record<Rarity, { label: string; color: string; chanc
   volcanic: { label: 'Vulcânica', color: '#ef4444', chance: 0.02, greenZoneSize: 0.16, speed: 2.1 },
   platinum: { label: 'Platina', color: '#e5e7eb', chance: 0.01, greenZoneSize: 0.14, speed: 2.3 },
   legends: { label: 'Lendas', color: '#ff45d9', chance: 0.005, greenZoneSize: 0.10, speed: 2.6 },
+  cosmic: { label: 'Cósmica', color: '#8b5cf6', chance: 0.002, greenZoneSize: 0.08, speed: 2.9 },
 };
 
 export function getXpForLevel(level: number): number {

@@ -105,6 +105,7 @@ const translations = {
   'rarity.abyssal': { pt: 'Abissal', en: 'Abyssal', es: 'Abisal', fr: 'Abyssal', de: 'Abyssal', ja: 'アビサル' },
   'rarity.volcanic': { pt: 'Vulcânica', en: 'Volcanic', es: 'Volcánica', fr: 'Volcanique', de: 'Vulkanisch', ja: 'ボルカニック' },
   'rarity.platinum': { pt: 'Platina', en: 'Platinum', es: 'Platino', fr: 'Platine', de: 'Platin', ja: 'プラチナ' },
+  'rarity.cosmic': { pt: 'Cósmica', en: 'Cosmic', es: 'Cósmica', fr: 'Cosmique', de: 'Kosmisch', ja: 'コスミック' },
   'rarity.legends': { pt: 'Lendas', en: 'Legends', es: 'Leyendas', fr: 'Légendes', de: 'Legenden', ja: 'レジェンズ' },
 
   // Settings

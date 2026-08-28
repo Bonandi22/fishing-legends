@@ -108,6 +108,13 @@ export const FISH: Fish[] = [
   { id: 'kraken-ancient', name: 'Kraken Ancião', rarity: 'legends', waterType: 'saltwater', minWeight: 1500, maxWeight: 8000, xp: 2800, description: 'O senhor dos tentáculos, afunda navios com um só abraço.', emoji: '🦑' },
   { id: 'the-bloop', name: 'The Bloop', rarity: 'legends', waterType: 'saltwater', minWeight: 2000, maxWeight: 10000, xp: 2900, description: 'Criptídeo abissal cujo som ecoa por milhares de quilômetros.', emoji: '👁️' },
   { id: 'gran-maja', name: 'Gran Maja', rarity: 'legends', waterType: 'saltwater', minWeight: 200, maxWeight: 900, xp: 2500, description: 'Caranguejo-aranha titânico das trincheiras profundas.', emoji: '🦀' },
+  // Raridade Cósmica
+  { id: 'leviata-cosmico', name: 'Leviatã Cósmico', rarity: 'cosmic', waterType: 'saltwater', minWeight: 5000, maxWeight: 25000, xp: 5000, description: 'Serpente de nebulosas que nada entre estrelas e marés.', emoji: '🌌' },
+  { id: 'baleia-estelar', name: 'Baleia Estelar', rarity: 'cosmic', waterType: 'saltwater', minWeight: 8000, maxWeight: 30000, xp: 5200, description: 'Gigante translúcida com constelações na pele.', emoji: '✨' },
+  { id: 'arraia-nebulosa', name: 'Arraia Nebulosa', rarity: 'cosmic', waterType: 'saltwater', minWeight: 900, maxWeight: 4000, xp: 4600, description: 'Planador silencioso feito de poeira estelar.', emoji: '🌠' },
+  { id: 'koi-galactico', name: 'Koi Galáctico', rarity: 'cosmic', waterType: 'freshwater', minWeight: 60, maxWeight: 400, xp: 4400, description: 'Escamas que giram como espirais de galáxias.', emoji: '🪐' },
+  { id: 'enguia-buraco-negro', name: 'Enguia do Buraco Negro', rarity: 'cosmic', waterType: 'freshwater', minWeight: 300, maxWeight: 1800, xp: 4800, description: 'Devora a própria luz ao seu redor.', emoji: '🕳️' },
+  { id: 'peixe-supernova', name: 'Peixe Supernova', rarity: 'cosmic', waterType: 'freshwater', minWeight: 500, maxWeight: 2600, xp: 5100, description: 'Pulsa com o brilho de uma estrela em colapso.', emoji: '💫' },
   { id: 'nessie', name: 'Nessie', rarity: 'legends', waterType: 'freshwater', minWeight: 800, maxWeight: 4000, xp: 2700, description: 'Monstro plesiossauro do lendário Lago Ness.', emoji: '🐲' },
   { id: 'mokele-mbembe', name: 'Mokele-Mbembe', rarity: 'legends', waterType: 'freshwater', minWeight: 1000, maxWeight: 5000, xp: 2750, description: 'Criptídeo saurópode dos rios profundos do Congo.', emoji: '🦕' },
 ];
@@ -256,7 +263,7 @@ export function getFishForLocation(location: FishingLocation): Fish[] {
   const base = location.fishIds.map(id => getFishById(id)).filter(Boolean) as Fish[];
   // Volcanic & platinum rarities exist in both worlds, filtered by water type
   const extras = FISH.filter(f =>
-    (f.rarity === 'volcanic' || f.rarity === 'platinum' || f.rarity === 'legends') &&
+    (f.rarity === 'volcanic' || f.rarity === 'platinum' || f.rarity === 'legends' || f.rarity === 'cosmic') &&
     f.waterType === location.waterType &&
     !base.some(b => b.id === f.id)
   );
