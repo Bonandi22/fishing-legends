@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
-import { PlayerState, AQUARIUM_REWARDS, AQUARIUM_SECTORS, CaughtFish } from '@/game/types';
+import { PlayerState, AQUARIUM_REWARDS, AQUARIUM_SECTORS } from '@/game/types';
 import { FISH_IMAGES } from '@/game/fishImages';
 import { useI18n, getRarityLabel } from '@/game/i18n';
 
@@ -17,7 +17,8 @@ export default function Aquarium({ player, onMoveToSector, onBack }: Props) {
   const { lang, t } = useI18n();
   const [view, setView] = useState<View>('tank');
   const [activeSector, setActiveSector] = useState<number>(1);
-  const [selectedFish, setSelectedFish] = useState<CaughtFish | null>(null);
+  const [targetSector, setTargetSector] = useState<number | null>(null);
+  const [selected, setSelected] = useState<number[]>([]);
 
   const sectors = player.aquariumSectors || { 1: [], 2: [], 3: [], 4: [], 5: [] };
   const warehouse = player.aquariumWarehouse || [];
@@ -106,7 +107,7 @@ export default function Aquarium({ player, onMoveToSector, onBack }: Props) {
           🐠 {t('aquarium.title')}
         </h1>
         <Button
-          onClick={() => { setView(view === 'tank' ? 'storage' : 'tank'); setSelectedFish(null); }}
+          onClick={() => { setView(view === 'tank' ? 'storage' : 'tank'); setSelected([]); }}
           className="bg-cyan-600 hover:bg-cyan-500 text-white font-bold shadow-lg"
         >
           {view === 'tank' ? `📦 ${t('aquarium.storage')} (${warehouse.length})` : `🐠 ${t('aquarium.tank')}`}
