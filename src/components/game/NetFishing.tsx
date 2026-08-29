@@ -23,10 +23,10 @@ export const NET_TYPES: NetType[] = [
   { id: 'net_mythic', name: 'Rede Mítica', rarity: 'mythic', fishCount: 10, greenZoneSize: 0.36, speed: 1.6 },
   { id: 'net_legendary', name: 'Rede Lendária', rarity: 'legendary', fishCount: 8, greenZoneSize: 0.28, speed: 1.5 },
   { id: 'net_abyssal', name: 'Rede Abissal', rarity: 'abyssal', fishCount: 5, greenZoneSize: 0.22, speed: 1.7 },
-  { id: 'net_volcanic', name: 'Rede Vulcânica', rarity: 'volcanic', fishCount: 4, greenZoneSize: 0.18, speed: 2.5 },
-  { id: 'net_platinum', name: 'Rede Platina', rarity: 'platinum', fishCount: 2, greenZoneSize: 0.14, speed: 2.8 },
+  { id: 'net_volcanic', name: 'Rede Vulcânica', rarity: 'volcanic', fishCount: 4, greenZoneSize: 0.18, speed: 1.9 },
+  { id: 'net_platinum', name: 'Rede Platina', rarity: 'platinum', fishCount: 2, greenZoneSize: 0.14, speed: 2.0 },
   { id: 'net_legends', name: 'Rede das Lendas', rarity: 'legends', fishCount: 1, greenZoneSize: 0.10, speed: 2.4 },
-  { id: 'net_cosmic', name: 'Rede Cósmica', rarity: 'cosmic', fishCount: 1, greenZoneSize: 0.08, speed: 3.5 },
+  { id: 'net_cosmic', name: 'Rede Cósmica', rarity: 'cosmic', fishCount: 1, greenZoneSize: 0.08, speed: 2.2 },
 ];
 
 interface Props {
@@ -45,6 +45,7 @@ const randomNet = () => NET_TYPES[Math.floor(Math.random() * NET_TYPES.length)];
 export default function NetFishing({ location, player, onCatch, onBack, onUseNet, onOpenShop }: Props) {
   const { lang } = useI18n();
   const strengthActive = !!player.strengthMultiplierEnd && player.strengthMultiplierEnd > Date.now();
+  const strengthFactor = strengthActive ? (player.strengthMultiplierPower === 4 ? 0.25 : 0.5) : 1;
 
   const pool = useMemo(() => getFishForLocation(location), [location]);
   const [phase, setPhase] = useState<Phase>('pull');
@@ -59,7 +60,7 @@ export default function NetFishing({ location, player, onCatch, onBack, onUseNet
 
   const greenSize = net?.greenZoneSize ?? 0.5;
   const greenStart = (1 - greenSize) / 2;
-  const speed = (net?.speed ?? 1) * (strengthActive ? 0.5 : 1);
+  const speed = (net?.speed ?? 1) * strengthFactor;
 
   const startNet = (selected: NetType) => {
     setNet(selected);

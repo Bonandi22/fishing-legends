@@ -7,15 +7,16 @@ import { useI18n, getRarityLabel } from '@/game/i18n';
 interface Props {
   fish: Fish;
   strengthActive?: boolean;
+  strengthPower?: number;
   onWin: () => void;
   onLose: () => void;
 }
 
-export default function PullMinigame({ fish, strengthActive, onWin, onLose }: Props) {
+export default function PullMinigame({ fish, strengthActive, strengthPower, onWin, onLose }: Props) {
   const { lang, t } = useI18n();
   const config = RARITY_CONFIG[fish.rarity];
   const greenSize = config.greenZoneSize;
-  const speed = strengthActive ? config.speed * 0.5 : config.speed;
+  const speed = strengthActive ? config.speed * (strengthPower === 4 ? 0.25 : 0.5) : config.speed;
 
   const greenStart = (1 - greenSize) / 2;
 
