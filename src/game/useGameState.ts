@@ -61,9 +61,10 @@ export function useGameState() {
 
   useEffect(() => { saveState(player); }, [player]);
 
-  const catchFish = useCallback((fish: Fish, weight: number, locationId: string) => {
+  const catchFish = useCallback((fish: Fish, weight: number, locationId: string, fromNet = false) => {
     setPlayer(prev => {
-      const { xp, level, xpToNextLevel } = levelUp(prev.xp + fish.xp, prev.level, prev.xpToNextLevel);
+      const xpGain = fromNet ? Math.floor(fish.xp * 0.3) : fish.xp;
+      const { xp, level, xpToNextLevel } = levelUp(prev.xp + xpGain, prev.level, prev.xpToNextLevel);
       const caught: CaughtFish = { fish, weight, location: locationId, timestamp: Date.now() };
       const newCollection = [...prev.collection, caught];
       const heaviest = !prev.heaviestFish || weight > prev.heaviestFish.weight ? caught : prev.heaviestFish;
