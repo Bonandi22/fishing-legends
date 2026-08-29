@@ -53,8 +53,8 @@ const IndexInner = () => {
   }, []);
 
   const handleCatch = useCallback((fish: Fish, weight: number, locationId: string) => {
-    catchFish(fish, weight, locationId);
-  }, [catchFish]);
+    catchFish(fish, weight, locationId, screen === 'net');
+  }, [catchFish, screen]);
 
   if (screen === 'locations') {
     return <LocationSelect playerLevel={player.level} unlockedLocations={player.unlockedLocations} world={world} onSelect={handleSelectLocation} onBack={() => setScreen('menu')} />;
