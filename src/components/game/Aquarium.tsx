@@ -215,50 +215,31 @@ export default function Aquarium({ player, onMoveToSector, onBack }: Props) {
               </div>
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
-                {warehouse.map((c, i) => {
-                  const picked = selected.includes(c.timestamp);
-                  return (
-                    <button
-                      key={c.timestamp + '-' + i}
-                      disabled={!targetSector}
-                      onClick={() => setSelected(prev => picked ? prev.filter(t2 => t2 !== c.timestamp) : [...prev, c.timestamp])}
-                      className={`relative rounded-lg border-2 bg-card p-2 text-center transition-transform ${
-                        picked ? 'border-primary ring-2 ring-primary scale-105' : `border-rarity-${c.fish.rarity} hover:scale-105`
-                      } ${!targetSector ? 'opacity-60 cursor-not-allowed' : ''}`}
-                    >
-                      {picked && (
-                        <span className="absolute top-1 right-1 text-xs font-bold text-primary">✓</span>
-                      )}
-                      {FISH_IMAGES[c.fish.id] ? (
-                        <img src={FISH_IMAGES[c.fish.id]} alt={c.fish.name} className="w-16 h-16 object-contain mx-auto" />
-                      ) : (
-                        <div className="text-3xl">{c.fish.emoji}</div>
-                      )}
-                      <p className="text-sm font-bold text-foreground truncate">{c.fish.name}</p>
-                      <p className={`text-xs font-semibold text-rarity-${c.fish.rarity}`}>
-                        {getRarityLabel(c.fish.rarity, lang)}
-                      </p>
-                      <p className="text-xs text-muted-foreground">{c.weight} kg</p>
-                      <p className="text-xs text-muted-foreground">
-                        💰 +{AQUARIUM_REWARDS[c.fish.rarity].coins} • ⭐ +{AQUARIUM_REWARDS[c.fish.rarity].xp}
-                      </p>
-                    </button>
-                  );
-                })}
+                {warehouse.map((c, i) => (
+                  <button
+                    key={c.timestamp + '-' + i}
+                    disabled={!targetSector}
+                    onClick={() => targetSector && onMoveToSector(c.timestamp, targetSector)}
+                    className={`relative rounded-lg border-2 bg-card p-2 text-center transition-transform border-rarity-${c.fish.rarity} hover:scale-105 ${!targetSector ? 'opacity-60 cursor-not-allowed' : ''}`}
+                  >
+                    {FISH_IMAGES[c.fish.id] ? (
+                      <img src={FISH_IMAGES[c.fish.id]} alt={c.fish.name} className="w-16 h-16 object-contain mx-auto" />
+                    ) : (
+                      <div className="text-3xl">{c.fish.emoji}</div>
+                    )}
+                    <p className="text-sm font-bold text-foreground truncate">{c.fish.name}</p>
+                    <p className={`text-xs font-semibold text-rarity-${c.fish.rarity}`}>
+                      {getRarityLabel(c.fish.rarity, lang)}
+                    </p>
+                    <p className="text-xs text-muted-foreground">{c.weight} kg</p>
+                    <p className="text-xs text-muted-foreground">
+                      💰 +{AQUARIUM_REWARDS[c.fish.rarity].coins} • ⭐ +{AQUARIUM_REWARDS[c.fish.rarity].xp}
+                    </p>
+                  </button>
+                ))}
               </div>
             )}
 
-            {targetSector && selected.length > 0 && (
-              <Button
-                onClick={() => {
-                  selected.forEach(ts => onMoveToSector(ts, targetSector));
-                  setSelected([]);
-                }}
-                className="w-full mt-4 font-bold"
-              >
-                Mover {selected.length} para {t('aquarium.sector')} {targetSector}
-              </Button>
-            )}
           </div>
         </div>
       )}
