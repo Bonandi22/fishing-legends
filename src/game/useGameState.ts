@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
-import { PlayerState, CaughtFish, Fish, getXpForLevel, FISH_COIN_VALUE, NET_LIMIT, NET_PRICE, MULTIPLIER_COST, MULTIPLIER_DURATION, AQUARIUM_REWARDS, DAILY_GIFTS, DailyGiftReward, getDailyGiftsForWeek } from './types';
+import { PlayerState, CaughtFish, Fish, getXpForLevel, FISH_COIN_VALUE, NET_LIMIT, NET_PRICE, MULTIPLIER_COST, MULTIPLIER_COST_4X, MULTIPLIER_DURATION, AQUARIUM_REWARDS, DAILY_GIFTS, DailyGiftReward, getDailyGiftsForWeek } from './types';
 import { LOCATIONS } from './data';
 
 const STORAGE_KEY = 'fishing-game-state';
@@ -104,14 +104,17 @@ export function useGameState() {
     });
   }, []);
 
-  const buyMultiplier = useCallback((type: 'luck' | 'strength') => {
+  const buyMultiplier = useCallback((type: 'luck' | 'strength', power: number = 2) => {
     setPlayer(prev => {
-      if (prev.coins < MULTIPLIER_COST) return prev;
+      const cost = power === 4 ? MULTIPLIER_COST_4X : MULTIPLIER_COST;
+      if (prev.coins < cost) return prev;
       const end = Date.now() + MULTIPLIER_DURATION;
       return {
         ...prev,
-        coins: prev.coins - MULTIPLIER_COST,
-        ...(type === 'luck' ? { luckMultiplierEnd: end } : { strengthMultiplierEnd: end }),
+        coins: prev.coins - cost,
+        ...(type === 'luck'
+          ? { luckMultiplierEnd: end, luckMultiplierPower: power }
+          : { strengthMultiplierEnd: end, strengthMultiplierPower: power }),
       };
     });
   }, []);

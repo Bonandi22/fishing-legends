@@ -162,6 +162,8 @@ export interface PlayerState {
   ownedBoatSkins: string[];
   luckMultiplierEnd: number | null;
   strengthMultiplierEnd: number | null;
+  luckMultiplierPower?: number;
+  strengthMultiplierPower?: number;
   lastRouletteDate: string | null;
   aquariumWarehouse: CaughtFish[];
   aquariumSectors: Record<number, CaughtFish[]>;
@@ -221,6 +223,7 @@ export const WAREHOUSE_LIMIT = 15;
 export const NET_LIMIT = 10;
 export const NET_PRICE = 5000;
 export const MULTIPLIER_COST = 3000;
+export const MULTIPLIER_COST_4X = 6000;
 export const MULTIPLIER_DURATION = 60 * 1000; // 1 minute
 
 export interface PullGameState {

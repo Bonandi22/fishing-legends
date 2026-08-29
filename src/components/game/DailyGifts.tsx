@@ -64,8 +64,9 @@ export default function DailyGifts({ player, onClaim, onBack }: Props) {
         <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3 mb-8">
           {gifts.map((reward, i) => {
             const day = i + 1;
+            const claimedDay = claimedToday ? (currentDay === 1 ? 7 : currentDay - 1) : 0;
             const isCurrent = day === currentDay && !claimedToday;
-            const isClaimed = day < currentDay || (day === currentDay && claimedToday);
+            const isClaimed = claimedToday ? day <= claimedDay : day < currentDay;
             const isLocked = !isCurrent && !isClaimed;
             const isExclusive = reward.type === 'boatSkin' || reward.type === 'rodSkin';
 

@@ -1,12 +1,12 @@
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { PlayerState, MULTIPLIER_COST } from '@/game/types';
+import { PlayerState, MULTIPLIER_COST, MULTIPLIER_COST_4X } from '@/game/types';
 import { useI18n } from '@/game/i18n';
 
 interface Props {
   player: PlayerState;
-  onBuy: (type: 'luck' | 'strength') => void;
+  onBuy: (type: 'luck' | 'strength', power?: number) => void;
   onBack: () => void;
 }
 
@@ -17,20 +17,10 @@ export default function MultiplierShop({ player, onBuy, onBack }: Props) {
   const strengthActive = player.strengthMultiplierEnd && player.strengthMultiplierEnd > now;
 
   const multipliers = [
-    {
-      type: 'luck' as const,
-      emoji: '🍀',
-      name: t('mult.luck'),
-      desc: t('mult.luckDesc'),
-      active: luckActive,
-    },
-    {
-      type: 'strength' as const,
-      emoji: '💪',
-      name: t('mult.strength'),
-      desc: t('mult.strengthDesc'),
-      active: strengthActive,
-    },
+    { type: 'luck' as const, power: 2, emoji: '🍀', name: `2x ${t('mult.luck')}`, desc: t('mult.luckDesc'), active: luckActive, cost: MULTIPLIER_COST },
+    { type: 'strength' as const, power: 2, emoji: '💪', name: `2x ${t('mult.strength')}`, desc: t('mult.strengthDesc'), active: strengthActive, cost: MULTIPLIER_COST },
+    { type: 'luck' as const, power: 4, emoji: '🍀', name: `4x ${t('mult.luck')}`, desc: t('mult.luckDesc'), active: luckActive && player.luckMultiplierPower === 4, cost: MULTIPLIER_COST_4X },
+    { type: 'strength' as const, power: 4, emoji: '💪', name: `4x ${t('mult.strength')}`, desc: t('mult.strengthDesc'), active: strengthActive && player.strengthMultiplierPower === 4, cost: MULTIPLIER_COST_4X },
   ];
 
   return (
@@ -46,13 +36,13 @@ export default function MultiplierShop({ player, onBuy, onBack }: Props) {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {multipliers.map((m, i) => (
-            <motion.div key={m.type} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }}>
+            <motion.div key={m.type + m.power} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }}>
               <Card className={`border-2 ${m.active ? 'border-primary shadow-lg shadow-primary/20' : 'border-border'}`}>
                 <CardContent className="p-6 text-center">
                   <div className="text-5xl mb-3">{m.emoji}</div>
                   <h2 className="text-xl font-bold text-foreground mb-1">{m.name}</h2>
                   <p className="text-sm text-muted-foreground mb-4">{m.desc}</p>
-                  <p className="text-lg font-bold text-primary mb-3">💰 {MULTIPLIER_COST}</p>
+                  <p className="text-lg font-bold text-primary mb-3">💰 {m.cost}</p>
                   <p className="text-xs text-muted-foreground mb-3">⏱️ 1 {t('mult.minute')}</p>
                   {m.active ? (
                     <motion.div
@@ -64,11 +54,11 @@ export default function MultiplierShop({ player, onBuy, onBack }: Props) {
                     </motion.div>
                   ) : (
                     <Button
-                      onClick={() => onBuy(m.type)}
-                      disabled={player.coins < MULTIPLIER_COST}
+                      onClick={() => onBuy(m.type, m.power)}
+                      disabled={player.coins < m.cost}
                       className="w-full"
                     >
-                      {player.coins < MULTIPLIER_COST ? t('mult.noCoins') : t('mult.buy')}
+                      {player.coins < m.cost ? t('mult.noCoins') : t('mult.buy')}
                     </Button>
                   )}
                 </CardContent>
