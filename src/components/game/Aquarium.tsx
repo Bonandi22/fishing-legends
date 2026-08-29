@@ -203,9 +203,10 @@ export default function Aquarium({ player, onMoveToSector, onBack }: Props) {
             </div>
             <p className="text-sm text-muted-foreground mb-3">
               {targetSector
-                ? `Setor ${targetSector} selecionado — escolha os peixes que quer enviar.`
-                : 'Escolha um setor acima, depois selecione os peixes.'}
+                ? `Setor ${targetSector} selecionado — clique num peixe para enviá-lo (um de cada vez).`
+                : 'Escolha um setor acima, depois clique num peixe.'}
             </p>
+
 
             {warehouse.length === 0 ? (
               <div className="text-center py-12 text-muted-foreground">
