@@ -117,6 +117,44 @@ export const FISH: Fish[] = [
   { id: 'peixe-supernova', name: 'Peixe Supernova', rarity: 'cosmic', waterType: 'freshwater', minWeight: 500, maxWeight: 2600, xp: 5100, description: 'Pulsa com o brilho de uma estrela em colapso.', emoji: '💫' },
   { id: 'nessie', name: 'Nessie', rarity: 'legends', waterType: 'freshwater', minWeight: 800, maxWeight: 4000, xp: 2700, description: 'Monstro plesiossauro do lendário Lago Ness.', emoji: '🐲' },
   { id: 'mokele-mbembe', name: 'Mokele-Mbembe', rarity: 'legends', waterType: 'freshwater', minWeight: 1000, maxWeight: 5000, xp: 2750, description: 'Criptídeo saurópode dos rios profundos do Congo.', emoji: '🦕' },
+
+  // ====== MUNDO 3 — EXCLUSIVOS (Nv. 20+) ======
+  // Common
+  { id: 'w3-sardinha-solar', name: 'Sardinha Solar', rarity: 'common', waterType: 'saltwater', minWeight: 0.1, maxWeight: 0.6, xp: 22, description: 'Cardumes dourados das águas esmeralda do Mundo 3.', emoji: '🐟', world: 3 },
+  { id: 'w3-piaba-verde', name: 'Piaba Verde', rarity: 'common', waterType: 'freshwater', minWeight: 0.1, maxWeight: 0.8, xp: 20, description: 'Pequena e brilhante, vive entre as algas esmeralda.', emoji: '🐟', world: 3 },
+  { id: 'w3-carpa-jade', name: 'Carpa Jade', rarity: 'common', waterType: 'freshwater', minWeight: 1.5, maxWeight: 9, xp: 24, description: 'Escamas verdes translúcidas como pedra de jade.', emoji: '🐟', world: 3 },
+  // Uncommon
+  { id: 'w3-robalo-esmeralda', name: 'Robalo Esmeralda', rarity: 'uncommon', waterType: 'saltwater', minWeight: 3, maxWeight: 14, xp: 55, description: 'Predador costeiro de brilho esverdeado.', emoji: '🐠', world: 3 },
+  { id: 'w3-tucunare-real', name: 'Tucunaré Real', rarity: 'uncommon', waterType: 'freshwater', minWeight: 4, maxWeight: 18, xp: 58, description: 'Versão majestosa do tucunaré, exclusiva do Mundo 3.', emoji: '🐠', world: 3 },
+  { id: 'w3-cavala-tropical', name: 'Cavala Tropical', rarity: 'uncommon', waterType: 'saltwater', minWeight: 3, maxWeight: 13, xp: 52, description: 'Nada em altíssima velocidade nas correntes quentes.', emoji: '🐠', world: 3 },
+  // Mythic
+  { id: 'w3-arapaima-jade', name: 'Arapaima de Jade', rarity: 'mythic', waterType: 'freshwater', minWeight: 50, maxWeight: 170, xp: 95, description: 'Gigante ancestral com escamas de jade polido.', emoji: '✨', world: 3 },
+  { id: 'w3-barracuda-verde', name: 'Barracuda Verde', rarity: 'mythic', waterType: 'saltwater', minWeight: 6, maxWeight: 34, xp: 92, description: 'Torpedo esmeralda dos recifes profundos.', emoji: '✨', world: 3 },
+  { id: 'w3-serpente-rio', name: 'Serpente do Rio', rarity: 'mythic', waterType: 'freshwater', minWeight: 5, maxWeight: 40, xp: 98, description: 'Corpo alongado que serpenteia entre as raízes.', emoji: '✨', world: 3 },
+  // Legendary
+  { id: 'w3-atum-imperial', name: 'Atum Imperial', rarity: 'legendary', waterType: 'saltwater', minWeight: 40, maxWeight: 350, xp: 210, description: 'Nobreza absoluta dos mares do Mundo 3.', emoji: '🏆', world: 3 },
+  { id: 'w3-pirarucu-ancestral', name: 'Pirarucu Ancestral', rarity: 'legendary', waterType: 'freshwater', minWeight: 80, maxWeight: 260, xp: 220, description: 'Guardião milenar dos rios esquecidos.', emoji: '🏆', world: 3 },
+  { id: 'w3-espadarte-jade', name: 'Espadarte de Jade', rarity: 'legendary', waterType: 'saltwater', minWeight: 60, maxWeight: 420, xp: 235, description: 'Sua lâmina brilha em tons de verde profundo.', emoji: '🏆', world: 3 },
+  // Abyssal
+  { id: 'w3-tamboril-verde', name: 'Tamboril Esmeralda', rarity: 'abyssal', waterType: 'saltwater', minWeight: 8, maxWeight: 60, xp: 620, description: 'Sua isca luminosa pulsa em verde nas trevas.', emoji: '🌟', world: 3 },
+  { id: 'w3-esturjao-antigo', name: 'Esturjão Antigo', rarity: 'abyssal', waterType: 'freshwater', minWeight: 250, maxWeight: 1200, xp: 680, description: 'Fóssil vivo ainda maior que o beluga.', emoji: '🌟', world: 3 },
+  { id: 'w3-serpente-abissal', name: 'Serpente Abissal', rarity: 'abyssal', waterType: 'saltwater', minWeight: 20, maxWeight: 180, xp: 700, description: 'Enrola-se nas fossas mais escuras do planeta.', emoji: '🌟', world: 3 },
+  // Volcanic
+  { id: 'w3-tubarao-magma', name: 'Tubarão de Magma', rarity: 'volcanic', waterType: 'saltwater', minWeight: 120, maxWeight: 700, xp: 820, description: 'Pele em brasa, caça em fontes hidrotermais.', emoji: '🔥', world: 3 },
+  { id: 'w3-salamandra-lago', name: 'Salamandra do Lago', rarity: 'volcanic', waterType: 'freshwater', minWeight: 15, maxWeight: 90, xp: 780, description: 'Criatura ígnea que respira em água fervente.', emoji: '🔥', world: 3 },
+  { id: 'w3-carpa-brasa', name: 'Carpa em Brasa', rarity: 'volcanic', waterType: 'freshwater', minWeight: 6, maxWeight: 40, xp: 760, description: 'Escamas incandescentes que deixam rastro de fumaça.', emoji: '🔥', world: 3 },
+  // Platinum
+  { id: 'w3-marlim-platina', name: 'Marlim de Platina', rarity: 'platinum', waterType: 'saltwater', minWeight: 150, maxWeight: 900, xp: 950, description: 'Corpo espelhado que reflete todo o oceano.', emoji: '💎', world: 3 },
+  { id: 'w3-arowana-diamante', name: 'Arowana de Diamante', rarity: 'platinum', waterType: 'freshwater', minWeight: 8, maxWeight: 45, xp: 900, description: 'Cada escama é uma gema lapidada.', emoji: '💎', world: 3 },
+  { id: 'w3-raia-cristal', name: 'Raia de Cristal', rarity: 'platinum', waterType: 'saltwater', minWeight: 30, maxWeight: 200, xp: 930, description: 'Translúcida como vidro puro.', emoji: '💎', world: 3 },
+  // Legends
+  { id: 'w3-hidra-marinha', name: 'Hidra Marinha', rarity: 'legends', waterType: 'saltwater', minWeight: 900, maxWeight: 5000, xp: 1500, description: 'Múltiplas cabeças emergem das profundezas esmeralda.', emoji: '🐉', world: 3 },
+  { id: 'w3-jormungandr', name: 'Jörmungandr', rarity: 'legends', waterType: 'saltwater', minWeight: 2000, maxWeight: 12000, xp: 1800, description: 'A serpente que circunda o mundo.', emoji: '🐍', world: 3 },
+  { id: 'w3-cobra-grande', name: 'Cobra Grande', rarity: 'legends', waterType: 'freshwater', minWeight: 800, maxWeight: 6000, xp: 1650, description: 'Lenda amazônica que dorme no fundo dos rios.', emoji: '🐍', world: 3 },
+  // Cosmic
+  { id: 'w3-tubarao-quasar', name: 'Tubarão Quasar', rarity: 'cosmic', waterType: 'saltwater', minWeight: 400, maxWeight: 3000, xp: 2400, description: 'Brilha com a luz de um núcleo galáctico.', emoji: '🌌', world: 3 },
+  { id: 'w3-arraia-andromeda', name: 'Arraia de Andrômeda', rarity: 'cosmic', waterType: 'saltwater', minWeight: 200, maxWeight: 1500, xp: 2200, description: 'Planos suas asas entre galáxias.', emoji: '🌌', world: 3 },
+  { id: 'w3-carpa-astral', name: 'Carpa Astral', rarity: 'cosmic', waterType: 'freshwater', minWeight: 30, maxWeight: 300, xp: 2100, description: 'Nada em correntes feitas de poeira estelar.', emoji: '🌌', world: 3 },
 ];
 
 export const LOCATIONS: FishingLocation[] = [
