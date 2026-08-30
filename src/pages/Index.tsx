@@ -34,15 +34,18 @@ const IndexInner = () => {
   const { isPlaying: musicPlaying, toggle: toggleMusic, trackId: musicTrack, setTrack: setMusicTrack } = useBackgroundMusic();
   const [screen, setScreen] = useState<Screen>('menu');
   const [selectedLocation, setSelectedLocation] = useState<FishingLocation | null>(null);
-  const [world, setWorld] = useState<1 | 2>(() => {
+  const [world, setWorld] = useState<1 | 2 | 3>(() => {
     const saved = localStorage.getItem('fishing-game-world');
-    return saved === '2' ? 2 : 1;
+    return saved === '3' ? 3 : saved === '2' ? 2 : 1;
   });
 
   useEffect(() => { localStorage.setItem('fishing-game-world', String(world)); }, [world]);
 
   // Auto revert if player drops below level 12
-  useEffect(() => { if (player.level < 12 && world === 2) setWorld(1); }, [player.level, world]);
+  useEffect(() => {
+    if (player.level < 12 && world > 1) setWorld(1);
+    else if (player.level < 20 && world === 3) setWorld(2);
+  }, [player.level, world]);
 
   // Keep current player in the leaderboard in sync
   useEffect(() => { syncCurrentPlayer(player); }, [player]);
@@ -122,7 +125,8 @@ const IndexInner = () => {
       musicTrack={musicTrack}
       onSetMusicTrack={setMusicTrack}
       world={world}
-      onSwitchWorld={() => setWorld(w => (w === 1 ? 2 : 1))}
+      onSwitchWorld={() => setWorld(w => (w === 2 ? 1 : 2))}
+      onSetWorld={setWorld}
     />
   );
 };
