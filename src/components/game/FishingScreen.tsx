@@ -425,7 +425,8 @@ export default function FishingScreen({ location, player, onCatch, onBack, onCas
       const wait = getWaitTime();
       timerRef.current = setTimeout(() => {
         const luckMultActive = player.luckMultiplierEnd ? player.luckMultiplierEnd > Date.now() : false;
-        const fish = rollFish(location, player.level, luckyMode || luckMultActive);
+        const luckPower = luckMultActive ? (player.luckMultiplierPower ?? 2) : 2;
+        const fish = rollFish(location, player.level, luckyMode || luckMultActive, luckPower);
         const weight = rollWeight(fish);
         setCurrentFish(fish);
         setCurrentWeight(weight);
