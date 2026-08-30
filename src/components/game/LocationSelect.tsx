@@ -28,7 +28,7 @@ const locationImages: Record<string, string> = {
 interface Props {
   playerLevel: number;
   unlockedLocations: string[];
-  world?: 1 | 2;
+  world?: 1 | 2 | 3;
   onSelect: (location: FishingLocation) => void;
   onCastNet?: (location: FishingLocation) => void;
   onBack: () => void;
@@ -45,7 +45,7 @@ export default function LocationSelect({ playerLevel, unlockedLocations, world =
       <div className="max-w-5xl mx-auto">
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-foreground">{t('loc.title')} {world === 2 && <span className="text-primary">— Mundo 2</span>}</h1>
+            <h1 className="text-3xl font-bold text-foreground">{t('loc.title')} {world > 1 && <span className="text-primary">— Mundo {world}</span>}</h1>
             <p className="text-muted-foreground">{t('loc.level')} {playerLevel} — {visibleLocations.filter(l => unlockedLocations.includes(l.id)).length}/{visibleLocations.length} {t('loc.unlocked')}</p>
           </div>
           <Button variant="outline" onClick={onBack}>{t('loc.back')}</Button>

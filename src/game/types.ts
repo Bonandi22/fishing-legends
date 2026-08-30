@@ -12,6 +12,7 @@ export interface Fish {
   xp: number;
   description: string;
   emoji: string;
+  world?: 1 | 2 | 3;
 }
 
 export interface FishingLocation {
@@ -26,7 +27,7 @@ export interface FishingLocation {
   ambientColor: string;
   fishIds: string[];
   emoji: string;
-  world?: 1 | 2;
+  world?: 1 | 2 | 3;
 }
 
 export interface CaughtFish {

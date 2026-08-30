@@ -28,8 +28,9 @@ interface Props {
   onToggleMusic: () => void;
   musicTrack: MusicTrackId;
   onSetMusicTrack: (id: MusicTrackId) => void;
-  world: 1 | 2;
+  world: 1 | 2 | 3;
   onSwitchWorld: () => void;
+  onSetWorld: (w: 1 | 2 | 3) => void;
 }
 
 const LANGS: Lang[] = ['pt', 'en', 'es', 'fr', 'de', 'ja'];
@@ -52,7 +53,7 @@ function saveAccount(acc: Account) {
   localStorage.setItem(ACCOUNT_KEY, JSON.stringify(acc));
 }
 
-export default function MainMenu({ player, onPlay, onCollection, onWarehouse, onSubmarine, onMultiplier, onSkins, onRoulette, onSkinRoulette, onRanking, onAquarium, onDailyGifts, onReset, musicPlaying, onToggleMusic, musicTrack, onSetMusicTrack, world, onSwitchWorld }: Props) {
+export default function MainMenu({ player, onPlay, onCollection, onWarehouse, onSubmarine, onMultiplier, onSkins, onRoulette, onSkinRoulette, onRanking, onAquarium, onDailyGifts, onReset, musicPlaying, onToggleMusic, musicTrack, onSetMusicTrack, world, onSwitchWorld, onSetWorld }: Props) {
   const { lang, setLang, t } = useI18n();
   const [langOpen, setLangOpen] = useState(false);
   const [trackOpen, setTrackOpen] = useState(false);
@@ -131,7 +132,7 @@ export default function MainMenu({ player, onPlay, onCollection, onWarehouse, on
   };
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-background relative overflow-hidden">
+    <div className={`flex min-h-screen flex-col items-center justify-center relative overflow-hidden ${world === 2 ? 'world-bg-2' : world === 3 ? 'world-bg-3' : 'bg-background'}`}>
       {/* Animated background waves */}
       <div className="absolute inset-0 opacity-20">
         {[...Array(5)].map((_, i) => (
@@ -202,13 +203,13 @@ export default function MainMenu({ player, onPlay, onCollection, onWarehouse, on
         <Button
           variant={world === 2 ? 'default' : 'outline'}
           size="sm"
-          onClick={onSwitchWorld}
+          onClick={() => onSetWorld(world === 2 ? 1 : 2)}
           disabled={player.level < 12}
           className="bg-background/80 backdrop-blur gap-1.5"
           title={player.level < 12 ? 'Desbloqueia no nível 12' : ''}
         >
           {player.level < 12 ? <Lock className="w-3.5 h-3.5" /> : <Globe className="w-3.5 h-3.5" />}
-          {world === 1 ? 'Mundo 2' : 'Mundo 1'}
+          {world === 2 ? 'Mundo 1' : 'Mundo 2'}
         </Button>
         <Button
           variant="outline"
@@ -221,6 +222,21 @@ export default function MainMenu({ player, onPlay, onCollection, onWarehouse, on
           {player.dailyGiftsLastClaim !== new Date().toISOString().slice(0, 10) && (
             <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-pink-500 rounded-full animate-pulse" />
           )}
+        </Button>
+      </div>
+
+      {/* World 3 button - below coins counter */}
+      <div className="absolute top-16 left-4 z-20">
+        <Button
+          variant={world === 3 ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => onSetWorld(world === 3 ? 2 : 3)}
+          disabled={player.level < 20}
+          className="bg-background/80 backdrop-blur gap-1.5"
+          title={player.level < 20 ? 'Desbloqueia no nível 20' : ''}
+        >
+          {player.level < 20 ? <Lock className="w-3.5 h-3.5" /> : <Globe className="w-3.5 h-3.5" />}
+          {world === 3 ? 'Voltar ao Mundo 2' : 'Mundo 3'}
         </Button>
       </div>
 
