@@ -291,6 +291,50 @@ export const LOCATIONS: FishingLocation[] = [
     fishIds: ['caranha', 'traira', 'piraiba', 'pirambeba', 'pintado-gigante', 'peixe-vampiro'],
     emoji: '🌌', world: 2,
   },
+
+  // ===================== MUNDO 3 =====================
+  {
+    id: 'emerald-sea', name: 'Mar Esmeralda', type: 'ocean', waterType: 'saltwater',
+    description: 'Águas verdes luminosas repletas de vida rara.', requiredLevel: 20,
+    waterColor: '#047857', skyColor: '#6ee7b7', ambientColor: '#a7f3d0',
+    fishIds: ['w3-sardinha-solar', 'w3-robalo-esmeralda', 'w3-cavala-tropical', 'w3-barracuda-verde', 'w3-atum-imperial', 'w3-espadarte-jade', 'w3-tamboril-verde', 'w3-serpente-abissal'],
+    emoji: '🟢', world: 3,
+  },
+  {
+    id: 'titan-abyss', name: 'Abismo dos Titãs', type: 'ocean', waterType: 'saltwater',
+    description: 'Onde dormem as serpentes que circundam o mundo.', requiredLevel: 22,
+    waterColor: '#022c22', skyColor: '#065f46', ambientColor: '#10b981',
+    fishIds: ['w3-sardinha-solar', 'w3-cavala-tropical', 'w3-barracuda-verde', 'w3-espadarte-jade', 'w3-serpente-abissal', 'w3-tamboril-verde'],
+    emoji: '🌑', world: 3,
+  },
+  {
+    id: 'jade-river', name: 'Rio de Jade', type: 'river', waterType: 'freshwater',
+    description: 'Corrente verde translúcida entre montanhas antigas.', requiredLevel: 20,
+    waterColor: '#065f46', skyColor: '#bbf7d0', ambientColor: '#d1fae5',
+    fishIds: ['w3-piaba-verde', 'w3-carpa-jade', 'w3-tucunare-real', 'w3-arapaima-jade', 'w3-serpente-rio', 'w3-pirarucu-ancestral', 'w3-esturjao-antigo'],
+    emoji: '🍃', world: 3,
+  },
+  {
+    id: 'ember-river', name: 'Rio das Brasas', type: 'river', waterType: 'freshwater',
+    description: 'Águas fumegantes onde vivem criaturas ígneas.', requiredLevel: 24,
+    waterColor: '#7c2d12', skyColor: '#86efac', ambientColor: '#fdba74',
+    fishIds: ['w3-piaba-verde', 'w3-carpa-jade', 'w3-tucunare-real', 'w3-serpente-rio', 'w3-carpa-brasa', 'w3-salamandra-lago', 'w3-pirarucu-ancestral'],
+    emoji: '🔥', world: 3,
+  },
+  {
+    id: 'mirror-lake', name: 'Lago Espelho', type: 'lake', waterType: 'freshwater',
+    description: 'Superfície perfeita que reflete tudo em platina.', requiredLevel: 26,
+    waterColor: '#134e4a', skyColor: '#ccfbf1', ambientColor: '#e0f2fe',
+    fishIds: ['w3-carpa-jade', 'w3-tucunare-real', 'w3-arapaima-jade', 'w3-arowana-diamante', 'w3-esturjao-antigo', 'w3-cobra-grande'],
+    emoji: '🪞', world: 3,
+  },
+  {
+    id: 'astral-lake', name: 'Lago Astral', type: 'lake', waterType: 'freshwater',
+    description: 'Portal aquático para o cosmos, lar dos seres astrais.', requiredLevel: 28,
+    waterColor: '#064e3b', skyColor: '#a7f3d0', ambientColor: '#6ee7b7',
+    fishIds: ['w3-carpa-jade', 'w3-arapaima-jade', 'w3-serpente-rio', 'w3-pirarucu-ancestral', 'w3-carpa-astral', 'w3-cobra-grande', 'w3-esturjao-antigo'],
+    emoji: '✨', world: 3,
+  },
 ];
 
 export function getFishById(id: string): Fish | undefined {
@@ -299,10 +343,13 @@ export function getFishById(id: string): Fish | undefined {
 
 export function getFishForLocation(location: FishingLocation): Fish[] {
   const base = location.fishIds.map(id => getFishById(id)).filter(Boolean) as Fish[];
-  // Volcanic & platinum rarities exist in both worlds, filtered by water type
+  const locWorld = location.world ?? 1;
+  // Volcanic & platinum rarities exist in all worlds, filtered by water type.
+  // World-exclusive fish only appear in their own world.
   const extras = FISH.filter(f =>
     (f.rarity === 'volcanic' || f.rarity === 'platinum' || f.rarity === 'legends' || f.rarity === 'cosmic') &&
     f.waterType === location.waterType &&
+    (f.world === undefined || f.world === locWorld) &&
     !base.some(b => b.id === f.id)
   );
   return [...base, ...extras];
