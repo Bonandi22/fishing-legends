@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 
 // ============= Music track presets =============
-export type MusicTrackId = 'calm' | 'adventure' | 'mystery' | 'epic' | 'lofi';
+export type MusicTrackId = 'calm' | 'adventure' | 'mystery' | 'epic' | 'lofi' | 'tropical' | 'abyss' | 'storm' | 'cosmic' | 'zen' | 'retro';
 
 interface TrackPreset {
   id: MusicTrackId;
@@ -63,6 +63,60 @@ export const MUSIC_TRACKS: TrackPreset[] = [
     oscA: 'sine', oscB: 'square',
     intervalMs: 950, intervalJitter: 350, noteDur: 2.0,
     chordChance: 0.55, masterVol: 0.10,
+  },
+  {
+    id: 'tropical',
+    label: '🏝️ Tropical',
+    scale: [293.66, 349.23, 392.00, 440.00, 523.25, 587.33, 698.46, 783.99],
+    bassMul: 0.5,
+    oscA: 'triangle', oscB: 'sine',
+    intervalMs: 520, intervalJitter: 200, noteDur: 1.1,
+    chordChance: 0.6, masterVol: 0.11,
+  },
+  {
+    id: 'abyss',
+    label: '🌑 Abismo',
+    scale: [98.00, 116.54, 130.81, 155.56, 174.61, 207.65, 233.08, 261.63],
+    bassMul: 0.25,
+    oscA: 'sine', oscB: 'triangle',
+    intervalMs: 1600, intervalJitter: 800, noteDur: 3.4,
+    chordChance: 0.75, masterVol: 0.12,
+  },
+  {
+    id: 'storm',
+    label: '⛈️ Tempestade',
+    scale: [146.83, 174.61, 196.00, 233.08, 261.63, 311.13, 349.23, 415.30],
+    bassMul: 0.5,
+    oscA: 'sawtooth', oscB: 'square',
+    intervalMs: 300, intervalJitter: 180, noteDur: 0.9,
+    chordChance: 0.65, masterVol: 0.08,
+  },
+  {
+    id: 'cosmic',
+    label: '🌌 Cósmica',
+    scale: [174.61, 220.00, 261.63, 329.63, 392.00, 466.16, 523.25, 659.25],
+    bassMul: 0.25,
+    oscA: 'sine', oscB: 'sawtooth',
+    intervalMs: 1100, intervalJitter: 700, noteDur: 3.0,
+    chordChance: 0.85, masterVol: 0.10,
+  },
+  {
+    id: 'zen',
+    label: '🎐 Zen',
+    scale: [261.63, 293.66, 349.23, 392.00, 440.00, 523.25, 587.33, 698.46],
+    bassMul: 0.5,
+    oscA: 'sine', oscB: 'sine',
+    intervalMs: 1800, intervalJitter: 900, noteDur: 3.2,
+    chordChance: 0.3, masterVol: 0.11,
+  },
+  {
+    id: 'retro',
+    label: '👾 Retrô',
+    scale: [261.63, 329.63, 392.00, 440.00, 493.88, 523.25, 659.25, 783.99],
+    bassMul: 0.5,
+    oscA: 'square', oscB: 'square',
+    intervalMs: 260, intervalJitter: 90, noteDur: 0.5,
+    chordChance: 0.35, masterVol: 0.07,
   },
 ];
 
