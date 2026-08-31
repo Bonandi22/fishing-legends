@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 
 // ============= Music track presets =============
-export type MusicTrackId = 'calm' | 'adventure' | 'mystery' | 'epic' | 'lofi';
+export type MusicTrackId = 'calm' | 'adventure' | 'mystery' | 'epic' | 'lofi' | 'tropical' | 'abyss' | 'storm' | 'cosmic' | 'zen' | 'retro';
 
 interface TrackPreset {
   id: MusicTrackId;
