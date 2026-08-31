@@ -21,12 +21,12 @@ export const NET_TYPES: NetType[] = [
   { id: 'net_common', name: 'Rede Comum', rarity: 'common', fishCount: 20, greenZoneSize: 0.55, speed: 1.0 },
   { id: 'net_uncommon', name: 'Rede Incomum', rarity: 'uncommon', fishCount: 15, greenZoneSize: 0.45, speed: 1.3 },
   { id: 'net_mythic', name: 'Rede Mítica', rarity: 'mythic', fishCount: 10, greenZoneSize: 0.36, speed: 1.6 },
-  { id: 'net_legendary', name: 'Rede Lendária', rarity: 'legendary', fishCount: 8, greenZoneSize: 0.28, speed: 1.5 },
-  { id: 'net_abyssal', name: 'Rede Abissal', rarity: 'abyssal', fishCount: 5, greenZoneSize: 0.22, speed: 1.7 },
+  { id: 'net_legendary', name: 'Rede Lendária', rarity: 'legendary', fishCount: 8, greenZoneSize: 0.35, speed: 1.5 },
+  { id: 'net_abyssal', name: 'Rede Abissal', rarity: 'abyssal', fishCount: 5, greenZoneSize: 0.30, speed: 1.7 },
   { id: 'net_volcanic', name: 'Rede Vulcânica', rarity: 'volcanic', fishCount: 4, greenZoneSize: 0.18, speed: 1.9 },
   { id: 'net_platinum', name: 'Rede Platina', rarity: 'platinum', fishCount: 2, greenZoneSize: 0.14, speed: 2.0 },
-  { id: 'net_legends', name: 'Rede das Lendas', rarity: 'legends', fishCount: 1, greenZoneSize: 0.10, speed: 2.4 },
-  { id: 'net_cosmic', name: 'Rede Cósmica', rarity: 'cosmic', fishCount: 1, greenZoneSize: 0.08, speed: 2.2 },
+  { id: 'net_legends', name: 'Rede das Lendas', rarity: 'legends', fishCount: 1, greenZoneSize: 0.20, speed: 2.4 },
+  { id: 'net_cosmic', name: 'Rede Cósmica', rarity: 'cosmic', fishCount: 1, greenZoneSize: 0.18, speed: 2.2 },
 ];
 
 interface Props {
