@@ -98,4 +98,12 @@
   .border-rarity-platinum { border-color: hsl(var(--rarity-platinum)); }
   .border-rarity-legends { border-color: hsl(var(--rarity-legends)); }
   .border-rarity-cosmic { border-color: hsl(var(--rarity-cosmic)); }
+
+  .world-bg-2 {
+    background: radial-gradient(circle at 50% 30%, hsl(0 70% 35%), hsl(0 80% 15%) 60%, hsl(0 90% 8%));
+  }
+
+  .world-bg-3 {
+    background: radial-gradient(circle at 50% 30%, hsl(140 60% 35%), hsl(140 70% 15%) 60%, hsl(140 80% 8%));
+  }
 }
