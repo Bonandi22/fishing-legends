@@ -86,6 +86,7 @@ import arraiaNebulosa from '@/assets/fish/arraia-nebulosa.png';
 import koiGalactico from '@/assets/fish/koi-galactico.png';
 import enguiaBuracoNegro from '@/assets/fish/enguia-buraco-negro.png';
 import peixeSupernova from '@/assets/fish/peixe-supernova.png';
+import sardinhaGalactica from '@/assets/fish/sardinha-galactica.png';
 
 
 
@@ -173,4 +174,5 @@ export const FISH_IMAGES: Record<string, string> = {
   'koi-galactico': koiGalactico,
   'enguia-buraco-negro': enguiaBuracoNegro,
   'peixe-supernova': peixeSupernova,
+  'sardinha-galactica': sardinhaGalactica,
 };

@@ -114,6 +114,7 @@ export const FISH: Fish[] = [
   { id: 'arraia-nebulosa', name: 'Arraia Nebulosa', rarity: 'cosmic', waterType: 'saltwater', minWeight: 900, maxWeight: 4000, xp: 4600, description: 'Planador silencioso feito de poeira estelar.', emoji: '🌠' },
   { id: 'koi-galactico', name: 'Koi Galáctico', rarity: 'cosmic', waterType: 'freshwater', minWeight: 60, maxWeight: 400, xp: 4400, description: 'Escamas que giram como espirais de galáxias.', emoji: '🪐' },
   { id: 'enguia-buraco-negro', name: 'Enguia do Buraco Negro', rarity: 'cosmic', waterType: 'freshwater', minWeight: 300, maxWeight: 1800, xp: 4800, description: 'Devora a própria luz ao seu redor.', emoji: '🕳️' },
+  { id: 'sardinha-galactica', name: 'Sardinha Galáctica', rarity: 'cosmic', waterType: 'saltwater', minWeight: 0.2, maxWeight: 3, xp: 4300, description: 'Cardume minúsculo que carrega uma galáxia inteira nas escamas.', emoji: '🌌' },
   { id: 'peixe-supernova', name: 'Peixe Supernova', rarity: 'cosmic', waterType: 'freshwater', minWeight: 500, maxWeight: 2600, xp: 5100, description: 'Pulsa com o brilho de uma estrela em colapso.', emoji: '💫' },
   { id: 'nessie', name: 'Nessie', rarity: 'legends', waterType: 'freshwater', minWeight: 800, maxWeight: 4000, xp: 2700, description: 'Monstro plesiossauro do lendário Lago Ness.', emoji: '🐲' },
   { id: 'mokele-mbembe', name: 'Mokele-Mbembe', rarity: 'legends', waterType: 'freshwater', minWeight: 1000, maxWeight: 5000, xp: 2750, description: 'Criptídeo saurópode dos rios profundos do Congo.', emoji: '🦕' },
