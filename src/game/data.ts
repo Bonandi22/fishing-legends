@@ -343,8 +343,10 @@ export function getFishById(id: string): Fish | undefined {
 }
 
 export function getFishForLocation(location: FishingLocation): Fish[] {
-  const base = location.fishIds.map(id => getFishById(id)).filter(Boolean) as Fish[];
   const locWorld = location.world ?? 1;
+  const base = (location.fishIds.map(id => getFishById(id)).filter(Boolean) as Fish[])
+    .filter(f => f.world === undefined || f.world === locWorld);
+
   // Volcanic & platinum rarities exist in all worlds, filtered by water type.
   // World-exclusive fish only appear in their own world.
   const extras = FISH.filter(f =>
