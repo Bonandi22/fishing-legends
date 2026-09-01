@@ -87,6 +87,35 @@ import koiGalactico from '@/assets/fish/koi-galactico.png';
 import enguiaBuracoNegro from '@/assets/fish/enguia-buraco-negro.png';
 import peixeSupernova from '@/assets/fish/peixe-supernova.png';
 import sardinhaGalactica from '@/assets/fish/sardinha-galactica.png';
+// Mundo 3
+import w3SardinhaSolar from '@/assets/fish/w3-sardinha-solar.png';
+import w3PiabaVerde from '@/assets/fish/w3-piaba-verde.png';
+import w3CarpaJade from '@/assets/fish/w3-carpa-jade.png';
+import w3RobaloEsmeralda from '@/assets/fish/w3-robalo-esmeralda.png';
+import w3TucunareReal from '@/assets/fish/w3-tucunare-real.png';
+import w3CavalaTropical from '@/assets/fish/w3-cavala-tropical.png';
+import w3ArapaimaJade from '@/assets/fish/w3-arapaima-jade.png';
+import w3BarracudaVerde from '@/assets/fish/w3-barracuda-verde.png';
+import w3SerpenteRio from '@/assets/fish/w3-serpente-rio.png';
+import w3AtumImperial from '@/assets/fish/w3-atum-imperial.png';
+import w3PirarucuAncestral from '@/assets/fish/w3-pirarucu-ancestral.png';
+import w3EspadarteJade from '@/assets/fish/w3-espadarte-jade.png';
+import w3TamborilVerde from '@/assets/fish/w3-tamboril-verde.png';
+import w3EsturjaoAntigo from '@/assets/fish/w3-esturjao-antigo.png';
+import w3SerpenteAbissal from '@/assets/fish/w3-serpente-abissal.png';
+import w3TubaraoMagma from '@/assets/fish/w3-tubarao-magma.png';
+import w3SalamandraLago from '@/assets/fish/w3-salamandra-lago.png';
+import w3CarpaBrasa from '@/assets/fish/w3-carpa-brasa.png';
+import w3MarlimPlatina from '@/assets/fish/w3-marlim-platina.png';
+import w3ArowanaDiamante from '@/assets/fish/w3-arowana-diamante.png';
+import w3RaiaCristal from '@/assets/fish/w3-raia-cristal.png';
+import w3HidraMarinha from '@/assets/fish/w3-hidra-marinha.png';
+import w3Jormungandr from '@/assets/fish/w3-jormungandr.png';
+import w3CobraGrande from '@/assets/fish/w3-cobra-grande.png';
+import w3TubaraoQuasar from '@/assets/fish/w3-tubarao-quasar.png';
+import w3ArraiaAndromeda from '@/assets/fish/w3-arraia-andromeda.png';
+import w3CarpaAstral from '@/assets/fish/w3-carpa-astral.png';
+
 
 
 
