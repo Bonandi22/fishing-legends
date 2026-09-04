@@ -8,9 +8,12 @@ Este arquivo mantém o contexto técnico e o roadmap versionados no repositório
 - Projeto: jogo de pesca React/TypeScript com Vite, Vitest, Playwright e sistemas 3D.
 - Arquitetura online: ainda não existe backend, autenticação real ou ranking global.
 - Persistência atual: `localStorage`, com saves versionados e validação Zod.
-- Branch atual: `feature/task-03`.
-- Pull Request da Task 2: `Bonandi22/deep-blue-lure#1`.
-- Último commit da Task 3: `a132aad` — `Complete content balance validation`.
+- Branch principal integrada: `main`.
+- Último merge da revitalização de interfaces: `08a26b8`.
+- Branch de trabalho pausada: `fix/menu-symmetry`.
+- Último commit local: `94fa6c0` — `Record project pause point`.
+- PRs das Tasks 2, 3 e 4: `Bonandi22/deep-blue-lure#1`, `#2` e `#3`, todos integrados.
+- PR da revitalização de interfaces: `Bonandi22/deep-blue-lure#4`, integrado na `main`.
 - Correção de CI publicada em `f16299d` — lockfile sincronizado com `package.json`.
 - Permissão `actions: read` adicionada ao workflow em `472365a`.
 - CodeQL removido temporariamente do workflow em razão da indisponibilidade de GitHub Advanced Security para o repositório privado no plano atual.
@@ -33,6 +36,18 @@ feature/task-05
 ```
 
 Cada branch deve conter uma etapa coerente e pode receber commits incrementais. A próxima branch só deve ser criada quando a etapa anterior estiver validada e consolidada.
+
+## Ponto de parada — 2026-09-04
+
+- O frontend está funcional e integrado na `main`.
+- A revitalização visual foi integrada pelo PR `#4`.
+- Foi criada a correção local `fix/menu-symmetry` com o commit `fc78fd1` para equilibrar tamanhos, larguras e alturas dos elementos da página inicial.
+- Essa correção ainda não foi publicada nem aberta em PR; retomar por ela antes de iniciar qualquer nova task.
+- O servidor local do jogo foi iniciado em `http://127.0.0.1:8082`; as portas `8080` e `8081` estavam ocupadas por instâncias anteriores.
+- Playwright foi instalado como extensão do VS Code e o Chromium foi baixado com sucesso.
+- O build de produção passa. Permanecem alertas de Browserslist desatualizado e chunks grandes.
+- O workflow de CI mantém TypeScript, Vitest e build; CodeQL foi removido por indisponibilidade de GitHub Advanced Security no repositório privado.
+- Não iniciar backend, autenticação, ranking global ou Campeonato até concluir a revisão final do frontend.
 
 ## Roadmap
 
@@ -86,14 +101,14 @@ Task 2 foi fechada e publicada no Pull Request `Bonandi22/deep-blue-lure#1`.
 - O workflow mantém TypeScript, testes e build como gate obrigatório; CodeQL poderá ser reintroduzido quando GitHub Advanced Security estiver disponível.
 - `npm ci` ainda reporta vulnerabilidades transitivas existentes (1 low, 4 moderate, 15 high); isso deve ser tratado em uma tarefa própria de dependências, sem aplicar `npm audit fix` automaticamente.
 
-### Task 4 — Backend e autenticação — planejada
+### Task 5 — Backend e autenticação — planejada
 
 - Introduzir API e persistência server-side.
 - Implementar autenticação real e autorização por usuário.
 - Migrar ranking e conta local para dados remotos.
 - Remover confiança do cliente para moedas, XP, inventário e resultados competitivos.
 
-### Task 5 — Campeonato — planejada
+### Task 6 — Campeonato — planejada
 
 - Definir temporadas, regras, pontuação e critérios antifraude.
 - Reutilizar o domínio de captura, raridade, peso, XP e inventário.
@@ -125,11 +140,33 @@ Estes itens não fazem parte da fase frontend-only, mas são obrigatórios antes
 - O bundle de produção é grande por causa dos assets 3D e imagens; code splitting será avaliado depois da separação arquitetural.
 - Alterações devem ser feitas sem apagar mudanças de usuário e sem modificar backend inexistente.
 
+## Guardrails permanentes (definidas em 2026-07-08)
+
+Aplicam-se a qualquer tarefa, agêntica ou não. Não são negociáveis por omissão — só o utilizador as pode suspender explicitamente para uma tarefa concreta.
+
+### Qualidade
+
+- Nenhuma mudança é considerada pronta sem testes a passar e sem o utilizador ter revisto o diff.
+- Antes de declarar uma tarefa terminada, apresentar o diff (ou resumo, se grande) e um resumo dos riscos — o que pode partir, o que não foi testado, dependências afetadas.
+- Para mudanças com comportamento em runtime (não só documentação/configuração), o teste manual local — correr a app e exercitar o fluxo, não só `dotnet build`/testes automáticos — faz parte do "pronto para merge", não é um passo opcional a fazer depois.
+- Não há ferramenta de browser disponível neste ambiente, por isso esse teste manual é sempre do utilizador: ao trabalhar num worktree isolado, indicar o caminho da pasta logo no início (é uma checkout normal, corre-se `dotnet run`/`npm start` diretamente lá) para o utilizador poder testar por partes à medida que se avança, em vez de só no fim.
+
+### Segurança
+
+- Nunca escrever segredos (chaves, tokens, senhas, connection strings, secrets de API) em código, commits, migrações, logs ou output de debug.
+- Tudo sensível vive em `ICM_*` (env vars) ou `appsettings.Development.json`/`.env`/`.env.docker` (git-ignored) — nunca em `appsettings.json` commitado.
+- Verificar ficheiros staged antes de commitar, mesmo com nomes inocentes.
+
+### Custo
+
+- No final de qualquer tarefa que use loops, subagents/forks ou múltiplas iterações de exploração, apresentar uma estimativa do esforço gasto (nº de agentes lançados, builds/testes repetidos, tempo aproximado) e sugerir onde reduzir da próxima vez.
+
 ## Validação registrada
 
-Na conclusão das Tasks 1, 2 e 3:
+Na conclusão das Tasks 1, 2, 3, 4 e da revitalização visual:
 
 - TypeScript passa com `npx tsc --noEmit -p tsconfig.app.json`.
 - Vitest passa com 20 testes.
 - Build de produção passa.
 - O build ainda emite o alerta de chunks grandes do Vite.
+- A correção de simetria da página inicial foi validada com build de produção e `git diff --check`.
