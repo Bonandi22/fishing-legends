@@ -90,7 +90,16 @@ The following domains are designed but intentionally deferred:
 - `leaderboard_scores`, `leaderboard_snapshots`;
 - `seasons`, `season_rules`, `season_entries`, `season_rewards`.
 
-The current authentication routes use an in-memory repository only for local development and tests. A PostgreSQL repository must replace it before any production deployment or persistent user data is enabled.
+Authentication routes use the Drizzle/PostgreSQL repository whenever `DATABASE_URL` is configured. The in-memory repository is limited to local development without a database and tests; production refuses to start without `DATABASE_URL`.
+
+Database commands:
+
+```text
+npm run backend:db:generate
+npm run backend:db:migrate
+```
+
+Migration commands require `DATABASE_URL`. The checked-in SQL migrations remain the reviewable source of schema changes.
 
 Every user-owned row contains `user_id`. Foreign keys, unique constraints, check constraints, and indexes are part of the migration design. Monetary and inventory mutations are append-audited and transactional.
 

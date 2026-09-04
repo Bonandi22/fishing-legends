@@ -5,6 +5,8 @@ import { registerSystemRoutes } from './http/routes/system.js';
 import { createAuthService } from './auth/service.js';
 import { createMemoryAuthRepository } from './auth/memoryRepository.js';
 import { registerAuthRoutes } from './auth/routes.js';
+import { createDatabase } from './db/client.js';
+import { createPgAuthRepository } from './auth/pgRepository.js';
 
 export type AppDependencies = {
   config: AppConfig;
@@ -21,7 +23,10 @@ export function createApp({ config }: AppDependencies): FastifyInstance {
   registerSystemRoutes(app, {
     databaseConfigured: Boolean(config.databaseUrl),
   });
-  void registerAuthRoutes(app, createAuthService(createMemoryAuthRepository(), {
+  const authRepository = config.databaseUrl
+    ? createPgAuthRepository(createDatabase(config.databaseUrl))
+    : createMemoryAuthRepository();
+  void registerAuthRoutes(app, createAuthService(authRepository, {
     accessTokenSecret: config.accessTokenSecret,
     accessTokenTtlSeconds: config.accessTokenTtlSeconds,
     refreshTokenTtlSeconds: config.refreshTokenTtlSeconds,

@@ -518,3 +518,13 @@ Observações:
 - Produção não inicia sem `DATABASE_URL`.
 - A persistência PostgreSQL do módulo de autenticação ainda precisa ser implementada antes de qualquer deploy.
 - A suíte passou com 24 testes e o typecheck do backend passou.
+
+### Persistência PostgreSQL da autenticação
+
+- Adicionado schema Drizzle tipado em `backend/src/db/schema.ts`.
+- Adicionado `createPgAuthRepository()` com transações para criação de usuário/perfil, sessões, rotação e revogação.
+- O app usa PostgreSQL quando `DATABASE_URL` existe e usa memória somente sem banco em desenvolvimento/testes.
+- Adicionado `drizzle.config.ts`.
+- Adicionados scripts `backend:db:generate` e `backend:db:migrate`.
+- A validação executada não conectou a um PostgreSQL real; o typecheck e os 24 testes passaram.
+- Antes de produção, executar migrações em staging e adicionar testes de integração contra PostgreSQL.
