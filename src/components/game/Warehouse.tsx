@@ -18,14 +18,14 @@ export default function Warehouse({ player, onSell, onBack }: Props) {
   const totalCoins = warehouse.reduce((sum, c) => sum + FISH_COIN_VALUE[c.fish.rarity], 0);
 
   return (
-    <div className="min-h-screen bg-background p-4 md:p-8">
+    <div className="screen-shell bg-background">
       <div className="max-w-4xl mx-auto">
-        <div className="flex items-center justify-between mb-6">
+        <div className="screen-header">
           <div>
             <h1 className="text-3xl font-bold text-foreground">{t('wh.title')}</h1>
             <p className="text-muted-foreground">{warehouse.length}/{WAREHOUSE_LIMIT} {t('wh.stored')}</p>
           </div>
-          <Button variant="outline" onClick={onBack}>{t('loc.back')}</Button>
+          <Button variant="outline" onClick={onBack} className="touch-target shrink-0">{t('loc.back')}</Button>
         </div>
 
         {warehouse.length === 0 ? (

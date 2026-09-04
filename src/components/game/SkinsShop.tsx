@@ -16,9 +16,9 @@ export default function SkinsShop({ player, onBuy, onEquip, onBack, onOpenBoatVi
   const { t } = useI18n();
 
   return (
-    <div className="min-h-screen bg-background p-4 md:p-8">
+    <div className="screen-shell bg-background">
       <div className="max-w-4xl mx-auto">
-        <div className="flex items-center justify-between mb-6">
+        <div className="screen-header">
           <div>
             <h1 className="text-3xl font-bold text-foreground">{t('skins.title')}</h1>
             <p className="text-muted-foreground">💰 {player.coins} {t('mult.coins')}</p>

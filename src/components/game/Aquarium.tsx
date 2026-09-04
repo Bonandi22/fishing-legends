@@ -26,7 +26,7 @@ export default function Aquarium({ player, onMoveToSector, onBack }: Props) {
 
   return (
     <div
-      className="min-h-screen relative overflow-hidden"
+      className="screen-shell relative overflow-hidden"
       style={{
         background: 'linear-gradient(180deg, #0c4a6e 0%, #075985 35%, #0369a1 70%, #0c4a6e 100%)',
       }}
@@ -99,8 +99,8 @@ export default function Aquarium({ player, onMoveToSector, onBack }: Props) {
       </div>
 
       {/* Header bar */}
-      <div className="relative z-10 flex items-center justify-between p-4">
-        <Button variant="outline" onClick={onBack} className="bg-background/80 backdrop-blur">
+      <div className="relative z-10 screen-header">
+        <Button variant="outline" onClick={onBack} className="touch-target bg-background/80 backdrop-blur shrink-0">
           {t('loc.back')}
         </Button>
         <h1 className="text-3xl md:text-4xl font-black text-white drop-shadow-lg">
@@ -108,7 +108,7 @@ export default function Aquarium({ player, onMoveToSector, onBack }: Props) {
         </h1>
         <Button
           onClick={() => { setView(view === 'tank' ? 'storage' : 'tank'); setSelected([]); }}
-          className="bg-cyan-600 hover:bg-cyan-500 text-white font-bold shadow-lg"
+          className="touch-target bg-cyan-600 hover:bg-cyan-500 text-white font-bold shadow-lg shrink-0"
         >
           {view === 'tank' ? `📦 ${t('aquarium.storage')} (${warehouse.length})` : `🐠 ${t('aquarium.tank')}`}
         </Button>

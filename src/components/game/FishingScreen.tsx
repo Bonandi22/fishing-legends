@@ -528,19 +528,19 @@ export default function FishingScreen({ location, player, onCatch, onBack, onCas
       {/* HUD overlay */}
       <div className="absolute left-0 right-0 top-0 z-10 flex items-start justify-between gap-2 p-2 pointer-events-none sm:p-4">
         <div className="pointer-events-auto">
-          <Button variant="outline" size="sm" onClick={handleBack} className="bg-background/80 backdrop-blur">
+          <Button variant="outline" size="sm" onClick={handleBack} className="touch-target bg-background/80 backdrop-blur">
             {t('fish.back')}
           </Button>
           {location.type === 'lake' && onCastNet && (
             <div className="mt-2 flex items-center gap-2">
-              <Button variant="secondary" size="sm" onClick={onCastNet} disabled={(player.nets ?? 0) <= 0} className="font-semibold shadow-lg">
+              <Button variant="secondary" size="sm" onClick={onCastNet} disabled={(player.nets ?? 0) <= 0} className="touch-target font-semibold shadow-lg">
                 Lançar a Rede
               </Button>
               <div className="bg-background/80 backdrop-blur rounded-lg px-2 py-1 text-xs font-bold text-foreground">
                 Redes: {player.nets ?? 0}/10
               </div>
               {onOpenNetShop && (
-                <Button variant="outline" size="sm" onClick={onOpenNetShop} className="bg-background/80 backdrop-blur font-semibold">
+                <Button variant="outline" size="sm" onClick={onOpenNetShop} className="touch-target bg-background/80 backdrop-blur font-semibold">
                   Loja
                 </Button>
               )}

@@ -17,16 +17,16 @@ export default function Collection({ player, onBack }: Props) {
   const rarities: Rarity[] = ['common', 'uncommon', 'mythic', 'legendary', 'abyssal', 'volcanic', 'platinum', 'legends', 'cosmic'];
 
   return (
-    <div className="min-h-screen bg-background p-4 md:p-8">
+    <div className="screen-shell bg-background">
       <div className="max-w-4xl mx-auto">
-        <div className="flex items-center justify-between mb-6">
+        <div className="screen-header">
           <div>
             <h1 className="text-3xl font-bold text-foreground">{t('col.title')}</h1>
             <p className="text-muted-foreground">
               {caughtIds.size}/{FISH.length} {t('col.species')} • {player.totalFishCaught} {t('col.caught')}
             </p>
           </div>
-          <Button variant="outline" onClick={onBack}>{t('loc.back')}</Button>
+          <Button variant="outline" onClick={onBack} className="touch-target shrink-0">{t('loc.back')}</Button>
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
@@ -37,7 +37,7 @@ export default function Collection({ player, onBack }: Props) {
         </div>
 
         <Tabs defaultValue="all">
-          <TabsList className="mb-4">
+          <TabsList className="mb-4 max-w-full overflow-x-auto justify-start">
             <TabsTrigger value="all">{t('col.all')}</TabsTrigger>
             {rarities.map(r => (
               <TabsTrigger key={r} value={r}>{getRarityLabel(r, lang)}</TabsTrigger>
