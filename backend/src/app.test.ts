@@ -254,4 +254,30 @@ describe('backend foundation', () => {
     expect(response.statusCode).toBe(409);
     expect(response.json().error.code).toBe('NET_LIMIT_REACHED');
   });
+
+  it('rejects a multiplier purchase without wallet funds', async () => {
+    const app = createApp({ config: testConfig });
+    apps.add(app);
+    const registration = await app.inject({
+      method: 'POST',
+      url: '/api/v1/auth/register',
+      payload: {
+        email: 'multiplier@example.com',
+        password: 'a-strong-password-123',
+        username: 'multiplier_user',
+        country: 'br',
+      },
+    });
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/v1/economy/multipliers/purchase',
+      headers: {
+        authorization: `Bearer ${registration.json().accessToken}`,
+        'idempotency-key': 'multiplier-purchase-123',
+      },
+      payload: { type: 'luck', power: 2 },
+    });
+    expect(response.statusCode).toBe(409);
+    expect(response.json().error.code).toBe('INSUFFICIENT_FUNDS');
+  });
 });

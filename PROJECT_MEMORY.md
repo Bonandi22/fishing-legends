@@ -608,3 +608,11 @@ Observações:
 - O fallback em memória aplica as mesmas regras.
 - Saldo insuficiente retorna `INSUFFICIENT_FUNDS`; limite excedido retorna `NET_LIMIT_REACHED`.
 - O teste de rota cobre o limite inicial de 10 redes; o cenário de saldo insuficiente será coberto junto com a concessão de saldo controlada para testes.
+
+### Multiplicadores server-side
+
+- Adicionada a migração `0008_multipliers.sql`.
+- Adicionado `POST /api/v1/economy/multipliers/purchase`.
+- O backend aceita somente `luck`/`strength` e potências 2x/4x.
+- Custos e duração são server-side: 3.000/6.000 moedas e 60 segundos.
+- Débito, ledger idempotente e estado do multiplicador são persistidos em transação PostgreSQL.

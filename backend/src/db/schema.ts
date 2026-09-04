@@ -38,6 +38,10 @@ export const playerProgress = pgTable('player_progress', {
   totalFishCaught: integer('total_fish_caught').notNull().default(0),
   coins: bigint('coins', { mode: 'number' }).notNull().default(0),
   nets: integer('nets').notNull().default(10),
+  luckMultiplierPower: integer('luck_multiplier_power').notNull().default(0),
+  luckMultiplierExpiresAt: timestamp('luck_multiplier_expires_at', { withTimezone: true }),
+  strengthMultiplierPower: integer('strength_multiplier_power').notNull().default(0),
+  strengthMultiplierExpiresAt: timestamp('strength_multiplier_expires_at', { withTimezone: true }),
   unlockedLocations: text('unlocked_locations').array().notNull().default([]),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
