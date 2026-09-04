@@ -547,3 +547,13 @@ Observações:
 - O serviço verifica IDs duplicados e referências quebradas antes de iniciar.
 - O catálogo público inclui uma versão explícita (`local-v1`) para futura evolução e migração.
 - O próximo passo é retirar progressivamente a dependência direta do catálogo do frontend e persistir versões no backend.
+
+### Pesca server-side inicial
+
+- Adicionada migração `backend/migrations/0003_fishing_sessions.sql`.
+- Adicionados endpoints autenticados para iniciar e concluir sessões de pesca.
+- Sessões exigem `Idempotency-Key` e repetição da mesma chave retorna a mesma sessão.
+- O servidor valida a região, desbloqueio por nível e calcula peixe/peso/XP.
+- A conclusão repetida da mesma sessão retorna o mesmo resultado.
+- A persistência PostgreSQL das sessões e das capturas ainda precisa ser ligada ao serviço antes de produção competitiva; o primeiro slice usa memória para testes/desenvolvimento.
+- A suíte passou com 27 testes e o typecheck do backend passou.

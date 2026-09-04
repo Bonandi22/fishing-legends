@@ -12,6 +12,8 @@ import { createMemoryPlayerRepository } from './players/memoryRepository.js';
 import { createPgPlayerRepository } from './players/pgRepository.js';
 import { createCatalogService } from './catalog/service.js';
 import { registerCatalogRoutes } from './catalog/routes.js';
+import { createFishingService } from './fishing/service.js';
+import { registerFishingRoutes } from './fishing/routes.js';
 
 export type AppDependencies = {
   config: AppConfig;
@@ -40,7 +42,9 @@ export function createApp({ config }: AppDependencies): FastifyInstance {
     : createMemoryPlayerRepository(authRepository);
   void registerAuthRoutes(app, authService);
   registerPlayerRoutes(app, authService, playerRepository);
-  registerCatalogRoutes(app, createCatalogService());
+  const catalogService = createCatalogService();
+  registerCatalogRoutes(app, catalogService);
+  registerFishingRoutes(app, authService, createFishingService(catalogService, playerRepository));
 
   return app;
 }

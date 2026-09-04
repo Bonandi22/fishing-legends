@@ -126,4 +126,44 @@ describe('backend foundation', () => {
     expect(response.json().fish.length).toBeGreaterThan(0);
     expect(response.json().locations.length).toBeGreaterThan(0);
   });
+
+  it('creates an idempotent fishing session and completes it server-side', async () => {
+    const app = createApp({ config: testConfig });
+    apps.add(app);
+    const registration = await app.inject({
+      method: 'POST',
+      url: '/api/v1/auth/register',
+      payload: {
+        email: 'fisher@example.com',
+        password: 'a-strong-password-123',
+        username: 'fisher_user',
+        country: 'br',
+      },
+    });
+    const token = registration.json().accessToken;
+    const headers = { authorization: `Bearer ${token}`, 'idempotency-key': 'fishing-key-123456' };
+    const first = await app.inject({
+      method: 'POST',
+      url: '/api/v1/fishing/sessions',
+      headers,
+      payload: { locationId: 'amazon' },
+    });
+    const second = await app.inject({
+      method: 'POST',
+      url: '/api/v1/fishing/sessions',
+      headers,
+      payload: { locationId: 'amazon' },
+    });
+    expect(first.statusCode).toBe(200);
+    expect(second.json().id).toBe(first.json().id);
+
+    const completed = await app.inject({
+      method: 'POST',
+      url: `/api/v1/fishing/sessions/${first.json().id}/complete`,
+      headers: { authorization: `Bearer ${token}` },
+    });
+    expect(completed.statusCode).toBe(200);
+    expect(completed.json().result.fishId).toEqual(expect.any(String));
+    expect(completed.json().result.weight).toBeGreaterThan(0);
+  });
 });
