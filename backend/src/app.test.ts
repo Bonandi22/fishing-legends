@@ -116,4 +116,14 @@ describe('backend foundation', () => {
       const unauthorized = await app.inject({ method: 'GET', url: '/api/v1/me' });
       expect(unauthorized.statusCode).toBe(401);
   });
+
+  it('serves a validated public catalog', async () => {
+    const app = createApp({ config: testConfig });
+    apps.add(app);
+    const response = await app.inject({ method: 'GET', url: '/api/v1/catalog' });
+    expect(response.statusCode).toBe(200);
+    expect(response.json().version).toBe('local-v1');
+    expect(response.json().fish.length).toBeGreaterThan(0);
+    expect(response.json().locations.length).toBeGreaterThan(0);
+  });
 });

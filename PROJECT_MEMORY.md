@@ -539,3 +539,11 @@ Observações:
 - O fallback em memória fornece progresso inicial apenas para desenvolvimento/testes.
 - A suíte passou com 25 testes e o typecheck do backend passou.
 - Economia, captura, inventário, ranking, recompensas, segurança avançada, temporadas e integração do frontend continuam sendo etapas posteriores.
+
+### Catálogo server-side
+
+- Adicionado serviço de catálogo validado com Zod, usando o catálogo atual como fonte inicial.
+- Adicionado `GET /api/v1/catalog`.
+- O serviço verifica IDs duplicados e referências quebradas antes de iniciar.
+- O catálogo público inclui uma versão explícita (`local-v1`) para futura evolução e migração.
+- O próximo passo é retirar progressivamente a dependência direta do catálogo do frontend e persistir versões no backend.

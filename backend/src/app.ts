@@ -10,6 +10,8 @@ import { createPgAuthRepository } from './auth/pgRepository.js';
 import { registerPlayerRoutes } from './players/routes.js';
 import { createMemoryPlayerRepository } from './players/memoryRepository.js';
 import { createPgPlayerRepository } from './players/pgRepository.js';
+import { createCatalogService } from './catalog/service.js';
+import { registerCatalogRoutes } from './catalog/routes.js';
 
 export type AppDependencies = {
   config: AppConfig;
@@ -38,6 +40,7 @@ export function createApp({ config }: AppDependencies): FastifyInstance {
     : createMemoryPlayerRepository(authRepository);
   void registerAuthRoutes(app, authService);
   registerPlayerRoutes(app, authService, playerRepository);
+  registerCatalogRoutes(app, createCatalogService());
 
   return app;
 }
