@@ -506,3 +506,15 @@ Observações:
 - Documento de arquitetura criado em `backend/docs/ARCHITECTURE.md`.
 - O documento registra stack, limites de módulos, fluxo de requisições, modelo de dados inicial, contratos de autenticação/API, migração do save local, segurança e threat model.
 - A implementação de autenticação continua bloqueada até revisão do documento de arquitetura.
+
+### Primeiro vertical slice de autenticação
+
+- Adicionada a migração `backend/migrations/0001_identity.sql` com `users`, `user_profiles` e `sessions`.
+- Adicionados hash de senha com `scrypt`, hash de refresh token com SHA-256 e access tokens JWT assinados.
+- Adicionados contratos Zod para registro, login e refresh.
+- Adicionado serviço de autenticação com rotação de refresh token.
+- Adicionadas rotas `/api/v1/auth/register`, `/api/v1/auth/login` e `/api/v1/auth/refresh`.
+- Adicionado repositório em memória exclusivamente para desenvolvimento/testes.
+- Produção não inicia sem `DATABASE_URL`.
+- A persistência PostgreSQL do módulo de autenticação ainda precisa ser implementada antes de qualquer deploy.
+- A suíte passou com 24 testes e o typecheck do backend passou.

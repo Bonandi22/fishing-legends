@@ -1,4 +1,5 @@
 import type { FastifyInstance } from 'fastify';
+import { ZodError } from 'zod';
 
 export class AppError extends Error {
   constructor(
@@ -13,6 +14,18 @@ export class AppError extends Error {
 
 export function registerErrorHandling(app: FastifyInstance): void {
   app.setErrorHandler((error, request, reply) => {
+    if (error instanceof ZodError) {
+      return reply.status(400).send({
+        error: { code: 'VALIDATION_ERROR', message: 'Request validation failed' },
+      });
+    }
+
+    if (error instanceof Error && ['ACCOUNT_ALREADY_EXISTS', 'INVALID_CREDENTIALS', 'INVALID_REFRESH_TOKEN'].includes(error.message)) {
+      return reply.status(error.message === 'ACCOUNT_ALREADY_EXISTS' ? 409 : 401).send({
+        error: { code: error.message, message: 'Authentication request could not be completed' },
+      });
+    }
+
     if (error instanceof AppError) {
       request.log.warn({ code: error.code }, error.message);
       return reply.status(error.statusCode).send({

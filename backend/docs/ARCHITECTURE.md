@@ -90,6 +90,8 @@ The following domains are designed but intentionally deferred:
 - `leaderboard_scores`, `leaderboard_snapshots`;
 - `seasons`, `season_rules`, `season_entries`, `season_rewards`.
 
+The current authentication routes use an in-memory repository only for local development and tests. A PostgreSQL repository must replace it before any production deployment or persistent user data is enabled.
+
 Every user-owned row contains `user_id`. Foreign keys, unique constraints, check constraints, and indexes are part of the migration design. Monetary and inventory mutations are append-audited and transactional.
 
 ## Authentication contract
