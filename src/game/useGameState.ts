@@ -3,6 +3,7 @@ import { PlayerState, CaughtFish, Fish, getXpForLevel, FISH_COIN_VALUE, NET_LIMI
 import { LOCATIONS } from './data';
 import { parseSavedState, serializePlayerState } from './persistence';
 import { addToWarehouse, applyXp, getUnlockedLocationIds } from './stateRules';
+import { browserStorage, KeyValueStorage } from './storage';
 
 const STORAGE_KEY = 'fishing-game-state';
 
@@ -31,22 +32,18 @@ const defaultState: PlayerState = {
   nets: 10,
 };
 
-function loadState(): PlayerState {
-  return parseSavedState(localStorage.getItem(STORAGE_KEY), defaultState);
+export function loadPlayerState(storage: KeyValueStorage = browserStorage): PlayerState {
+  return parseSavedState(storage.get(STORAGE_KEY), defaultState);
 }
 
-function saveState(state: PlayerState) {
-  localStorage.setItem(STORAGE_KEY, serializePlayerState(state));
+export function savePlayerState(state: PlayerState, storage: KeyValueStorage = browserStorage): void {
+  storage.set(STORAGE_KEY, serializePlayerState(state));
 }
 
 export function useGameState() {
-  const [player, setPlayer] = useState<PlayerState>(loadState);
+  const [player, setPlayer] = useState<PlayerState>(loadPlayerState);
 
-  useEffect(() => { saveState(player); }, [player]);
-
-  const catchFish = useCallback((fish: Fish, weight: number, locationId: string, fromNet = false) => {
-    catchFishBatch([{ fish, weight, location: locationId }], fromNet);
-  }, []);
+  useEffect(() => { savePlayerState(player); }, [player]);
 
   const catchFishBatch = useCallback((catches: Array<Pick<CaughtFish, 'fish' | 'weight' | 'location'>>, fromNet = false) => {
     if (catches.length === 0) return;
@@ -80,6 +77,10 @@ export function useGameState() {
       };
     });
   }, []);
+
+  const catchFish = useCallback((fish: Fish, weight: number, locationId: string, fromNet = false) => {
+    catchFishBatch([{ fish, weight, location: locationId }], fromNet);
+  }, [catchFishBatch]);
 
   const sellWarehouse = useCallback(() => {
     setPlayer(prev => {
