@@ -61,5 +61,23 @@ export function createPgInventoryService(
       const items = await db.select().from(aquariumFish).where(and(eq(aquariumFish.userId, userId), eq(aquariumFish.sector, sector)));
       return { items };
     },
+    async placeInAquarium(userId: string, warehouseItemId: string, sector: number) {
+      if (!Number.isInteger(sector) || sector < 1 || sector > 5) throw new Error('INVALID_AQUARIUM_SECTOR');
+      return db.transaction(async tx => {
+        const [item] = await tx.delete(warehouseFish)
+          .where(and(eq(warehouseFish.id, warehouseItemId), eq(warehouseFish.userId, userId)))
+          .returning();
+        if (!item) throw new Error('WAREHOUSE_FISH_NOT_FOUND');
+        const [aquariumItem] = await tx.insert(aquariumFish).values({
+          id: randomUUID(),
+          userId,
+          fishId: item.fishId,
+          locationId: item.locationId,
+          weight: item.weight,
+          sector,
+        }).returning();
+        return aquariumItem;
+      });
+    },
   };
 }

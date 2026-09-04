@@ -42,5 +42,14 @@ export function createMemoryInventoryService(
       if (!Number.isInteger(sector) || sector < 1 || sector > 5) throw new Error('INVALID_AQUARIUM_SECTOR');
       return { items: [] };
     },
+    placeInAquarium(userId: string, warehouseItemId: string, sector: number) {
+      if (!Number.isInteger(sector) || sector < 1 || sector > 5) throw new Error('INVALID_AQUARIUM_SECTOR');
+      const items = warehouse.get(userId) ?? [];
+      const index = items.findIndex(item => item.id === warehouseItemId);
+      if (index === -1) throw new Error('WAREHOUSE_FISH_NOT_FOUND');
+      const [item] = items.splice(index, 1);
+      warehouse.set(userId, items);
+      return { ...item, sector };
+    },
   };
 }

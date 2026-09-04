@@ -219,5 +219,13 @@ describe('backend foundation', () => {
     });
     expect(aquarium.statusCode).toBe(200);
     expect(aquarium.json()).toEqual({ items: [] });
+    const placement = await app.inject({
+      method: 'POST',
+      url: '/api/v1/inventory/aquarium',
+      headers,
+      payload: { warehouseItemId: '00000000-0000-0000-0000-000000000000', sector: 1 },
+    });
+    expect(placement.statusCode).toBe(404);
+    expect(placement.json().error.code).toBe('WAREHOUSE_FISH_NOT_FOUND');
   });
 });

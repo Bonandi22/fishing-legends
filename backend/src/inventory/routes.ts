@@ -29,4 +29,15 @@ export function registerInventoryRoutes(app: FastifyInstance, auth: AuthService,
     const { sector } = z.object({ sector: z.coerce.number().int() }).parse(request.params);
     return inventory.aquarium(userId, sector);
   });
+
+  app.post('/api/v1/inventory/aquarium', async request => {
+    const header = request.headers.authorization;
+    if (!header?.startsWith('Bearer ')) throw new Error('INVALID_ACCESS_TOKEN');
+    const userId = await auth.verifyAccessToken(header.slice(7));
+    const body = z.object({
+      warehouseItemId: z.string().uuid(),
+      sector: z.number().int().min(1).max(5),
+    }).parse(request.body);
+    return inventory.placeInAquarium(userId, body.warehouseItemId, body.sector);
+  });
 }

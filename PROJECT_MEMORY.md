@@ -589,3 +589,12 @@ Observações:
 - Adicionada migração `0006_aquarium.sql`.
 - Adicionado endpoint `GET /api/v1/inventory/aquarium/:sector`.
 - O aquário está persistido no schema PostgreSQL e pronto para receber operações de colocação.
+
+### Transferência para o aquário
+
+- Adicionada a operação autenticada `POST /api/v1/inventory/aquarium`.
+- A operação recebe `warehouseItemId` e `sector` (1 a 5).
+- No PostgreSQL, a remoção do armazém e a inserção no aquário acontecem na mesma transação.
+- O fallback em memória aplica a mesma regra de transferência.
+- Peixe inexistente no armazém retorna `WAREHOUSE_FISH_NOT_FOUND` com HTTP 404.
+- A suíte passou com 29 testes e o typecheck do backend passou.
