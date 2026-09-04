@@ -77,6 +77,8 @@ Task 2 foi fechada e publicada no Pull Request `Bonandi22/deep-blue-lure#1`.
 - Branch criada e publicada: `feature/task-03`.
 - Pull Request aberto: `Bonandi22/deep-blue-lure#2`.
 - Workflow `.github/workflows/code-review.yml` criado para validar TypeScript, testes, build e CodeQL em Pull Requests para `main`.
+- A primeira execução do workflow revelou `package-lock.json` fora de sincronia; o lockfile foi regenerado e validado com `npm ci`.
+- `npm ci` ainda reporta vulnerabilidades transitivas existentes (1 low, 4 moderate, 15 high); isso deve ser tratado em uma tarefa própria de dependências, sem aplicar `npm audit fix` automaticamente.
 
 ### Task 4 — Backend e autenticação — planejada
 
