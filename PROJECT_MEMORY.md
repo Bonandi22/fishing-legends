@@ -140,6 +140,27 @@ Estes itens não fazem parte da fase frontend-only, mas são obrigatórios antes
 - O bundle de produção é grande por causa dos assets 3D e imagens; code splitting será avaliado depois da separação arquitetural.
 - Alterações devem ser feitas sem apagar mudanças de usuário e sem modificar backend inexistente.
 
+## Guardrails permanentes (definidas em 2026-07-08)
+
+Aplicam-se a qualquer tarefa, agêntica ou não. Não são negociáveis por omissão — só o utilizador as pode suspender explicitamente para uma tarefa concreta.
+
+### Qualidade
+
+- Nenhuma mudança é considerada pronta sem testes a passar e sem o utilizador ter revisto o diff.
+- Antes de declarar uma tarefa terminada, apresentar o diff (ou resumo, se grande) e um resumo dos riscos — o que pode partir, o que não foi testado, dependências afetadas.
+- Para mudanças com comportamento em runtime (não só documentação/configuração), o teste manual local — correr a app e exercitar o fluxo, não só `dotnet build`/testes automáticos — faz parte do "pronto para merge", não é um passo opcional a fazer depois.
+- Não há ferramenta de browser disponível neste ambiente, por isso esse teste manual é sempre do utilizador: ao trabalhar num worktree isolado, indicar o caminho da pasta logo no início (é uma checkout normal, corre-se `dotnet run`/`npm start` diretamente lá) para o utilizador poder testar por partes à medida que se avança, em vez de só no fim.
+
+### Segurança
+
+- Nunca escrever segredos (chaves, tokens, senhas, connection strings, secrets de API) em código, commits, migrações, logs ou output de debug.
+- Tudo sensível vive em `ICM_*` (env vars) ou `appsettings.Development.json`/`.env`/`.env.docker` (git-ignored) — nunca em `appsettings.json` commitado.
+- Verificar ficheiros staged antes de commitar, mesmo com nomes inocentes.
+
+### Custo
+
+- No final de qualquer tarefa que use loops, subagents/forks ou múltiplas iterações de exploração, apresentar uma estimativa do esforço gasto (nº de agentes lançados, builds/testes repetidos, tempo aproximado) e sugerir onde reduzir da próxima vez.
+
 ## Validação registrada
 
 Na conclusão das Tasks 1, 2, 3, 4 e da revitalização visual:
