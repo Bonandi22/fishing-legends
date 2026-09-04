@@ -498,3 +498,11 @@ Observações:
 - O frontend em `8081` não foi alterado.
 - `npm install` reporta vulnerabilidades transitivas existentes; não foi executado `npm audit fix`.
 - O próximo passo técnico é escrever o documento de arquitetura e o modelo de dados da Fase 0 antes de implementar autenticação ou módulos de domínio.
+
+### Fase 0 iniciada
+
+- Branch criada: `feature/task-06-backend-foundation`.
+- Commit da fundação: `481ab83` — `Create backend foundation`.
+- Documento de arquitetura criado em `backend/docs/ARCHITECTURE.md`.
+- O documento registra stack, limites de módulos, fluxo de requisições, modelo de dados inicial, contratos de autenticação/API, migração do save local, segurança e threat model.
+- A implementação de autenticação continua bloqueada até revisão do documento de arquitetura.
