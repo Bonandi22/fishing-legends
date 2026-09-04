@@ -8,8 +8,12 @@ Este arquivo mantém o contexto técnico e o roadmap versionados no repositório
 - Projeto: jogo de pesca React/TypeScript com Vite, Vitest, Playwright e sistemas 3D.
 - Arquitetura online: ainda não existe backend, autenticação real ou ranking global.
 - Persistência atual: `localStorage`, com saves versionados e validação Zod.
-- Branch atual: `feature/task-02`.
-- Último commit: `9c1977b` — `Decouple player state from browser storage`.
+- Branch atual: `feature/task-03`.
+- Pull Request da Task 2: `Bonandi22/deep-blue-lure#1`.
+- Último commit da Task 3: `a132aad` — `Complete content balance validation`.
+- Correção de CI publicada em `f16299d` — lockfile sincronizado com `package.json`.
+- Permissão `actions: read` adicionada ao workflow em `472365a`.
+- CodeQL removido temporariamente do workflow em razão da indisponibilidade de GitHub Advanced Security para o repositório privado no plano atual.
 - `main` continua sendo a base de integração.
 
 ## Estratégia de branches
@@ -62,24 +66,25 @@ Commit atual: `9c1977b`.
 - Operações monetárias agora ignoram valores negativos e compras normalizam preços/poderes.
 - A Task 2 possui commits incrementais e está publicada em `origin/feature/task-02`.
 
-Próximos passos:
+Task 2 foi fechada e publicada no Pull Request `Bonandi22/deep-blue-lure#1`.
 
-- Separar operações de domínio de `useGameState`.
-- Criar módulos puros para economia, redes, multiplicadores e recompensas.
-- Validar contratos entre componentes e domínio.
-- Revisar timers restantes e efeitos de ciclo de vida.
-- Reduzir a responsabilidade de `Index.tsx` e `useGameState.ts`.
-- Manter commits pequenos e reversíveis.
-- Venda do armazém e colocação de peixes no aquário foram extraídas para regras puras e cobertas por testes.
-- A próxima etapa será a `feature/task-03` para conteúdo e balanceamento.
-
-### Task 3 — Conteúdo e balanceamento — planejada
+### Task 3 — Conteúdo e balanceamento — concluída
 
 - Validar automaticamente IDs de peixes e regiões.
 - Revisar pools exibidos versus pools efetivamente sorteados.
 - Corrigir e documentar probabilidades.
 - Medir progressão de XP, moedas, pesos, raridades e capacidade do armazém.
 - Criar testes de balanceamento e regressão de conteúdo.
+- Adicionado `validateCatalog()` para detectar IDs duplicados, referências quebradas e faixas de peso inválidas.
+- Adicionado `getNormalizedRarityWeights()` para expor probabilidades normalizadas por pool e nível, com teste de soma igual a 1.
+- Branch criada e publicada: `feature/task-03`.
+- Pull Request aberto: `Bonandi22/deep-blue-lure#2`.
+- Workflow `.github/workflows/code-review.yml` criado para validar TypeScript, testes, build e CodeQL em Pull Requests para `main`.
+- A primeira execução do workflow revelou `package-lock.json` fora de sincronia; o lockfile foi regenerado e validado com `npm ci`.
+- Após a correção do lockfile, TypeScript, testes e build passaram no GitHub.
+- O CodeQL executa a análise, mas o job falha ao publicar os resultados porque o code scanning ainda não está habilitado nas configurações do repositório; isso requer habilitação administrativa antes de tornar esse check obrigatório.
+- O workflow mantém TypeScript, testes e build como gate obrigatório; CodeQL poderá ser reintroduzido quando GitHub Advanced Security estiver disponível.
+- `npm ci` ainda reporta vulnerabilidades transitivas existentes (1 low, 4 moderate, 15 high); isso deve ser tratado em uma tarefa própria de dependências, sem aplicar `npm audit fix` automaticamente.
 
 ### Task 4 — Backend e autenticação — planejada
 
@@ -115,16 +120,16 @@ Estes itens não fazem parte da fase frontend-only, mas são obrigatórios antes
 - `localStorage` é adequado apenas para o modo local; não deve ser considerado fonte confiável para competição.
 - O ranking atual é local ao navegador e não representa ranking global.
 - A conta local não oferece autenticação real nem isolamento de progresso.
-- `useGameState.ts` ainda concentra muitas regras de domínio e é o principal alvo da Task 2.
+- `useGameState.ts` ainda concentra operações de orquestração e efeitos; novas regras devem continuar sendo extraídas com cuidado.
 - Componentes 3D possuem arquivos com `@ts-nocheck` e devem ser tratados gradualmente.
 - O bundle de produção é grande por causa dos assets 3D e imagens; code splitting será avaliado depois da separação arquitetural.
 - Alterações devem ser feitas sem apagar mudanças de usuário e sem modificar backend inexistente.
 
 ## Validação registrada
 
-Na conclusão da Task 1 e no início da Task 2:
+Na conclusão das Tasks 1, 2 e 3:
 
 - TypeScript passa com `npx tsc --noEmit -p tsconfig.app.json`.
-- Vitest passa com 14 testes.
+- Vitest passa com 20 testes.
 - Build de produção passa.
 - O build ainda emite o alerta de chunks grandes do Vite.

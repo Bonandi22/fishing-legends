@@ -53,6 +53,8 @@ npm test
 npm run build
 ```
 
+Pull Requests para `main` executam automaticamente o workflow **Code Review**, que valida TypeScript, testes, build de produção e análise CodeQL. O merge deve ocorrer somente após os checks obrigatórios aprovarem e a revisão do código ser concluída.
+
 ## Estratégia de branches
 
 ```text
@@ -75,7 +77,7 @@ O trabalho atual está em `feature/task-02`, dedicada à refatoração arquitetu
 
 1. **Task 1 — Estabilização do núcleo:** concluída.
 2. **Task 2 — Refatoração arquitetural:** em andamento.
-3. **Task 3 — Conteúdo e balanceamento:** planejada.
+3. **Task 3 — Conteúdo e balanceamento:** em andamento.
 4. **Task 4 — Backend e autenticação:** planejada.
 5. **Task 5 — Campeonato e ranking global:** planejada.
 

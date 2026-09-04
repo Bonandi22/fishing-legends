@@ -2,6 +2,24 @@ import { Fish, Rarity, RARITY_CONFIG } from './types';
 import { getFishForLocation } from './data';
 import type { FishingLocation } from './types';
 
+export function getNormalizedRarityWeights(
+  available: Fish[],
+  playerLevel: number,
+): { rarity: Rarity; weight: number }[] {
+  const levelBonus = Math.min(Math.max(playerLevel - 1, 0) * 0.005, 0.05);
+  const rarityOrder: Rarity[] = ['cosmic', 'legends', 'platinum', 'volcanic', 'abyssal', 'legendary', 'mythic', 'uncommon', 'common'];
+  const availableRarities = rarityOrder.filter(r => available.some(f => f.rarity === r));
+  const rawWeights = availableRarities.map(r => ({
+    rarity: r,
+    weight: RARITY_CONFIG[r].chance + (r !== 'common' ? levelBonus : 0),
+  }));
+  const totalWeight = rawWeights.reduce((sum, item) => sum + item.weight, 0);
+
+  return totalWeight > 0
+    ? rawWeights.map(item => ({ ...item, weight: item.weight / totalWeight }))
+    : [];
+}
+
 export function rollFish(location: FishingLocation, playerLevel: number, luckyMode = false, luckPower = 2): Fish {
   const available = getFishForLocation(location);
   if (available.length === 0) {
@@ -50,19 +68,11 @@ export function rollFish(location: FishingLocation, playerLevel: number, luckyMo
   }
 
   const rand = Math.random();
-  const levelBonus = Math.min(Math.max(playerLevel - 1, 0) * 0.005, 0.05);
-
-  const rarityOrder: Rarity[] = ['cosmic', 'legends', 'platinum', 'volcanic', 'abyssal', 'legendary', 'mythic', 'uncommon', 'common'];
-  const availableRarities = rarityOrder.filter(r => available.some(f => f.rarity === r));
-  const weights = availableRarities.map(r => ({
-    rarity: r,
-    weight: RARITY_CONFIG[r].chance + (r !== 'common' ? levelBonus : 0),
-  }));
-  const totalWeight = weights.reduce((sum, item) => sum + item.weight, 0);
+  const weights = getNormalizedRarityWeights(available, playerLevel);
   let cumulative = 0;
-  let targetRarity = availableRarities[availableRarities.length - 1];
+  let targetRarity = weights[weights.length - 1]?.rarity ?? available[0].rarity;
   for (const item of weights) {
-    cumulative += item.weight / totalWeight;
+    cumulative += item.weight;
     if (rand < cumulative) {
       targetRarity = item.rarity;
       break;
