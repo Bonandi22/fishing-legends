@@ -13,6 +13,7 @@ Este arquivo mantém o contexto técnico e o roadmap versionados no repositório
 - Último commit da Task 3: `a132aad` — `Complete content balance validation`.
 - Correção de CI publicada em `f16299d` — lockfile sincronizado com `package.json`.
 - Permissão `actions: read` adicionada ao workflow em `472365a`.
+- CodeQL removido temporariamente do workflow em razão da indisponibilidade de GitHub Advanced Security para o repositório privado no plano atual.
 - `main` continua sendo a base de integração.
 
 ## Estratégia de branches
@@ -82,6 +83,7 @@ Task 2 foi fechada e publicada no Pull Request `Bonandi22/deep-blue-lure#1`.
 - A primeira execução do workflow revelou `package-lock.json` fora de sincronia; o lockfile foi regenerado e validado com `npm ci`.
 - Após a correção do lockfile, TypeScript, testes e build passaram no GitHub.
 - O CodeQL executa a análise, mas o job falha ao publicar os resultados porque o code scanning ainda não está habilitado nas configurações do repositório; isso requer habilitação administrativa antes de tornar esse check obrigatório.
+- O workflow mantém TypeScript, testes e build como gate obrigatório; CodeQL poderá ser reintroduzido quando GitHub Advanced Security estiver disponível.
 - `npm ci` ainda reporta vulnerabilidades transitivas existentes (1 low, 4 moderate, 15 high); isso deve ser tratado em uma tarefa própria de dependências, sem aplicar `npm audit fix` automaticamente.
 
 ### Task 4 — Backend e autenticação — planejada
