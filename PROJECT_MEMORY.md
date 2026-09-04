@@ -56,6 +56,9 @@ Commit atual: `9c1977b`.
 - O carregamento e salvamento do jogador aceitam storage injetado.
 - Adicionado teste com storage em memória.
 - Captura em lote foi integrada ao fluxo de redes.
+- Regras de economia, redes, compras de itens, concessão de skins e multiplicadores foram extraídas para `stateRules.ts`.
+- Operações monetárias agora ignoram valores negativos e compras normalizam preços/poderes.
+- A Task 2 possui commits incrementais e está publicada em `origin/feature/task-02`.
 
 Próximos passos:
 
@@ -65,6 +68,7 @@ Próximos passos:
 - Revisar timers restantes e efeitos de ciclo de vida.
 - Reduzir a responsabilidade de `Index.tsx` e `useGameState.ts`.
 - Manter commits pequenos e reversíveis.
+- Próximo commit: continuar a separação das operações de aquário, presentes e venda do armazém.
 
 ### Task 3 — Conteúdo e balanceamento — planejada
 

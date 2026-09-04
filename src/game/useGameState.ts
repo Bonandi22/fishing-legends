@@ -2,7 +2,17 @@ import { useState, useCallback, useEffect } from 'react';
 import { PlayerState, CaughtFish, Fish, getXpForLevel, FISH_COIN_VALUE, NET_LIMIT, NET_PRICE, MULTIPLIER_COST, MULTIPLIER_COST_4X, MULTIPLIER_DURATION, AQUARIUM_REWARDS, DailyGiftReward, getDailyGiftsForWeek } from './types';
 import { LOCATIONS } from './data';
 import { parseSavedState, serializePlayerState } from './persistence';
-import { addToWarehouse, applyXp, getUnlockedLocationIds } from './stateRules';
+import {
+  addToWarehouse,
+  applyXp,
+  buyMultiplier as applyMultiplierPurchase,
+  buyNet as applyNetPurchase,
+  buyOwnedItem,
+  consumeNet as applyNetConsumption,
+  getUnlockedLocationIds,
+  grantOwnedItem,
+  spendCoins as applyCoinSpend,
+} from './stateRules';
 import { browserStorage, KeyValueStorage } from './storage';
 
 const STORAGE_KEY = 'fishing-game-state';
@@ -101,29 +111,11 @@ export function useGameState() {
   }, []);
 
   const buyMultiplier = useCallback((type: 'luck' | 'strength', power: number = 2) => {
-    setPlayer(prev => {
-      const cost = power === 4 ? MULTIPLIER_COST_4X : MULTIPLIER_COST;
-      if (prev.coins < cost) return prev;
-      const end = Date.now() + MULTIPLIER_DURATION;
-      return {
-        ...prev,
-        coins: prev.coins - cost,
-        ...(type === 'luck'
-          ? { luckMultiplierEnd: end, luckMultiplierPower: power }
-          : { strengthMultiplierEnd: end, strengthMultiplierPower: power }),
-      };
-    });
+    setPlayer(prev => applyMultiplierPurchase(prev, type, power, Date.now()));
   }, []);
 
   const buySkin = useCallback((skinId: string, price: number) => {
-    setPlayer(prev => {
-      if (prev.coins < price || prev.ownedSkins.includes(skinId)) return prev;
-      return {
-        ...prev,
-        coins: prev.coins - price,
-        ownedSkins: [...prev.ownedSkins, skinId],
-      };
-    });
+    setPlayer(prev => buyOwnedItem(prev, 'rod', skinId, price));
   }, []);
 
   const equipSkin = useCallback((skinId: string) => {
@@ -134,14 +126,7 @@ export function useGameState() {
   }, []);
 
   const buyBoatSkin = useCallback((skinId: string, price: number) => {
-    setPlayer(prev => {
-      if (prev.coins < price || prev.ownedBoatSkins.includes(skinId)) return prev;
-      return {
-        ...prev,
-        coins: prev.coins - price,
-        ownedBoatSkins: [...prev.ownedBoatSkins, skinId],
-      };
-    });
+    setPlayer(prev => buyOwnedItem(prev, 'boat', skinId, price));
   }, []);
 
   const equipBoatSkin = useCallback((skinId: string) => {
@@ -152,33 +137,19 @@ export function useGameState() {
   }, []);
 
   const addCoins = useCallback((amount: number) => {
-    setPlayer(prev => ({ ...prev, coins: prev.coins + amount }));
+    setPlayer(prev => ({ ...prev, coins: prev.coins + Math.max(0, amount) }));
   }, []);
 
   const addSkin = useCallback((skinId: string): void => {
-    setPlayer(prev => {
-      if (prev.ownedSkins.includes(skinId)) {
-        // Duplicate -> convert to 500 coins
-        return { ...prev, coins: prev.coins + 500 };
-      }
-      return { ...prev, ownedSkins: [...prev.ownedSkins, skinId] };
-    });
+    setPlayer(prev => grantOwnedItem(prev, 'rod', skinId, 500));
   }, []);
 
   const addBoatSkin = useCallback((skinId: string): void => {
-    setPlayer(prev => {
-      if (prev.ownedBoatSkins.includes(skinId)) {
-        return { ...prev, coins: prev.coins + 500 };
-      }
-      return { ...prev, ownedBoatSkins: [...prev.ownedBoatSkins, skinId] };
-    });
+    setPlayer(prev => grantOwnedItem(prev, 'boat', skinId, 500));
   }, []);
 
   const spendCoins = useCallback((amount: number): void => {
-    setPlayer(prev => {
-      if (prev.coins < amount) return prev;
-      return { ...prev, coins: prev.coins - amount };
-    });
+    setPlayer(prev => applyCoinSpend(prev, amount));
   }, []);
 
   const addMultiplier = useCallback((type: 'luck' | 'strength') => {
@@ -252,19 +223,11 @@ export function useGameState() {
   }, []);
 
   const consumeNet = useCallback((): void => {
-    setPlayer(prev => {
-      const nets = prev.nets ?? NET_LIMIT;
-      if (nets <= 0) return prev;
-      return { ...prev, nets: nets - 1 };
-    });
+    setPlayer(applyNetConsumption);
   }, []);
 
   const buyNet = useCallback((): void => {
-    setPlayer(prev => {
-      const nets = prev.nets ?? NET_LIMIT;
-      if (nets >= NET_LIMIT || prev.coins < NET_PRICE) return prev;
-      return { ...prev, nets: nets + 1, coins: prev.coins - NET_PRICE };
-    });
+    setPlayer(applyNetPurchase);
   }, []);
 
   const resetProgress = useCallback(() => {
