@@ -1,9 +1,10 @@
 import type { FastifyInstance } from 'fastify';
 import type { createAuthService } from '../auth/service.js';
 import type { createMemoryInventoryService } from './service.js';
+import type { createPgInventoryService } from './pgRepository.js';
 
 type AuthService = ReturnType<typeof createAuthService>;
-type InventoryService = ReturnType<typeof createMemoryInventoryService>;
+type InventoryService = ReturnType<typeof createMemoryInventoryService> | ReturnType<typeof createPgInventoryService>;
 
 export function registerInventoryRoutes(app: FastifyInstance, auth: AuthService, inventory: InventoryService): void {
   app.get('/api/v1/inventory/warehouse', async request => {

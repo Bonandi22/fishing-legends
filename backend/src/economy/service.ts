@@ -8,6 +8,11 @@ export type WalletTransaction = {
   reason: string;
 };
 
+export type EconomyService = {
+  getBalance(userId: string): { balance: number } | Promise<{ balance: number }>;
+  credit(userId: string, amount: number, reason: string, key: string): WalletTransaction | Promise<WalletTransaction>;
+};
+
 export function createMemoryEconomyService() {
   const balances = new Map<string, number>();
   const transactions = new Map<string, WalletTransaction>();

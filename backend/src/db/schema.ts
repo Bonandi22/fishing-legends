@@ -57,4 +57,14 @@ export const walletTransactions = pgTable('wallet_transactions', {
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
-export const schema = { users, userProfiles, sessions, playerProgress, wallets, walletTransactions };
+export const warehouseFish = pgTable('warehouse_fish', {
+  id: uuid('id').primaryKey(),
+  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  fishId: varchar('fish_id', { length: 120 }).notNull(),
+  locationId: varchar('location_id', { length: 120 }).notNull(),
+  weight: text('weight').notNull(),
+  xp: integer('xp').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const schema = { users, userProfiles, sessions, playerProgress, wallets, walletTransactions, warehouseFish };

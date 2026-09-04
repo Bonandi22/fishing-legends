@@ -19,6 +19,7 @@ type FishingSession = {
 export function createFishingService(
   catalog: ReturnType<typeof createCatalogService>,
   players: PlayerRepository,
+  onCatch?: (input: { userId: string; fishId: string; locationId: string; weight: number; xp: number }) => Promise<unknown>,
 ) {
   const sessions = new Map<string, FishingSession>();
   const idempotentSessions = new Map<string, FishingSession>();
@@ -61,6 +62,7 @@ export function createFishingService(
       const fish = available[Math.floor(Math.random() * available.length)];
       const weight = Math.round((fish.minWeight + Math.random() * (fish.maxWeight - fish.minWeight)) * 100) / 100;
       const result = { fishId: fish.id, weight, xp: fish.xp };
+      if (onCatch) await onCatch({ userId, fishId: fish.id, locationId: session.locationId, weight, xp: fish.xp });
       session.status = 'completed';
       session.result = result;
       return { session, result };

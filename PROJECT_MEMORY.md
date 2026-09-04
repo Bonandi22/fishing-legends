@@ -572,3 +572,12 @@ Observações:
 - Adicionados endpoints autenticados `GET /api/v1/inventory/warehouse` e `POST /api/v1/inventory/warehouse/sell`.
 - Venda usa ledger idempotente e rejeita armazém vazio.
 - O slice atual mantém itens em memória; a tabela PostgreSQL foi preparada, mas o repositório transacional de inventário e a integração automática da captura ainda precisam ser concluídos antes de produção.
+
+### Integração de captura e inventário
+
+- Adicionado repositório PostgreSQL de armazém.
+- A captura concluída agora adiciona o peixe ao armazém através do adaptador de inventário.
+- Em ambiente com `DATABASE_URL`, listagem e venda usam o armazenamento PostgreSQL.
+- Em desenvolvimento/testes, o fluxo continua usando os adaptadores em memória.
+- O ledger PostgreSQL e a remoção do armazém ainda precisam ser consolidados em uma única transação de banco antes de produção.
+- A etapa de economia/inventário permanece em andamento até incluir aquário, redes, multiplicadores, compras e transações integradas.
