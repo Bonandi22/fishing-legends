@@ -357,3 +357,38 @@ export function getFishForLocation(location: FishingLocation): Fish[] {
   );
   return [...base, ...extras];
 }
+
+export interface CatalogIssue {
+  type: 'duplicate-fish-id' | 'duplicate-location-id' | 'unknown-fish-reference' | 'invalid-weight-range';
+  id: string;
+  locationId?: string;
+}
+
+export function validateCatalog(
+  fish: Fish[] = FISH,
+  locations: FishingLocation[] = LOCATIONS,
+): CatalogIssue[] {
+  const issues: CatalogIssue[] = [];
+  const fishIds = new Set<string>();
+  const locationIds = new Set<string>();
+
+  for (const item of fish) {
+    if (fishIds.has(item.id)) issues.push({ type: 'duplicate-fish-id', id: item.id });
+    fishIds.add(item.id);
+    if (item.minWeight > item.maxWeight) {
+      issues.push({ type: 'invalid-weight-range', id: item.id });
+    }
+  }
+
+  for (const location of locations) {
+    if (locationIds.has(location.id)) issues.push({ type: 'duplicate-location-id', id: location.id });
+    locationIds.add(location.id);
+    for (const fishId of location.fishIds) {
+      if (!fishIds.has(fishId)) {
+        issues.push({ type: 'unknown-fish-reference', id: fishId, locationId: location.id });
+      }
+    }
+  }
+
+  return issues;
+}
