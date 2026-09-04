@@ -4,6 +4,9 @@ import type { FishingLocation } from './types';
 
 export function rollFish(location: FishingLocation, playerLevel: number, luckyMode = false, luckPower = 2): Fish {
   const available = getFishForLocation(location);
+  if (available.length === 0) {
+    throw new Error(`Location "${location.id}" has no fish available`);
+  }
 
   if (luckyMode && luckPower >= 4) {
     // 4x luck: apenas abissal para cima
@@ -47,24 +50,28 @@ export function rollFish(location: FishingLocation, playerLevel: number, luckyMo
   }
 
   const rand = Math.random();
-  const levelBonus = (playerLevel - 1) * 0.005;
+  const levelBonus = Math.min(Math.max(playerLevel - 1, 0) * 0.005, 0.05);
 
-  let cumulative = 0;
   const rarityOrder: Rarity[] = ['cosmic', 'legends', 'platinum', 'volcanic', 'abyssal', 'legendary', 'mythic', 'uncommon', 'common'];
-
-  let targetRarity: Rarity = 'common';
-  for (const r of rarityOrder) {
-    cumulative += RARITY_CONFIG[r].chance + (r !== 'common' ? levelBonus : 0);
+  const availableRarities = rarityOrder.filter(r => available.some(f => f.rarity === r));
+  const weights = availableRarities.map(r => ({
+    rarity: r,
+    weight: RARITY_CONFIG[r].chance + (r !== 'common' ? levelBonus : 0),
+  }));
+  const totalWeight = weights.reduce((sum, item) => sum + item.weight, 0);
+  let cumulative = 0;
+  let targetRarity = availableRarities[availableRarities.length - 1];
+  for (const item of weights) {
+    cumulative += item.weight / totalWeight;
     if (rand < cumulative) {
-      targetRarity = r;
+      targetRarity = item.rarity;
       break;
     }
   }
 
   const candidates = available.filter(f => f.rarity === targetRarity);
   if (candidates.length === 0) {
-    const commons = available.filter(f => f.rarity === 'common');
-    return commons[Math.floor(Math.random() * commons.length)];
+    return available[Math.floor(Math.random() * available.length)];
   }
 
   return candidates[Math.floor(Math.random() * candidates.length)];

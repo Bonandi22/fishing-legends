@@ -6,7 +6,7 @@ import { Gift, Coins, Zap, Sparkles, Ship, Anchor, Lock, Check } from 'lucide-re
 
 interface Props {
   player: PlayerState;
-  onClaim: () => { reward: DailyGiftReward; day: number } | null;
+  onClaim: () => void;
   onBack: () => void;
 }
 
@@ -40,8 +40,9 @@ export default function DailyGifts({ player, onClaim, onBack }: Props) {
   const [popup, setPopup] = useState<{ reward: DailyGiftReward; day: number } | null>(null);
 
   const handleClaim = () => {
-    const r = onClaim();
-    if (r) setPopup(r);
+    if (claimedToday) return;
+    onClaim();
+    setPopup({ reward: gifts[currentDay - 1], day: currentDay });
   };
 
   return (

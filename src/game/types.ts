@@ -222,6 +222,7 @@ export const AQUARIUM_SECTORS = [1, 2, 3, 4, 5] as const;
 
 export const WAREHOUSE_LIMIT = 15;
 export const NET_LIMIT = 10;
+export const MAX_LEVEL = 30;
 export const NET_PRICE = 5000;
 export const MULTIPLIER_COST = 3000;
 export const MULTIPLIER_COST_4X = 6000;

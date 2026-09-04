@@ -308,9 +308,16 @@ export default function FishingScreen({ location, player, onCatch, onBack, onCas
   const timerRef = useRef<ReturnType<typeof setTimeout>>();
   const luckyTimerRef = useRef<ReturnType<typeof setTimeout>>();
 
-  useEffect(() => {
-    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
+  const clearFishingTimer = useCallback(() => {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = undefined;
+    }
   }, []);
+
+  useEffect(() => {
+    return clearFishingTimer;
+  }, [clearFishingTimer]);
 
   // Lucky mode: every 7min, 50% chance to trigger, lasts 1min
   useEffect(() => {
@@ -333,7 +340,12 @@ export default function FishingScreen({ location, player, onCatch, onBack, onCas
 
     startCycle();
     return () => { if (luckyTimerRef.current) clearTimeout(luckyTimerRef.current); };
-  }, []);
+  }, [clearFishingTimer]);
+
+  const handleBack = useCallback(() => {
+    clearFishingTimer();
+    onBack();
+  }, [clearFishingTimer, onBack]);
 
   const handleWaterClick = useCallback((point: THREE.Vector3) => {
     if (phase !== 'idle') return;
@@ -418,7 +430,7 @@ export default function FishingScreen({ location, player, onCatch, onBack, onCas
       source.onended = () => audioCtx.close();
     } catch (e) { /* audio not available */ }
 
-    setTimeout(() => {
+    timerRef.current = setTimeout(() => {
       setPhase('waiting');
       setMessage(t('fish.waiting'));
 
@@ -451,6 +463,7 @@ export default function FishingScreen({ location, player, onCatch, onBack, onCas
   }, []);
 
   const handleReset = useCallback(() => {
+    clearFishingTimer();
     setPhase('idle');
     setCurrentFish(null);
     setCurrentWeight(0);
@@ -501,7 +514,7 @@ export default function FishingScreen({ location, player, onCatch, onBack, onCas
       {/* HUD overlay */}
       <div className="absolute top-0 left-0 right-0 p-4 flex items-start justify-between z-10 pointer-events-none">
         <div className="pointer-events-auto">
-          <Button variant="outline" size="sm" onClick={onBack} className="bg-background/80 backdrop-blur">
+          <Button variant="outline" size="sm" onClick={handleBack} className="bg-background/80 backdrop-blur">
             {t('fish.back')}
           </Button>
           {location.type === 'lake' && onCastNet && (

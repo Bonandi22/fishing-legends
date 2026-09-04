@@ -29,13 +29,16 @@ export default function PullMinigame({ fish, strengthActive, strengthPower, onWi
   const redTimeRef = useRef(0);
   const linePosRef = useRef(0.5);
   const dirRef = useRef(1);
+  const finishedRef = useRef(false);
 
   const isInGreen = useCallback((pos: number) => {
     return pos >= greenStart && pos <= greenStart + greenSize;
   }, [greenStart, greenSize]);
 
   const handlePull = useCallback(() => {
+    if (finishedRef.current) return;
     if (isInGreen(linePosRef.current)) {
+      finishedRef.current = true;
       cancelAnimationFrame(frameRef.current);
       onWin();
     }
@@ -65,8 +68,16 @@ export default function PullMinigame({ fish, strengthActive, strengthPower, onWi
       setGreenTime(greenTimeRef.current);
       setRedTime(redTimeRef.current);
 
-      if (greenTimeRef.current >= 10) { onWin(); return; }
-      if (redTimeRef.current >= 15) { onLose(); return; }
+      if (greenTimeRef.current >= 10) {
+        finishedRef.current = true;
+        onWin();
+        return;
+      }
+      if (redTimeRef.current >= 15) {
+        finishedRef.current = true;
+        onLose();
+        return;
+      }
 
       frameRef.current = requestAnimationFrame(tick);
     };

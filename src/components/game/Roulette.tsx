@@ -7,8 +7,8 @@ import { useI18n } from '@/game/i18n';
 interface Props {
   player: PlayerState;
   onAddCoins: (amount: number) => void;
-  onAddSkin: (skinId: string) => boolean;
-  onAddBoatSkin: (skinId: string) => boolean;
+  onAddSkin: (skinId: string) => void;
+  onAddBoatSkin: (skinId: string) => void;
   onAddMultiplier: (type: 'luck' | 'strength') => void;
   onSetLastRouletteDate: (date: string) => void;
   onBack: () => void;

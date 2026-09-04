@@ -1,6 +1,21 @@
 import { useState, useCallback, useEffect } from 'react';
-import { PlayerState, CaughtFish, Fish, getXpForLevel, FISH_COIN_VALUE, NET_LIMIT, NET_PRICE, MULTIPLIER_COST, MULTIPLIER_COST_4X, MULTIPLIER_DURATION, AQUARIUM_REWARDS, DAILY_GIFTS, DailyGiftReward, getDailyGiftsForWeek } from './types';
+import { PlayerState, CaughtFish, Fish, getXpForLevel, NET_LIMIT, NET_PRICE, MULTIPLIER_COST, MULTIPLIER_COST_4X, MULTIPLIER_DURATION, DailyGiftReward, getDailyGiftsForWeek } from './types';
 import { LOCATIONS } from './data';
+import { parseSavedState, serializePlayerState } from './persistence';
+import {
+  addToWarehouse,
+  applyXp,
+  buyMultiplier as applyMultiplierPurchase,
+  buyNet as applyNetPurchase,
+  buyOwnedItem,
+  consumeNet as applyNetConsumption,
+  getUnlockedLocationIds,
+  grantOwnedItem,
+  placeAquariumFish,
+  sellWarehouse as applyWarehouseSale,
+  spendCoins as applyCoinSpend,
+} from './stateRules';
+import { browserStorage, KeyValueStorage } from './storage';
 
 const STORAGE_KEY = 'fishing-game-state';
 
@@ -29,105 +44,66 @@ const defaultState: PlayerState = {
   nets: 10,
 };
 
-function loadState(): PlayerState {
-  try {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      return { ...defaultState, ...parsed };
-    }
-  } catch {}
-  return { ...defaultState };
+export function loadPlayerState(storage: KeyValueStorage = browserStorage): PlayerState {
+  return parseSavedState(storage.get(STORAGE_KEY), defaultState);
 }
 
-function saveState(state: PlayerState) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-}
-
-function levelUp(xp: number, level: number, xpNeeded: number) {
-  let newXp = xp;
-  let newLevel = level;
-  let needed = xpNeeded;
-  while (newXp >= needed && newLevel < 20) {
-    newXp -= needed;
-    newLevel++;
-    needed = getXpForLevel(newLevel);
-  }
-  return { xp: newXp, level: newLevel, xpToNextLevel: needed };
+export function savePlayerState(state: PlayerState, storage: KeyValueStorage = browserStorage): void {
+  storage.set(STORAGE_KEY, serializePlayerState(state));
 }
 
 export function useGameState() {
-  const [player, setPlayer] = useState<PlayerState>(loadState);
+  const [player, setPlayer] = useState<PlayerState>(loadPlayerState);
 
-  useEffect(() => { saveState(player); }, [player]);
+  useEffect(() => { savePlayerState(player); }, [player]);
 
-  const catchFish = useCallback((fish: Fish, weight: number, locationId: string, fromNet = false) => {
+  const catchFishBatch = useCallback((catches: Array<Pick<CaughtFish, 'fish' | 'weight' | 'location'>>, fromNet = false) => {
+    if (catches.length === 0) return;
     setPlayer(prev => {
-      const xpGain = fromNet ? Math.floor(fish.xp * 0.3) : fish.xp;
-      const { xp, level, xpToNextLevel } = levelUp(prev.xp + xpGain, prev.level, prev.xpToNextLevel);
-      const caught: CaughtFish = { fish, weight, location: locationId, timestamp: Date.now() };
-      const newCollection = [...prev.collection, caught];
-      const heaviest = !prev.heaviestFish || weight > prev.heaviestFish.weight ? caught : prev.heaviestFish;
-      const unlockedLocations = LOCATIONS.filter(l => l.requiredLevel <= level).map(l => l.id);
-      const mainFull = prev.warehouse.length >= 15;
-      const newWarehouse = mainFull ? prev.warehouse : [...prev.warehouse, caught];
-      const newAquariumWarehouse = mainFull ? [...(prev.aquariumWarehouse || []), caught] : (prev.aquariumWarehouse || []);
+      const xpGain = catches.reduce((sum, caught) => sum + (fromNet ? Math.floor(caught.fish.xp * 0.3) : caught.fish.xp), 0);
+      const { xp, level, xpToNextLevel } = applyXp(prev.xp, prev.level, prev.xpToNextLevel, xpGain);
+      const timestampBase = Date.now();
+      const newCatches: CaughtFish[] = catches.map((caught, index) => ({
+        ...caught,
+        timestamp: timestampBase + index,
+      }));
+      const newCollection = [...prev.collection, ...newCatches];
+      const heaviest = newCatches.reduce<CaughtFish | null>(
+        (current, caught) => !current || caught.weight > current.weight ? caught : current,
+        prev.heaviestFish,
+      );
+      const unlockedLocations = getUnlockedLocationIds(level, LOCATIONS);
+      const inventory = newCatches.reduce(
+        (state, caught) => addToWarehouse(state.warehouse, state.aquariumWarehouse, caught),
+        { warehouse: prev.warehouse, aquariumWarehouse: prev.aquariumWarehouse || [] },
+      );
 
       return {
         ...prev,
         level, xp, xpToNextLevel,
-        totalFishCaught: prev.totalFishCaught + 1,
+        totalFishCaught: prev.totalFishCaught + newCatches.length,
         collection: newCollection,
         unlockedLocations,
         heaviestFish: heaviest,
-        warehouse: newWarehouse,
-        aquariumWarehouse: newAquariumWarehouse,
+        ...inventory,
       };
     });
   }, []);
 
-  const sellWarehouse = useCallback(() => {
-    setPlayer(prev => {
-      if (prev.warehouse.length === 0) return prev;
-      const bonusXp = prev.warehouse.reduce((sum, c) => sum + Math.floor(c.fish.xp * 0.5), 0);
-      const bonusCoins = prev.warehouse.reduce((sum, c) => sum + FISH_COIN_VALUE[c.fish.rarity], 0);
-      const { xp, level, xpToNextLevel } = levelUp(prev.xp + bonusXp, prev.level, prev.xpToNextLevel);
-      const unlockedLocations = LOCATIONS.filter(l => l.requiredLevel <= level).map(l => l.id);
+  const catchFish = useCallback((fish: Fish, weight: number, locationId: string, fromNet = false) => {
+    catchFishBatch([{ fish, weight, location: locationId }], fromNet);
+  }, [catchFishBatch]);
 
-      return {
-        ...prev,
-        xp, level, xpToNextLevel,
-        unlockedLocations,
-        warehouse: [],
-        coins: prev.coins + bonusCoins,
-      };
-    });
+  const sellWarehouse = useCallback(() => {
+    setPlayer(prev => applyWarehouseSale(prev, LOCATIONS));
   }, []);
 
   const buyMultiplier = useCallback((type: 'luck' | 'strength', power: number = 2) => {
-    setPlayer(prev => {
-      const cost = power === 4 ? MULTIPLIER_COST_4X : MULTIPLIER_COST;
-      if (prev.coins < cost) return prev;
-      const end = Date.now() + MULTIPLIER_DURATION;
-      return {
-        ...prev,
-        coins: prev.coins - cost,
-        ...(type === 'luck'
-          ? { luckMultiplierEnd: end, luckMultiplierPower: power }
-          : { strengthMultiplierEnd: end, strengthMultiplierPower: power }),
-      };
-    });
+    setPlayer(prev => applyMultiplierPurchase(prev, type, power, Date.now()));
   }, []);
 
   const buySkin = useCallback((skinId: string, price: number) => {
-    setPlayer(prev => {
-      if (prev.coins < price || prev.ownedSkins.includes(skinId)) return prev;
-      return {
-        ...prev,
-        coins: prev.coins - price,
-        ownedSkins: [...prev.ownedSkins, skinId],
-      };
-    });
+    setPlayer(prev => buyOwnedItem(prev, 'rod', skinId, price));
   }, []);
 
   const equipSkin = useCallback((skinId: string) => {
@@ -138,14 +114,7 @@ export function useGameState() {
   }, []);
 
   const buyBoatSkin = useCallback((skinId: string, price: number) => {
-    setPlayer(prev => {
-      if (prev.coins < price || prev.ownedBoatSkins.includes(skinId)) return prev;
-      return {
-        ...prev,
-        coins: prev.coins - price,
-        ownedBoatSkins: [...prev.ownedBoatSkins, skinId],
-      };
-    });
+    setPlayer(prev => buyOwnedItem(prev, 'boat', skinId, price));
   }, []);
 
   const equipBoatSkin = useCallback((skinId: string) => {
@@ -156,42 +125,19 @@ export function useGameState() {
   }, []);
 
   const addCoins = useCallback((amount: number) => {
-    setPlayer(prev => ({ ...prev, coins: prev.coins + amount }));
+    setPlayer(prev => ({ ...prev, coins: prev.coins + Math.max(0, amount) }));
   }, []);
 
-  const addSkin = useCallback((skinId: string): boolean => {
-    let gained = true;
-    setPlayer(prev => {
-      if (prev.ownedSkins.includes(skinId)) {
-        gained = false;
-        // Duplicate -> convert to 500 coins
-        return { ...prev, coins: prev.coins + 500 };
-      }
-      return { ...prev, ownedSkins: [...prev.ownedSkins, skinId] };
-    });
-    return gained;
+  const addSkin = useCallback((skinId: string): void => {
+    setPlayer(prev => grantOwnedItem(prev, 'rod', skinId, 500));
   }, []);
 
-  const addBoatSkin = useCallback((skinId: string): boolean => {
-    let gained = true;
-    setPlayer(prev => {
-      if (prev.ownedBoatSkins.includes(skinId)) {
-        gained = false;
-        return { ...prev, coins: prev.coins + 500 };
-      }
-      return { ...prev, ownedBoatSkins: [...prev.ownedBoatSkins, skinId] };
-    });
-    return gained;
+  const addBoatSkin = useCallback((skinId: string): void => {
+    setPlayer(prev => grantOwnedItem(prev, 'boat', skinId, 500));
   }, []);
 
-  const spendCoins = useCallback((amount: number): boolean => {
-    let ok = false;
-    setPlayer(prev => {
-      if (prev.coins < amount) return prev;
-      ok = true;
-      return { ...prev, coins: prev.coins - amount };
-    });
-    return ok;
+  const spendCoins = useCallback((amount: number): void => {
+    setPlayer(prev => applyCoinSpend(prev, amount));
   }, []);
 
   const addMultiplier = useCallback((type: 'luck' | 'strength') => {
@@ -209,30 +155,11 @@ export function useGameState() {
   }, []);
 
   const moveAquariumFishToSector = useCallback((timestamp: number, sector: number) => {
-    setPlayer(prev => {
-      const aw = prev.aquariumWarehouse || [];
-      const idx = aw.findIndex(c => c.timestamp === timestamp);
-      if (idx < 0) return prev;
-      const caught = aw[idx];
-      const reward = AQUARIUM_REWARDS[caught.fish.rarity];
-      const { xp, level, xpToNextLevel } = levelUp(prev.xp + reward.xp, prev.level, prev.xpToNextLevel);
-      const unlockedLocations = LOCATIONS.filter(l => l.requiredLevel <= level).map(l => l.id);
-      const sectors = { ...(prev.aquariumSectors || { 1:[],2:[],3:[],4:[],5:[] }) };
-      sectors[sector] = [...(sectors[sector] || []), caught];
-      return {
-        ...prev,
-        xp, level, xpToNextLevel,
-        unlockedLocations,
-        coins: prev.coins + reward.coins,
-        aquariumWarehouse: aw.filter((_, i) => i !== idx),
-        aquariumSectors: sectors,
-      };
-    });
+    setPlayer(prev => placeAquariumFish(prev, timestamp, sector, LOCATIONS));
   }, []);
 
-  const claimDailyGift = useCallback((): { reward: DailyGiftReward; day: number } | null => {
+  const claimDailyGift = useCallback((): void => {
     const today = new Date().toISOString().slice(0, 10);
-    let out: { reward: DailyGiftReward; day: number } | null = null;
     setPlayer(prev => {
       if (prev.dailyGiftsLastClaim === today) return prev;
       const day = prev.dailyGiftsDay || 1;
@@ -261,32 +188,16 @@ export function useGameState() {
           next.ownedSkins = [...prev.ownedSkins, reward.skinId];
         }
       }
-      out = { reward, day };
       return next;
     });
-    return out;
   }, []);
 
-  const useNet = useCallback((): boolean => {
-    let ok = false;
-    setPlayer(prev => {
-      const nets = prev.nets ?? NET_LIMIT;
-      if (nets <= 0) return prev;
-      ok = true;
-      return { ...prev, nets: nets - 1 };
-    });
-    return ok;
+  const consumeNet = useCallback((): void => {
+    setPlayer(applyNetConsumption);
   }, []);
 
-  const buyNet = useCallback((): boolean => {
-    let ok = false;
-    setPlayer(prev => {
-      const nets = prev.nets ?? NET_LIMIT;
-      if (nets >= NET_LIMIT || prev.coins < NET_PRICE) return prev;
-      ok = true;
-      return { ...prev, nets: nets + 1, coins: prev.coins - NET_PRICE };
-    });
-    return ok;
+  const buyNet = useCallback((): void => {
+    setPlayer(applyNetPurchase);
   }, []);
 
   const resetProgress = useCallback(() => {
@@ -298,6 +209,6 @@ export function useGameState() {
     buyMultiplier, buySkin, equipSkin,
     buyBoatSkin, equipBoatSkin,
     addCoins, addSkin, addBoatSkin, spendCoins, addMultiplier, setLastRouletteDate,
-    moveAquariumFishToSector, claimDailyGift, useNet, buyNet,
+    moveAquariumFishToSector, claimDailyGift, consumeNet, buyNet, catchFishBatch,
   };
 }
