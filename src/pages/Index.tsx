@@ -25,11 +25,11 @@ type Screen = 'menu' | 'locations' | 'fishing' | 'collection' | 'warehouse' | 's
 
 const IndexInner = () => {
   const {
-    player, catchFish, resetProgress, sellWarehouse,
+    player, catchFish, catchFishBatch, resetProgress, sellWarehouse,
     buyMultiplier, buySkin, equipSkin,
     buyBoatSkin, equipBoatSkin,
     addCoins, addSkin, addBoatSkin, spendCoins, addMultiplier, setLastRouletteDate,
-    moveAquariumFishToSector, claimDailyGift, useNet, buyNet,
+    moveAquariumFishToSector, claimDailyGift, consumeNet, buyNet,
   } = useGameState();
   const { isPlaying: musicPlaying, toggle: toggleMusic, trackId: musicTrack, setTrack: setMusicTrack } = useBackgroundMusic();
   const [screen, setScreen] = useState<Screen>('menu');
@@ -59,14 +59,18 @@ const IndexInner = () => {
     catchFish(fish, weight, locationId, screen === 'net');
   }, [catchFish, screen]);
 
+  const handleNetCatch = useCallback((catches: Array<{ fish: Fish; weight: number }>, locationId: string) => {
+    catchFishBatch(catches.map(caught => ({ ...caught, location: locationId })), true);
+  }, [catchFishBatch]);
+
   if (screen === 'locations') {
     return <LocationSelect playerLevel={player.level} unlockedLocations={player.unlockedLocations} world={world} onSelect={handleSelectLocation} onBack={() => setScreen('menu')} />;
   }
   if (screen === 'fishing' && selectedLocation) {
-    return <FishingScreen location={selectedLocation} player={player} onCatch={handleCatch} onBack={() => setScreen('locations')} onCastNet={() => { if (useNet()) setScreen('net'); }} onOpenNetShop={() => setScreen('netShop')} />;
+    return <FishingScreen location={selectedLocation} player={player} onCatch={handleCatch} onBack={() => setScreen('locations')} onCastNet={() => { if ((player.nets ?? 0) > 0) { consumeNet(); setScreen('net'); } }} onOpenNetShop={() => setScreen('netShop')} />;
   }
   if (screen === 'net' && selectedLocation) {
-    return <NetFishing location={selectedLocation} player={player} onCatch={handleCatch} onUseNet={useNet} onOpenShop={() => setScreen('netShop')} onBack={() => setScreen('locations')} />;
+    return <NetFishing location={selectedLocation} player={player} onCatch={handleCatch} onCatchBatch={handleNetCatch} onUseNet={consumeNet} onOpenShop={() => setScreen('netShop')} onBack={() => setScreen('locations')} />;
   }
   if (screen === 'netShop') {
     return <NetShop player={player} onBuy={buyNet} onBack={() => setScreen(selectedLocation ? 'fishing' : 'menu')} />;

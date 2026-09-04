@@ -6,9 +6,9 @@ import { useI18n } from '@/game/i18n';
 
 interface Props {
   player: PlayerState;
-  onAddSkin: (skinId: string) => boolean;
-  onAddBoatSkin: (skinId: string) => boolean;
-  onSpend: (amount: number) => boolean;
+  onAddSkin: (skinId: string) => void;
+  onAddBoatSkin: (skinId: string) => void;
+  onSpend: (amount: number) => void;
   onBack: () => void;
 }
 
@@ -70,7 +70,7 @@ export default function SkinRoulette({ player, onAddSkin, onAddBoatSkin, onSpend
   const spin = useCallback(() => {
     if (spinning) return;
     if (player.coins < SPIN_COST) return;
-    if (!onSpend(SPIN_COST)) return;
+    onSpend(SPIN_COST);
 
     setSpinning(true);
     setResult(null);
@@ -215,5 +215,3 @@ export default function SkinRoulette({ player, onAddSkin, onAddBoatSkin, onSpend
     </div>
   );
 }
-
-

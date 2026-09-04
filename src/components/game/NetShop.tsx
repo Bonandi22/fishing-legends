@@ -5,7 +5,7 @@ import { PlayerState, NET_LIMIT, NET_PRICE } from '@/game/types';
 
 interface Props {
   player: PlayerState;
-  onBuy: () => boolean;
+  onBuy: () => void;
   onBack: () => void;
 }
 

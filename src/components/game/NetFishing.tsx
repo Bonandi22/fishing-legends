@@ -33,8 +33,9 @@ interface Props {
   location: FishingLocation;
   player: PlayerState;
   onCatch: (fish: Fish, weight: number, locationId: string) => void;
+  onCatchBatch?: (catches: { fish: Fish; weight: number }[], locationId: string) => void;
   onBack: () => void;
-  onUseNet?: () => boolean;
+  onUseNet?: () => void;
   onOpenShop?: () => void;
 }
 
@@ -42,7 +43,7 @@ type Phase = 'pull' | 'pulled' | 'opened' | 'lost' | 'empty';
 
 const randomNet = () => NET_TYPES[Math.floor(Math.random() * NET_TYPES.length)];
 
-export default function NetFishing({ location, player, onCatch, onBack, onUseNet, onOpenShop }: Props) {
+export default function NetFishing({ location, player, onCatch, onCatchBatch, onBack, onUseNet, onOpenShop }: Props) {
   const { lang } = useI18n();
   const strengthActive = !!player.strengthMultiplierEnd && player.strengthMultiplierEnd > Date.now();
   const strengthFactor = strengthActive ? (player.strengthMultiplierPower === 4 ? 0.25 : 0.5) : 1;
@@ -105,12 +106,14 @@ export default function NetFishing({ location, player, onCatch, onBack, onUseNet
   }, [net, greenStart, greenSize, pool]);
 
   const handleOpenNet = () => {
-    haul.forEach(({ fish, weight }) => onCatch(fish, weight, location.id));
+    if (onCatchBatch) onCatchBatch(haul, location.id);
+    else haul.forEach(({ fish, weight }) => onCatch(fish, weight, location.id));
     setPhase('opened');
   };
 
   const reset = () => {
-    if (onUseNet && !onUseNet()) { setPhase('empty'); return; }
+    if ((player.nets ?? 0) <= 0) { setPhase('empty'); return; }
+    onUseNet?.();
     setHaul([]);
     startNet(randomNet());
   };
