@@ -11,7 +11,7 @@ Este arquivo mantém o contexto técnico e o roadmap versionados no repositório
 - Branch principal integrada: `main`.
 - Último merge da revitalização de interfaces: `08a26b8`.
 - Branch de trabalho pausada: `fix/menu-symmetry`.
-- Último commit local: `fc78fd1` — `Balance main menu control sizing`.
+- Último commit local: `94fa6c0` — `Record project pause point`.
 - PRs das Tasks 2, 3 e 4: `Bonandi22/deep-blue-lure#1`, `#2` e `#3`, todos integrados.
 - PR da revitalização de interfaces: `Bonandi22/deep-blue-lure#4`, integrado na `main`.
 - Correção de CI publicada em `f16299d` — lockfile sincronizado com `package.json`.
@@ -44,7 +44,7 @@ Cada branch deve conter uma etapa coerente e pode receber commits incrementais. 
 - Foi criada a correção local `fix/menu-symmetry` com o commit `fc78fd1` para equilibrar tamanhos, larguras e alturas dos elementos da página inicial.
 - Essa correção ainda não foi publicada nem aberta em PR; retomar por ela antes de iniciar qualquer nova task.
 - O servidor local do jogo foi iniciado em `http://127.0.0.1:8082`; as portas `8080` e `8081` estavam ocupadas por instâncias anteriores.
-- Playwright foi instalado como extensão do VS Code e o Chromium estava em processo de download; confirmar a instalação ao retomar.
+- Playwright foi instalado como extensão do VS Code e o Chromium foi baixado com sucesso.
 - O build de produção passa. Permanecem alertas de Browserslist desatualizado e chunks grandes.
 - O workflow de CI mantém TypeScript, Vitest e build; CodeQL foi removido por indisponibilidade de GitHub Advanced Security no repositório privado.
 - Não iniciar backend, autenticação, ranking global ou Campeonato até concluir a revisão final do frontend.
