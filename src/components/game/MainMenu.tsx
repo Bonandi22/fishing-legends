@@ -141,7 +141,7 @@ export default function MainMenu({ player, onPlay, onCollection, onWarehouse, on
   };
 
   return (
-    <div className={`relative flex min-h-screen flex-col items-center justify-start overflow-x-hidden overflow-y-auto px-2 py-20 sm:px-4 md:justify-center md:py-8 ${world === 2 ? 'world-bg-2' : world === 3 ? 'world-bg-3' : 'bg-background'}`}>
+    <div className={`relative flex min-h-screen flex-col items-center justify-start overflow-x-hidden overflow-y-auto px-3 pb-8 pt-24 sm:px-6 md:justify-center md:py-10 ${world === 2 ? 'world-bg-2' : world === 3 ? 'world-bg-3' : 'bg-background'}`}>
       {/* Animated background waves */}
       <div className="absolute inset-0 opacity-20">
         {[...Array(5)].map((_, i) => (
@@ -206,7 +206,7 @@ export default function MainMenu({ player, onPlay, onCollection, onWarehouse, on
 
       {/* Coins display + World toggle */}
       <div className="absolute top-2 left-2 z-20 flex max-w-[calc(100%-1rem)] flex-wrap items-center gap-1.5 sm:top-4 sm:left-4 sm:gap-2">
-        <div className="bg-background/80 backdrop-blur rounded-lg px-4 py-2 text-sm font-bold text-foreground">
+        <div className="surface-glass rounded-lg px-3 py-2 text-sm font-bold text-foreground">
           💰 {player.coins} {t('mult.coins')}
         </div>
         <Button
@@ -393,7 +393,7 @@ export default function MainMenu({ player, onPlay, onCollection, onWarehouse, on
       </AnimatePresence>
 
       <motion.div
-        className="z-10 w-full max-w-md text-center"
+        className="z-10 w-full max-w-3xl text-center"
         initial={{ opacity: 0, y: -40 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.8 }}
@@ -408,57 +408,63 @@ export default function MainMenu({ player, onPlay, onCollection, onWarehouse, on
         <h1 className="mb-2 text-4xl font-black tracking-tight text-foreground sm:text-5xl md:text-7xl">
           PESCA<span className="text-primary">3D</span>
         </h1>
-        <p className="text-muted-foreground text-lg mb-8">
+        <p className="mx-auto mb-6 max-w-xl text-muted-foreground text-lg">
           {t('menu.subtitle')}
         </p>
 
-        {player.level > 1 && (
-          <motion.div
-            className="mb-6 inline-flex items-center gap-3 rounded-full bg-secondary px-5 py-2 text-sm"
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-          >
-            <span className="text-primary font-bold">{t('menu.level')} {player.level}</span>
-            <span className="text-muted-foreground">•</span>
-            <span className="text-muted-foreground">{player.totalFishCaught} {t('menu.fish')}</span>
-          </motion.div>
-        )}
+        <motion.div
+          className="surface-glass mx-auto mb-6 grid w-full max-w-2xl grid-cols-3 gap-2 rounded-2xl p-3 text-left sm:gap-4 sm:p-4"
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+        >
+          <div className="rounded-xl bg-primary/10 p-2.5 sm:p-3">
+            <p className="text-xs uppercase tracking-wide text-muted-foreground">{t('menu.level')}</p>
+            <p className="text-xl font-black text-primary sm:text-2xl">{player.level}</p>
+            <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-secondary">
+              <div className="h-full rounded-full bg-primary" style={{ width: `${Math.min(100, (player.xp / Math.max(1, player.xpToNextLevel)) * 100)}%` }} />
+            </div>
+          </div>
+          <div className="rounded-xl bg-secondary/70 p-2.5 sm:p-3">
+            <p className="text-xs uppercase tracking-wide text-muted-foreground">🐟 {t('menu.fish')}</p>
+            <p className="text-xl font-black text-foreground sm:text-2xl">{player.totalFishCaught.toLocaleString()}</p>
+            <p className="text-xs text-muted-foreground">{player.collection.length} {t('col.species')}</p>
+          </div>
+          <div className="rounded-xl bg-secondary/70 p-2.5 sm:p-3">
+            <p className="text-xs uppercase tracking-wide text-muted-foreground">💰 {t('mult.coins')}</p>
+            <p className="text-xl font-black text-foreground sm:text-2xl">{player.coins.toLocaleString()}</p>
+            <p className="text-xs text-muted-foreground">{player.warehouse?.length || 0}/15 {t('menu.warehouse')}</p>
+          </div>
+        </motion.div>
 
-        <div className="flex flex-col gap-3 items-center">
-          <Button onClick={onPlay} size="lg" className="w-64 h-14 text-lg font-bold bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/25">
+        <div className="mx-auto grid w-full max-w-2xl grid-cols-2 gap-3 sm:gap-4">
+          <Button onClick={onPlay} size="lg" className="col-span-2 h-14 w-full text-lg font-bold bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/25">
             {t('menu.play')}
           </Button>
-          <Button onClick={onSubmarine} size="lg" className="w-64 h-12 bg-cyan-700 text-cyan-50 hover:bg-cyan-600 font-bold">
+          <Button onClick={onSubmarine} size="lg" className="col-span-2 h-12 w-full bg-cyan-700 text-cyan-50 hover:bg-cyan-600 font-bold">
             {t('menu.submarine')}
           </Button>
-          <div className="flex gap-3">
-            <Button onClick={onCollection} variant="secondary" size="lg" className="w-[122px] h-12 text-xs">
+            <Button onClick={onCollection} variant="secondary" size="lg" className="h-12 w-full text-xs">
               {t('menu.collection')} ({player.collection.length})
             </Button>
-            <Button onClick={onWarehouse} variant="secondary" size="lg" className="w-[122px] h-12 text-xs">
+            <Button onClick={onWarehouse} variant="secondary" size="lg" className="h-12 w-full text-xs">
               {t('menu.warehouse')} ({player.warehouse?.length || 0}/15)
             </Button>
-          </div>
-          <div className="flex gap-3">
-            <Button onClick={onMultiplier} variant="secondary" size="lg" className="w-[122px] h-12 text-xs">
+            <Button onClick={onMultiplier} variant="secondary" size="lg" className="h-12 w-full text-xs">
               {t('menu.multiplier')}
             </Button>
-            <Button onClick={onSkins} variant="secondary" size="lg" className="w-[122px] h-12 text-xs">
+            <Button onClick={onSkins} variant="secondary" size="lg" className="h-12 w-full text-xs">
               {t('menu.skins')}
             </Button>
-          </div>
-          <div className="flex gap-3">
-            <Button onClick={onRoulette} variant="outline" size="lg" className="w-[122px] h-12 text-xs font-bold">
+            <Button onClick={onRoulette} variant="outline" size="lg" className="h-12 w-full text-xs font-bold">
               {t('menu.roulette')}
             </Button>
-            <Button onClick={onRanking} variant="outline" size="lg" className="w-[122px] h-12 text-xs font-bold">
+            <Button onClick={onRanking} variant="outline" size="lg" className="h-12 w-full text-xs font-bold">
               {t('menu.ranking')}
             </Button>
-          </div>
-          <Button onClick={onSkinRoulette} variant="outline" size="lg" className="w-64 h-12 text-sm font-bold border-primary text-primary hover:bg-primary/10">
+          <Button onClick={onSkinRoulette} variant="outline" size="lg" className="col-span-2 h-12 w-full text-sm font-bold border-primary text-primary hover:bg-primary/10">
             {t('menu.skinRoulette')}
           </Button>
-          <Button onClick={onAquarium} size="lg" className="w-64 h-12 text-sm font-bold bg-cyan-600 hover:bg-cyan-500 text-white">
+          <Button onClick={onAquarium} size="lg" className="col-span-2 h-12 w-full text-sm font-bold bg-cyan-600 hover:bg-cyan-500 text-white">
             {t('menu.aquarium')} ({(player.aquariumWarehouse?.length || 0)} + {Object.values(player.aquariumSectors || {}).reduce((s, a) => s + (a?.length || 0), 0)})
           </Button>
           {player.level > 1 && (

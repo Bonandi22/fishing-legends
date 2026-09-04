@@ -15,9 +15,9 @@ export default function NetShop({ player, onBuy, onBack }: Props) {
   const canAfford = player.coins >= NET_PRICE;
 
   return (
-    <div className="min-h-screen bg-background p-4 md:p-8">
+    <div className="screen-shell bg-background">
       <div className="max-w-xl mx-auto">
-        <div className="flex items-center justify-between mb-6">
+        <div className="screen-header">
           <div>
             <h1 className="text-2xl md:text-3xl font-bold text-foreground">Loja de Redes</h1>
             <p className="text-muted-foreground text-sm">Cada rede custa {NET_PRICE.toLocaleString()} moedas</p>

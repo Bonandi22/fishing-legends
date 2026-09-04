@@ -24,9 +24,9 @@ export default function MultiplierShop({ player, onBuy, onBack }: Props) {
   ];
 
   return (
-    <div className="min-h-screen bg-background p-4 md:p-8">
+    <div className="screen-shell bg-background">
       <div className="max-w-2xl mx-auto">
-        <div className="flex items-center justify-between mb-6">
+        <div className="screen-header">
           <div>
             <h1 className="text-3xl font-bold text-foreground">{t('mult.title')}</h1>
             <p className="text-muted-foreground">💰 {player.coins} {t('mult.coins')}</p>

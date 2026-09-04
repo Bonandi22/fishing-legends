@@ -23,18 +23,18 @@ export default function Ranking({ player, onBack }: Props) {
   const boatById = (id: string) => BOAT_SKINS.find(s => s.id === id);
 
   return (
-    <div className="min-h-screen bg-background p-4 md:p-8 relative">
+    <div className="screen-shell bg-background relative">
       <div className="max-w-3xl mx-auto">
-        <div className="flex items-center justify-between mb-6">
+        <div className="screen-header">
           <div>
             <h1 className="text-3xl font-bold text-foreground">🏆 {t('rank.title')}</h1>
             <p className="text-muted-foreground text-sm">{t('rank.subtitle')}</p>
           </div>
-          <Button variant="outline" onClick={onBack}>{t('loc.back')}</Button>
+          <Button variant="outline" onClick={onBack} className="touch-target shrink-0">{t('loc.back')}</Button>
         </div>
 
         <div className="bg-card border border-border rounded-xl overflow-hidden shadow-lg">
-          <div className="grid grid-cols-[60px_1fr_80px_100px] gap-2 px-4 py-3 bg-muted/50 text-xs font-bold text-muted-foreground uppercase">
+          <div className="grid grid-cols-[42px_minmax(0,1fr)_52px_76px] sm:grid-cols-[60px_1fr_80px_100px] gap-2 px-3 sm:px-4 py-3 bg-muted/50 text-xs font-bold text-muted-foreground uppercase">
             <span>#</span>
             <span>{t('rank.player')}</span>
             <span className="text-right">{t('rank.level')}</span>
@@ -52,7 +52,7 @@ export default function Ranking({ player, onBack }: Props) {
                 <button
                   key={p.rank}
                   onClick={() => { setSelected(p); setShowProfile(false); }}
-                  className={`w-full grid grid-cols-[60px_1fr_80px_100px] gap-2 px-4 py-2.5 text-sm items-center text-left hover:bg-accent/50 transition-colors border-t border-border ${
+                  className={`w-full grid grid-cols-[42px_minmax(0,1fr)_52px_76px] sm:grid-cols-[60px_1fr_80px_100px] gap-2 px-3 sm:px-4 py-3 text-sm items-center text-left hover:bg-accent/50 transition-colors border-t border-border ${
                     selected?.rank === p.rank ? 'bg-accent' : ''
                   } ${isPlayer ? 'bg-primary/10 font-bold' : ''}`}
                 >

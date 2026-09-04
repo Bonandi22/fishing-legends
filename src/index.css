@@ -71,9 +71,42 @@
   h1, h2, h3 {
     font-family: 'Cinzel', serif;
   }
+  button, a, [role="button"], input, select, textarea {
+    -webkit-tap-highlight-color: transparent;
+  }
+  button:focus-visible, a:focus-visible, [role="button"]:focus-visible,
+  input:focus-visible, select:focus-visible, textarea:focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 3px;
+  }
 }
 
 @layer utilities {
+  .screen-shell {
+    min-height: 100dvh;
+    overflow-x: hidden;
+    padding: max(1rem, env(safe-area-inset-top)) max(1rem, env(safe-area-inset-right))
+      max(1.25rem, env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-left));
+  }
+  .screen-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+  }
+  .screen-header > :first-child {
+    min-width: 0;
+  }
+  .touch-target {
+    min-height: 2.75rem;
+  }
+  .surface-glass {
+    background: hsl(var(--card) / 0.82);
+    border: 1px solid hsl(var(--border) / 0.9);
+    box-shadow: 0 18px 45px hsl(220 40% 2% / 0.2);
+    backdrop-filter: blur(14px);
+  }
   .text-rarity-common { color: hsl(var(--rarity-common)); }
   .text-rarity-uncommon { color: hsl(var(--rarity-uncommon)); }
   .text-rarity-legendary { color: hsl(var(--rarity-legendary)); }
