@@ -90,4 +90,30 @@ describe('backend foundation', () => {
       error: { code: 'VALIDATION_ERROR', message: 'Request validation failed' },
     });
   });
+
+  it('returns the authenticated player profile and rejects missing credentials', async () => {
+      const app = createApp({ config: testConfig });
+      apps.add(app);
+      const registration = await app.inject({
+        method: 'POST',
+        url: '/api/v1/auth/register',
+        payload: {
+          email: 'profile@example.com',
+          password: 'a-strong-password-123',
+          username: 'profile_user',
+          country: 'pt',
+        },
+      });
+      const token = registration.json().accessToken;
+      const profile = await app.inject({
+        method: 'GET',
+        url: '/api/v1/me',
+        headers: { authorization: `Bearer ${token}` },
+      });
+      expect(profile.statusCode).toBe(200);
+      expect(profile.json().user.level).toBe(1);
+
+      const unauthorized = await app.inject({ method: 'GET', url: '/api/v1/me' });
+      expect(unauthorized.statusCode).toBe(401);
+  });
 });

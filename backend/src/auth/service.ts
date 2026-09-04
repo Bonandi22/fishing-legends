@@ -80,7 +80,12 @@ export function createAuthService(repository: AuthRepository, config: AuthServic
     },
 
     async verifyAccessToken(token: string) {
-      const result = await jwtVerify(token, config.accessTokenSecret, { algorithms: [ACCESS_ALGORITHM] });
+      let result;
+      try {
+        result = await jwtVerify(token, config.accessTokenSecret, { algorithms: [ACCESS_ALGORITHM] });
+      } catch {
+        throw new Error('INVALID_ACCESS_TOKEN');
+      }
       if (result.payload.type !== 'access' || typeof result.payload.sub !== 'string') {
         throw new Error('INVALID_ACCESS_TOKEN');
       }

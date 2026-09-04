@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { and, eq, gt, isNull } from 'drizzle-orm';
 import type { Database } from '../db/client.js';
-import { sessions, userProfiles, users } from '../db/schema.js';
+import { playerProgress, sessions, userProfiles, users } from '../db/schema.js';
 import type { AuthRepository, AuthSession, AuthUser } from './types.js';
 
 function toAuthUser(row: {
@@ -60,6 +60,7 @@ export function createPgAuthRepository(db: Database): AuthRepository {
           username: input.username,
           country: input.country,
         });
+        await tx.insert(playerProgress).values({ userId: id });
         return tx
           .select({ user: users, profile: userProfiles })
           .from(users)

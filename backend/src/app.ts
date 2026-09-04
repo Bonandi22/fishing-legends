@@ -7,6 +7,9 @@ import { createMemoryAuthRepository } from './auth/memoryRepository.js';
 import { registerAuthRoutes } from './auth/routes.js';
 import { createDatabase } from './db/client.js';
 import { createPgAuthRepository } from './auth/pgRepository.js';
+import { registerPlayerRoutes } from './players/routes.js';
+import { createMemoryPlayerRepository } from './players/memoryRepository.js';
+import { createPgPlayerRepository } from './players/pgRepository.js';
 
 export type AppDependencies = {
   config: AppConfig;
@@ -23,14 +26,18 @@ export function createApp({ config }: AppDependencies): FastifyInstance {
   registerSystemRoutes(app, {
     databaseConfigured: Boolean(config.databaseUrl),
   });
-  const authRepository = config.databaseUrl
-    ? createPgAuthRepository(createDatabase(config.databaseUrl))
-    : createMemoryAuthRepository();
-  void registerAuthRoutes(app, createAuthService(authRepository, {
+  const database = config.databaseUrl ? createDatabase(config.databaseUrl) : null;
+  const authRepository = database ? createPgAuthRepository(database) : createMemoryAuthRepository();
+  const authService = createAuthService(authRepository, {
     accessTokenSecret: config.accessTokenSecret,
     accessTokenTtlSeconds: config.accessTokenTtlSeconds,
     refreshTokenTtlSeconds: config.refreshTokenTtlSeconds,
-  }));
+  });
+  const playerRepository = database
+    ? createPgPlayerRepository(database)
+    : createMemoryPlayerRepository(authRepository);
+  void registerAuthRoutes(app, authService);
+  registerPlayerRoutes(app, authService, playerRepository);
 
   return app;
 }

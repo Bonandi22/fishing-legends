@@ -528,3 +528,14 @@ Observações:
 - Adicionados scripts `backend:db:generate` e `backend:db:migrate`.
 - A validação executada não conectou a um PostgreSQL real; o typecheck e os 24 testes passaram.
 - Antes de produção, executar migrações em staging e adicionar testes de integração contra PostgreSQL.
+
+### Perfil e progresso server-side
+
+- Adicionada a migração `backend/migrations/0002_player_progress.sql`.
+- Adicionado schema Drizzle para `player_progress`.
+- Adicionado `GET /api/v1/me`, protegido por access token.
+- O endpoint retorna perfil, nível, XP, peixes capturados, moedas e locais desbloqueados.
+- O perfil inicial é criado junto com usuário/perfil em uma transação PostgreSQL.
+- O fallback em memória fornece progresso inicial apenas para desenvolvimento/testes.
+- A suíte passou com 25 testes e o typecheck do backend passou.
+- Economia, captura, inventário, ranking, recompensas, segurança avançada, temporadas e integração do frontend continuam sendo etapas posteriores.

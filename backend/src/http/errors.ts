@@ -20,7 +20,7 @@ export function registerErrorHandling(app: FastifyInstance): void {
       });
     }
 
-    if (error instanceof Error && ['ACCOUNT_ALREADY_EXISTS', 'INVALID_CREDENTIALS', 'INVALID_REFRESH_TOKEN'].includes(error.message)) {
+    if (error instanceof Error && ['ACCOUNT_ALREADY_EXISTS', 'INVALID_CREDENTIALS', 'INVALID_REFRESH_TOKEN', 'INVALID_ACCESS_TOKEN'].includes(error.message)) {
       return reply.status(error.message === 'ACCOUNT_ALREADY_EXISTS' ? 409 : 401).send({
         error: { code: error.message, message: 'Authentication request could not be completed' },
       });
