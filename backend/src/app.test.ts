@@ -166,4 +166,26 @@ describe('backend foundation', () => {
     expect(completed.json().result.fishId).toEqual(expect.any(String));
     expect(completed.json().result.weight).toBeGreaterThan(0);
   });
+
+  it('exposes a server-owned wallet balance', async () => {
+    const app = createApp({ config: testConfig });
+    apps.add(app);
+    const registration = await app.inject({
+      method: 'POST',
+      url: '/api/v1/auth/register',
+      payload: {
+        email: 'wallet@example.com',
+        password: 'a-strong-password-123',
+        username: 'wallet_user',
+        country: 'br',
+      },
+    });
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/v1/wallet',
+      headers: { authorization: `Bearer ${registration.json().accessToken}` },
+    });
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({ balance: 0 });
+  });
 });

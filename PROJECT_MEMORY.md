@@ -557,3 +557,11 @@ Observações:
 - A conclusão repetida da mesma sessão retorna o mesmo resultado.
 - A persistência PostgreSQL das sessões e das capturas ainda precisa ser ligada ao serviço antes de produção competitiva; o primeiro slice usa memória para testes/desenvolvimento.
 - A suíte passou com 27 testes e o typecheck do backend passou.
+
+### Economia inicial
+
+- Adicionada migração `backend/migrations/0004_economy.sql` para carteiras e ledger de transações.
+- Adicionado endpoint autenticado `GET /api/v1/wallet`.
+- O endpoint usa PostgreSQL quando `DATABASE_URL` existe e memória apenas no modo local/teste.
+- O serviço de memória já aplica idempotência e impede saldo negativo para futuros créditos/débitos internos.
+- Créditos, débitos, venda de capturas e integração transacional com pesca/recompensas ainda precisam ser fechados antes de produção.

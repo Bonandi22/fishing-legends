@@ -41,4 +41,20 @@ export const playerProgress = pgTable('player_progress', {
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
-export const schema = { users, userProfiles, sessions, playerProgress };
+export const wallets = pgTable('wallets', {
+  userId: uuid('user_id').primaryKey().references(() => users.id, { onDelete: 'cascade' }),
+  balance: bigint('balance', { mode: 'number' }).notNull().default(0),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const walletTransactions = pgTable('wallet_transactions', {
+  id: uuid('id').primaryKey(),
+  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  amount: bigint('amount', { mode: 'number' }).notNull(),
+  balanceAfter: bigint('balance_after', { mode: 'number' }).notNull(),
+  reason: varchar('reason', { length: 64 }).notNull(),
+  idempotencyKey: varchar('idempotency_key', { length: 128 }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const schema = { users, userProfiles, sessions, playerProgress, wallets, walletTransactions };

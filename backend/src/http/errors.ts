@@ -20,7 +20,7 @@ export function registerErrorHandling(app: FastifyInstance): void {
       });
     }
 
-    if (error instanceof Error && ['ACCOUNT_ALREADY_EXISTS', 'INVALID_CREDENTIALS', 'INVALID_REFRESH_TOKEN', 'INVALID_ACCESS_TOKEN', 'INVALID_FISHING_REQUEST', 'LOCATION_LOCKED', 'INVALID_FISHING_SESSION', 'INVALID_IDEMPOTENCY_KEY'].includes(error.message)) {
+    if (error instanceof Error && ['ACCOUNT_ALREADY_EXISTS', 'INVALID_CREDENTIALS', 'INVALID_REFRESH_TOKEN', 'INVALID_ACCESS_TOKEN', 'INVALID_FISHING_REQUEST', 'LOCATION_LOCKED', 'INVALID_FISHING_SESSION', 'INVALID_IDEMPOTENCY_KEY', 'INVALID_WALLET_AMOUNT', 'INSUFFICIENT_FUNDS'].includes(error.message)) {
       const status = error.message === 'ACCOUNT_ALREADY_EXISTS' ? 409
         : error.message === 'LOCATION_LOCKED' ? 403
         : error.message === 'INVALID_IDEMPOTENCY_KEY' ? 400
