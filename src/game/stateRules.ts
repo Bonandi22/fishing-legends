@@ -1,5 +1,7 @@
 import {
   FishingLocation,
+  AQUARIUM_REWARDS,
+  FISH_COIN_VALUE,
   getXpForLevel,
   MAX_LEVEL,
   MULTIPLIER_COST,
@@ -15,6 +17,46 @@ export interface Progression {
   xp: number;
   level: number;
   xpToNextLevel: number;
+}
+
+export function sellWarehouse(state: PlayerState, locations: FishingLocation[]): PlayerState {
+  if (state.warehouse.length === 0) return state;
+  const bonusXp = state.warehouse.reduce((sum, caught) => sum + Math.floor(caught.fish.xp * 0.5), 0);
+  const bonusCoins = state.warehouse.reduce((sum, caught) => sum + FISH_COIN_VALUE[caught.fish.rarity], 0);
+  const progression = applyXp(state.xp, state.level, state.xpToNextLevel, bonusXp);
+
+  return {
+    ...state,
+    ...progression,
+    unlockedLocations: getUnlockedLocationIds(progression.level, locations),
+    warehouse: [],
+    coins: state.coins + bonusCoins,
+  };
+}
+
+export function placeAquariumFish(
+  state: PlayerState,
+  timestamp: number,
+  sector: number,
+  locations: FishingLocation[],
+): PlayerState {
+  const aquariumWarehouse = state.aquariumWarehouse || [];
+  const index = aquariumWarehouse.findIndex(caught => caught.timestamp === timestamp);
+  if (index < 0) return state;
+
+  const caught = aquariumWarehouse[index];
+  const reward = AQUARIUM_REWARDS[caught.fish.rarity];
+  const progression = applyXp(state.xp, state.level, state.xpToNextLevel, reward.xp);
+  const sectors = { ...(state.aquariumSectors || {}) };
+
+  return {
+    ...state,
+    ...progression,
+    unlockedLocations: getUnlockedLocationIds(progression.level, locations),
+    coins: state.coins + reward.coins,
+    aquariumWarehouse: aquariumWarehouse.filter((_, itemIndex) => itemIndex !== index),
+    aquariumSectors: { ...sectors, [sector]: [...(sectors[sector] || []), caught] },
+  };
 }
 
 export function applyXp(xp: number, level: number, xpToNextLevel: number, amount: number): Progression {

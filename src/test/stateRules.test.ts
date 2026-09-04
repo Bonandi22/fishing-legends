@@ -9,6 +9,8 @@ import {
   consumeNet,
   getUnlockedLocationIds,
   grantOwnedItem,
+  placeAquariumFish,
+  sellWarehouse,
   spendCoins,
 } from '@/game/stateRules';
 
@@ -59,5 +61,29 @@ describe('state rules', () => {
     expect(buyMultiplier(player, 'luck', 4, 1000).coins).toBe(0);
     expect(buyOwnedItem(player, 'rod', 'shark', 1000).ownedSkins).toContain('shark');
     expect(grantOwnedItem(player, 'rod', 'default', 500).coins).toBe(6500);
+  });
+
+  it('sells warehouse fish and applies XP, coins and unlocked locations atomically', () => {
+    const state = {
+      ...player,
+      warehouse: [{ fish: FISH[0], weight: 1, location: 'amazon', timestamp: 1 }],
+    };
+    const sold = sellWarehouse(state, LOCATIONS);
+
+    expect(sold.warehouse).toEqual([]);
+    expect(sold.coins).toBe(6010);
+    expect(sold.xp).toBe(5);
+  });
+
+  it('moves an aquarium fish once and awards its configured reward', () => {
+    const state = {
+      ...player,
+      aquariumWarehouse: [{ fish: FISH[0], weight: 1, location: 'amazon', timestamp: 42 }],
+    };
+    const placed = placeAquariumFish(state, 42, 1, LOCATIONS);
+
+    expect(placed.aquariumWarehouse).toEqual([]);
+    expect(placed.aquariumSectors[1]).toHaveLength(1);
+    expect(placed.coins).toBe(6005);
   });
 });

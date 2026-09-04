@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
-import { PlayerState, CaughtFish, Fish, getXpForLevel, FISH_COIN_VALUE, NET_LIMIT, NET_PRICE, MULTIPLIER_COST, MULTIPLIER_COST_4X, MULTIPLIER_DURATION, AQUARIUM_REWARDS, DailyGiftReward, getDailyGiftsForWeek } from './types';
+import { PlayerState, CaughtFish, Fish, getXpForLevel, NET_LIMIT, NET_PRICE, MULTIPLIER_COST, MULTIPLIER_COST_4X, MULTIPLIER_DURATION, DailyGiftReward, getDailyGiftsForWeek } from './types';
 import { LOCATIONS } from './data';
 import { parseSavedState, serializePlayerState } from './persistence';
 import {
@@ -11,6 +11,8 @@ import {
   consumeNet as applyNetConsumption,
   getUnlockedLocationIds,
   grantOwnedItem,
+  placeAquariumFish,
+  sellWarehouse as applyWarehouseSale,
   spendCoins as applyCoinSpend,
 } from './stateRules';
 import { browserStorage, KeyValueStorage } from './storage';
@@ -93,21 +95,7 @@ export function useGameState() {
   }, [catchFishBatch]);
 
   const sellWarehouse = useCallback(() => {
-    setPlayer(prev => {
-      if (prev.warehouse.length === 0) return prev;
-      const bonusXp = prev.warehouse.reduce((sum, c) => sum + Math.floor(c.fish.xp * 0.5), 0);
-      const bonusCoins = prev.warehouse.reduce((sum, c) => sum + FISH_COIN_VALUE[c.fish.rarity], 0);
-      const { xp, level, xpToNextLevel } = applyXp(prev.xp, prev.level, prev.xpToNextLevel, bonusXp);
-      const unlockedLocations = getUnlockedLocationIds(level, LOCATIONS);
-
-      return {
-        ...prev,
-        xp, level, xpToNextLevel,
-        unlockedLocations,
-        warehouse: [],
-        coins: prev.coins + bonusCoins,
-      };
-    });
+    setPlayer(prev => applyWarehouseSale(prev, LOCATIONS));
   }, []);
 
   const buyMultiplier = useCallback((type: 'luck' | 'strength', power: number = 2) => {
@@ -167,25 +155,7 @@ export function useGameState() {
   }, []);
 
   const moveAquariumFishToSector = useCallback((timestamp: number, sector: number) => {
-    setPlayer(prev => {
-      const aw = prev.aquariumWarehouse || [];
-      const idx = aw.findIndex(c => c.timestamp === timestamp);
-      if (idx < 0) return prev;
-      const caught = aw[idx];
-      const reward = AQUARIUM_REWARDS[caught.fish.rarity];
-      const { xp, level, xpToNextLevel } = applyXp(prev.xp, prev.level, prev.xpToNextLevel, reward.xp);
-      const unlockedLocations = getUnlockedLocationIds(level, LOCATIONS);
-      const sectors = { ...(prev.aquariumSectors || { 1:[],2:[],3:[],4:[],5:[] }) };
-      sectors[sector] = [...(sectors[sector] || []), caught];
-      return {
-        ...prev,
-        xp, level, xpToNextLevel,
-        unlockedLocations,
-        coins: prev.coins + reward.coins,
-        aquariumWarehouse: aw.filter((_, i) => i !== idx),
-        aquariumSectors: sectors,
-      };
-    });
+    setPlayer(prev => placeAquariumFish(prev, timestamp, sector, LOCATIONS));
   }, []);
 
   const claimDailyGift = useCallback((): void => {

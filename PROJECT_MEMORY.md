@@ -48,7 +48,7 @@ Commit principal: `6e7a699`.
 - Captura em lote implementada para redes.
 - Testes de pesca, persistência e regras de estado.
 
-### Task 2 — Refatoração arquitetural — em andamento
+### Task 2 — Refatoração arquitetural — concluída
 
 Commit atual: `9c1977b`.
 
@@ -57,6 +57,8 @@ Commit atual: `9c1977b`.
 - Adicionado teste com storage em memória.
 - Captura em lote foi integrada ao fluxo de redes.
 - Regras de economia, redes, compras de itens, concessão de skins e multiplicadores foram extraídas para `stateRules.ts`.
+- Venda do armazém e colocação de peixes no aquário também foram extraídas para regras puras.
+- O hook React concentra transições de estado e efeitos de persistência; cálculos de domínio são testáveis sem renderizar componentes.
 - Operações monetárias agora ignoram valores negativos e compras normalizam preços/poderes.
 - A Task 2 possui commits incrementais e está publicada em `origin/feature/task-02`.
 
@@ -68,7 +70,8 @@ Próximos passos:
 - Revisar timers restantes e efeitos de ciclo de vida.
 - Reduzir a responsabilidade de `Index.tsx` e `useGameState.ts`.
 - Manter commits pequenos e reversíveis.
-- Próximo commit: continuar a separação das operações de aquário, presentes e venda do armazém.
+- Venda do armazém e colocação de peixes no aquário foram extraídas para regras puras e cobertas por testes.
+- A próxima etapa será a `feature/task-03` para conteúdo e balanceamento.
 
 ### Task 3 — Conteúdo e balanceamento — planejada
 
