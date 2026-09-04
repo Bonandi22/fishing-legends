@@ -413,31 +413,31 @@ export default function MainMenu({ player, onPlay, onCollection, onWarehouse, on
         </p>
 
         <motion.div
-          className="surface-glass mx-auto mb-6 grid w-full max-w-2xl grid-cols-3 gap-2 rounded-2xl p-3 text-left sm:gap-4 sm:p-4"
+          className="surface-glass mx-auto mb-6 grid w-full max-w-xl grid-cols-3 gap-2 rounded-2xl p-3 text-left sm:gap-3 sm:p-4"
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
         >
-          <div className="rounded-xl bg-primary/10 p-2.5 sm:p-3">
+          <div className="min-h-[5.5rem] rounded-xl bg-primary/10 p-2.5 sm:p-3">
             <p className="text-xs uppercase tracking-wide text-muted-foreground">{t('menu.level')}</p>
             <p className="text-xl font-black text-primary sm:text-2xl">{player.level}</p>
             <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-secondary">
               <div className="h-full rounded-full bg-primary" style={{ width: `${Math.min(100, (player.xp / Math.max(1, player.xpToNextLevel)) * 100)}%` }} />
             </div>
           </div>
-          <div className="rounded-xl bg-secondary/70 p-2.5 sm:p-3">
+          <div className="min-h-[5.5rem] rounded-xl bg-secondary/70 p-2.5 sm:p-3">
             <p className="text-xs uppercase tracking-wide text-muted-foreground">🐟 {t('menu.fish')}</p>
             <p className="text-xl font-black text-foreground sm:text-2xl">{player.totalFishCaught.toLocaleString()}</p>
             <p className="text-xs text-muted-foreground">{player.collection.length} {t('col.species')}</p>
           </div>
-          <div className="rounded-xl bg-secondary/70 p-2.5 sm:p-3">
+          <div className="min-h-[5.5rem] rounded-xl bg-secondary/70 p-2.5 sm:p-3">
             <p className="text-xs uppercase tracking-wide text-muted-foreground">💰 {t('mult.coins')}</p>
             <p className="text-xl font-black text-foreground sm:text-2xl">{player.coins.toLocaleString()}</p>
             <p className="text-xs text-muted-foreground">{player.warehouse?.length || 0}/15 {t('menu.warehouse')}</p>
           </div>
         </motion.div>
 
-        <div className="mx-auto grid w-full max-w-2xl grid-cols-2 gap-3 sm:gap-4">
-          <Button onClick={onPlay} size="lg" className="col-span-2 h-14 w-full text-lg font-bold bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/25">
+        <div className="mx-auto grid w-full max-w-xl grid-cols-2 gap-2.5 sm:gap-3">
+          <Button onClick={onPlay} size="lg" className="col-span-2 h-12 w-full text-base font-bold bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/25 sm:text-lg">
             {t('menu.play')}
           </Button>
           <Button onClick={onSubmarine} size="lg" className="col-span-2 h-12 w-full bg-cyan-700 text-cyan-50 hover:bg-cyan-600 font-bold">
