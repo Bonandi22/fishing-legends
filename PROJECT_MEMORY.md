@@ -598,3 +598,13 @@ Observações:
 - O fallback em memória aplica a mesma regra de transferência.
 - Peixe inexistente no armazém retorna `WAREHOUSE_FISH_NOT_FOUND` com HTTP 404.
 - A suíte passou com 29 testes e o typecheck do backend passou.
+
+### Compras server-side de redes
+
+- Adicionada a migração `0007_net_inventory.sql` com estoque de redes no progresso do jogador.
+- Adicionado `POST /api/v1/economy/nets/purchase`.
+- Preço fixo server-side: 5.000 moedas por rede; limite máximo: 10.
+- O débito da carteira, o registro idempotente e o incremento do estoque são atômicos no PostgreSQL.
+- O fallback em memória aplica as mesmas regras.
+- Saldo insuficiente retorna `INSUFFICIENT_FUNDS`; limite excedido retorna `NET_LIMIT_REACHED`.
+- O teste de rota cobre o limite inicial de 10 redes; o cenário de saldo insuficiente será coberto junto com a concessão de saldo controlada para testes.

@@ -228,4 +228,30 @@ describe('backend foundation', () => {
     expect(placement.statusCode).toBe(404);
     expect(placement.json().error.code).toBe('WAREHOUSE_FISH_NOT_FOUND');
   });
+
+  it('rejects a net purchase when the net limit is already reached', async () => {
+    const app = createApp({ config: testConfig });
+    apps.add(app);
+    const registration = await app.inject({
+      method: 'POST',
+      url: '/api/v1/auth/register',
+      payload: {
+        email: 'nets@example.com',
+        password: 'a-strong-password-123',
+        username: 'nets_user',
+        country: 'br',
+      },
+    });
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/v1/economy/nets/purchase',
+      headers: {
+        authorization: `Bearer ${registration.json().accessToken}`,
+        'idempotency-key': 'nets-purchase-123456',
+      },
+      payload: { quantity: 1 },
+    });
+    expect(response.statusCode).toBe(409);
+    expect(response.json().error.code).toBe('NET_LIMIT_REACHED');
+  });
 });
