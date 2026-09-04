@@ -33,6 +33,9 @@ const translations = {
   'menu.roulette': { pt: '🎰 Roleta', en: '🎰 Roulette', es: '🎰 Ruleta', fr: '🎰 Roulette', de: '🎰 Roulette', ja: '🎰 ルーレット' },
   'menu.ranking': { pt: '🏆 Ranking', en: '🏆 Ranking', es: '🏆 Clasificación', fr: '🏆 Classement', de: '🏆 Rangliste', ja: '🏆 ランキング' },
   'menu.register': { pt: '📝 Cadastro', en: '📝 Register', es: '📝 Registro', fr: '📝 Inscription', de: '📝 Registrieren', ja: '📝 登録' },
+  'menu.tutorialTitle': { pt: 'Como jogar', en: 'How to play', es: 'Cómo jugar', fr: 'Comment jouer', de: 'So wird gespielt', ja: '遊び方' },
+  'menu.tutorialBody': { pt: 'Escolha um local, clique na água para lançar e toque em PUXAR quando a linha entrar na área verde.', en: 'Choose a location, click the water to cast, then tap PULL when the line enters the green zone.', es: 'Elige un lugar, haz clic en el agua y pulsa TIRAR cuando la línea entre en la zona verde.', fr: 'Choisissez un lieu, cliquez sur l’eau puis appuyez sur TIRER quand la ligne entre dans la zone verte.', de: 'Wähle einen Ort, wirf aus und tippe ZIEHEN, sobald die Linie im grünen Bereich ist.', ja: '場所を選び、水をクリックして投げ、線が緑の範囲に入ったら「引く」をタップ。' },
+  'menu.tutorialDismiss': { pt: 'Entendi', en: 'Got it', es: 'Entendido', fr: 'Compris', de: 'Verstanden', ja: 'わかりました' },
 
   // Ranking
   'rank.title': { pt: 'Ranking Global', en: 'Global Ranking', es: 'Clasificación Global', fr: 'Classement Global', de: 'Globale Rangliste', ja: 'グローバルランキング' },
@@ -78,6 +81,7 @@ const translations = {
   'pull.instruction': { pt: 'Clique em PUXAR quando a linha estiver no verde!', en: 'Click PULL when the line is in the green!', es: '¡Haz clic en TIRAR cuando la línea esté en verde!', fr: 'Cliquez TIRER quand la ligne est dans le vert !', de: 'Klicke ZIEHEN wenn die Linie im Grünen ist!', ja: '緑のゾーンで「引け」をクリック！' },
   'pull.capture': { pt: '✅ Captura', en: '✅ Capture', es: '✅ Captura', fr: '✅ Capture', de: '✅ Fang', ja: '✅ 捕獲' },
   'pull.escape': { pt: '❌ Escape', en: '❌ Escape', es: '❌ Escape', fr: '❌ Échappée', de: '❌ Entkommen', ja: '❌ 逃走' },
+  'pull.tapHint': { pt: 'Toque ou pressione Enter quando estiver no verde', en: 'Tap or press Enter while in the green zone', es: 'Toca o pulsa Enter en la zona verde', fr: 'Touchez ou appuyez sur Entrée dans le vert', de: 'Tippe oder drücke Enter im grünen Bereich', ja: '緑の範囲でタップまたはEnter' },
 
   // Collection
   'col.title': { pt: 'Coleção', en: 'Collection', es: 'Colección', fr: 'Collection', de: 'Sammlung', ja: 'コレクション' },

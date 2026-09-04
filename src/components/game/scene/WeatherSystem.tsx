@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { useRef, useMemo, useState, useEffect } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
@@ -242,8 +241,8 @@ function CloudLayer({ darkness = 0.5, count = 30, speed = 0.4, height = 18 }: { 
 
 /* ═══════ CLEAR SKY — sun glow, god rays, lens flare ═══════ */
 function SunGlow() {
-  const ref = useRef<THREE.Mesh>(null);
-  const coronaRef = useRef<THREE.Mesh>(null);
+  const ref = useRef<THREE.Mesh<THREE.SphereGeometry, THREE.MeshBasicMaterial>>(null);
+  const coronaRef = useRef<THREE.Mesh<THREE.SphereGeometry, THREE.MeshBasicMaterial>>(null);
 
   useFrame(({ clock }) => {
     if (!ref.current) return;
@@ -292,7 +291,7 @@ function SunGlow() {
 }
 
 function HeatShimmer() {
-  const ref = useRef<THREE.Mesh>(null);
+  const ref = useRef<THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicMaterial>>(null);
   useFrame(({ clock }) => {
     if (!ref.current) return;
     const t = clock.getElapsedTime();
@@ -327,7 +326,8 @@ function VolumeFog() {
   useFrame(({ clock }) => {
     if (!groupRef.current) return;
     const t = clock.getElapsedTime();
-    groupRef.current.children.forEach((mesh, i) => {
+    groupRef.current.children.forEach((object, i) => {
+      const mesh = object as THREE.Mesh<THREE.SphereGeometry, THREE.MeshStandardMaterial>;
       const p = particles[i];
       if (!p || !mesh) return;
       mesh.position.x = p.x + Math.sin(t * p.speedX + p.phase) * 6;
@@ -430,7 +430,8 @@ function MistWisps() {
   useFrame(({ clock }) => {
     if (!groupRef.current) return;
     const t = clock.getElapsedTime();
-    groupRef.current.children.forEach((mesh, i) => {
+    groupRef.current.children.forEach((object, i) => {
+      const mesh = object as THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicMaterial>;
       const w = wisps[i];
       if (!w) return;
       mesh.position.x = w.x + t * w.speed;

@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls, Sky } from '@react-three/drei';
 import { useRef, useMemo } from 'react';
@@ -494,7 +493,7 @@ export function FishingScene3D({ location, bobberVisible, bobberPosition, onWate
   const fog = getFogConfig(location.type);
   const skin = ROD_SKINS.find(s => s.id === activeSkin) || ROD_SKINS[0];
 
-  const clickPlaneSize = location.type === 'ocean' ? 140 : location.type === 'river' ? [18, 100] : 42;
+  const clickPlaneSize: number | [number, number] = location.type === 'ocean' ? 140 : location.type === 'river' ? [18, 100] : 42;
 
   return (
     <Canvas

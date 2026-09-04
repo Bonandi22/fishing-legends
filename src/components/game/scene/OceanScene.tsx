@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
@@ -20,7 +19,10 @@ function FoamStrips() {
       if (!mesh) return;
       const t = clock.getElapsedTime();
       mesh.position.y = -0.38 + Math.sin(t * strips[i].speed + i) * 0.08;
-      mesh.material.opacity = 0.08 + Math.sin(t * 0.5 + i * 0.7) * 0.05;
+      const material = mesh.material;
+      if (!Array.isArray(material) && 'opacity' in material) {
+        material.opacity = 0.08 + Math.sin(t * 0.5 + i * 0.7) * 0.05;
+      }
     });
   });
 

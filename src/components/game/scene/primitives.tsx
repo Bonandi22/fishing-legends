@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
@@ -291,7 +290,7 @@ export function Bird({ position, speed = 1 }: { position: [number, number, numbe
       // Smooth heading: bird faces where it's going
       const targetYaw = Math.atan2(dx, dz);
       // Smooth interpolation for natural turning
-      let currentYaw = ref.current.rotation.y;
+      const currentYaw = ref.current.rotation.y;
       let diff = targetYaw - currentYaw;
       // Wrap angle difference
       while (diff > Math.PI) diff -= Math.PI * 2;

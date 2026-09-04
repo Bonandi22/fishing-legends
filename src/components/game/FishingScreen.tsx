@@ -355,7 +355,11 @@ export default function FishingScreen({ location, player, onCatch, onBack, onCas
 
     // Realistic fishing reel sound — metallic clicks + drag + line whizz
     try {
-      const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const AudioContextConstructor = window.AudioContext ?? (window as Window & {
+        webkitAudioContext?: typeof AudioContext;
+      }).webkitAudioContext;
+      if (!AudioContextConstructor) throw new Error('AudioContext unavailable');
+      const audioCtx = new AudioContextConstructor();
       const duration = 3.0;
       const sampleRate = audioCtx.sampleRate;
       const bufferSize = Math.floor(sampleRate * duration);
@@ -428,7 +432,9 @@ export default function FishingScreen({ location, player, onCatch, onBack, onCas
       gain.connect(audioCtx.destination);
       source.start();
       source.onended = () => audioCtx.close();
-    } catch (e) { /* audio not available */ }
+    } catch {
+      // Audio is optional and may be unavailable in restricted browsers.
+    }
 
     timerRef.current = setTimeout(() => {
       setPhase('waiting');
@@ -446,7 +452,15 @@ export default function FishingScreen({ location, player, onCatch, onBack, onCas
         setMessage(t('fish.hooked'));
       }, wait);
     }, 800);
-  }, [phase, location, player.level, luckyMode, t]);
+  }, [
+    phase,
+    location,
+    player.level,
+    player.luckMultiplierEnd,
+    player.luckMultiplierPower,
+    luckyMode,
+    t,
+  ]);
 
   const handlePull = useCallback(() => {
     setPhase('pulling');
@@ -468,10 +482,10 @@ export default function FishingScreen({ location, player, onCatch, onBack, onCas
     setCurrentFish(null);
     setCurrentWeight(0);
     setMessage(t('fish.castPrompt'));
-  }, [t]);
+  }, [clearFishingTimer, t]);
 
   return (
-    <div className="relative w-full h-screen bg-background overflow-hidden">
+    <div className="relative h-[100dvh] min-h-screen w-full overflow-hidden bg-background">
       {/* 3D Scene */}
       <FishingScene3D
         location={location}
@@ -512,7 +526,7 @@ export default function FishingScreen({ location, player, onCatch, onBack, onCas
       </AnimatePresence>
 
       {/* HUD overlay */}
-      <div className="absolute top-0 left-0 right-0 p-4 flex items-start justify-between z-10 pointer-events-none">
+      <div className="absolute left-0 right-0 top-0 z-10 flex items-start justify-between gap-2 p-2 pointer-events-none sm:p-4">
         <div className="pointer-events-auto">
           <Button variant="outline" size="sm" onClick={handleBack} className="bg-background/80 backdrop-blur">
             {t('fish.back')}
@@ -533,14 +547,17 @@ export default function FishingScreen({ location, player, onCatch, onBack, onCas
             </div>
           )}
         </div>
-        <div className="bg-background/80 backdrop-blur rounded-lg px-4 py-2 text-right">
+        <div className="max-w-[55%] rounded-lg bg-background/80 px-2 py-1.5 text-right backdrop-blur sm:max-w-none sm:px-4 sm:py-2">
           <div className="text-sm font-bold text-foreground">{location.emoji} {location.name}</div>
           <div className="text-xs text-muted-foreground">Nv. {player.level} • XP: {player.xp}/{player.xpToNextLevel}</div>
+          <div className="mt-1 h-1.5 w-24 overflow-hidden rounded-full bg-secondary sm:w-32" aria-label={`XP ${player.xp}/${player.xpToNextLevel}`}>
+            <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${Math.min(100, (player.xp / Math.max(1, player.xpToNextLevel)) * 100)}%` }} />
+          </div>
         </div>
       </div>
 
       {/* Bottom message */}
-      <div className="absolute bottom-0 left-0 right-0 p-4 z-10 pointer-events-none">
+      <div className="absolute bottom-0 left-0 right-0 z-10 p-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pointer-events-none sm:p-4">
         <AnimatePresence mode="wait">
           <motion.div
             key={phase}
@@ -549,7 +566,7 @@ export default function FishingScreen({ location, player, onCatch, onBack, onCas
             exit={{ opacity: 0, y: -20 }}
             className="text-center"
           >
-            <div className="inline-block bg-background/90 backdrop-blur rounded-xl px-6 py-3 pointer-events-auto">
+            <div className="inline-block max-w-full rounded-xl bg-background/90 px-4 py-3 backdrop-blur pointer-events-auto sm:px-6">
               <p className="text-foreground font-medium mb-2">{message}</p>
 
               {phase === 'hooked' && (
@@ -620,7 +637,16 @@ export default function FishingScreen({ location, player, onCatch, onBack, onCas
                 {getRarityLabel(currentFish.rarity, lang)}
               </p>
               <p className="text-muted-foreground text-sm mb-1">{currentWeight} kg</p>
-              <p className="text-primary text-sm font-semibold mb-4">+{currentFish.xp} XP</p>
+              <p className="mb-2 text-sm font-semibold text-primary">+{currentFish.xp} XP</p>
+              <div className="mx-auto mb-4 w-full max-w-xs text-left">
+                <div className="mb-1 flex justify-between text-xs text-muted-foreground">
+                  <span>{t('col.level')} {player.level}</span>
+                  <span>{player.xp}/{player.xpToNextLevel} XP</span>
+                </div>
+                <div className="h-2 overflow-hidden rounded-full bg-secondary">
+                  <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${Math.min(100, (player.xp / Math.max(1, player.xpToNextLevel)) * 100)}%` }} />
+                </div>
+              </div>
               <p className="text-muted-foreground text-xs mb-6">{currentFish.description}</p>
               <Button onClick={handleReset} size="lg" className="w-full">
                 {t('fish.fishAgain')}
