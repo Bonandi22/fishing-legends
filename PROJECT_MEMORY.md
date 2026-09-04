@@ -47,7 +47,7 @@ Cada branch deve conter uma etapa coerente e pode receber commits incrementais. 
 - Playwright foi instalado como extensão do VS Code e o Chromium foi baixado com sucesso.
 - O build de produção passa. Permanecem alertas de Browserslist desatualizado e chunks grandes.
 - O workflow de CI mantém TypeScript, Vitest e build; CodeQL foi removido por indisponibilidade de GitHub Advanced Security no repositório privado.
-- Não iniciar backend, autenticação, ranking global ou Campeonato até concluir a revisão final do frontend.
+- Não iniciar autenticação, ranking global ou Campeonato até concluir a fundação e a revisão do backend.
 
 ## Roadmap
 
@@ -170,3 +170,331 @@ Na conclusão das Tasks 1, 2, 3, 4 e da revitalização visual:
 - Build de produção passa.
 - O build ainda emite o alerta de chunks grandes do Vite.
 - A correção de simetria da página inicial foi validada com build de produção e `git diff --check`.
+
+## Plano de redesenho completo do backend — definido em 2026-09-04
+
+### Estado de parada
+
+- O PR `Bonandi22/deep-blue-lure#5` foi integrado na `main`.
+- Merge commit atual: `9e6428a`.
+- A `main` local estava sincronizada com `origin/main` e o worktree estava limpo antes desta atualização de memória.
+- O frontend está funcional e a correção de simetria do menu foi integrada.
+- O frontend foi executado localmente para revisão manual em `http://localhost:8081/`.
+- Nenhum código de backend foi criado.
+- Nenhuma alteração de código da aplicação foi feita nesta etapa de planejamento.
+- A próxima etapa é desenhar e aprovar a arquitetura do backend antes de implementar qualquer módulo.
+
+### Objetivo
+
+Transformar o frontend atual em um cliente de uma API confiável, mantendo o servidor como autoridade sobre identidade, progresso, XP, moedas, inventário, capturas, ranking, temporadas e Campeonato.
+
+O `localStorage` poderá continuar como suporte temporário para modo local, cache e migração, mas não será fonte confiável para recursos online ou competitivos.
+
+### Arquitetura-alvo
+
+```text
+React/Vite
+   |
+   | HTTPS / JSON
+   v
+API Backend
+   |
+   +-- Autenticação e autorização
+   +-- Regras de domínio do jogo
+   +-- Economia e inventário
+   +-- Capturas e sessões de pesca
+   +-- Ranking e temporadas
+   +-- Auditoria e antifraude
+   |
+   +-- PostgreSQL
+   +-- Redis opcional
+   +-- Serviço de jobs opcional
+```
+
+Stack a decidir formalmente na primeira etapa:
+
+- Backend: Node.js + TypeScript.
+- HTTP: Fastify ou NestJS.
+- Validação: Zod.
+- Banco: PostgreSQL.
+- ORM e migrações: Drizzle ou Prisma.
+- Autenticação: sessão segura ou access token curto com refresh token rotativo.
+- Testes: Vitest para domínio/API e Playwright para fluxos integrados.
+- Contratos: OpenAPI.
+- Observabilidade: logs estruturados, métricas e rastreamento de erros.
+
+### Sequência de implementação planejada
+
+#### Fase 0 — Decisões e contratos
+
+Branch sugerida: `feature/task-05-backend-design`.
+
+Entregáveis:
+
+- documento de arquitetura;
+- decisão da stack;
+- modelo inicial de dados;
+- contrato de autenticação;
+- contrato de API;
+- política de migração do save local;
+- ambientes local, staging e produção;
+- versionamento da API;
+- matriz de permissões;
+- threat model básico;
+- critérios de aceite por módulo.
+
+Nenhum código de produção deve ser escrito antes da revisão desses contratos.
+
+#### Fase 1 — Fundação
+
+Branch sugerida: `feature/task-06-backend-foundation`.
+
+Implementar estrutura modular, configuração por ambiente, PostgreSQL, migrações, tratamento de erros, validação Zod, logging, health/readiness checks, CORS, headers de segurança, rate limiting, OpenAPI, CI e testes unitários/de integração.
+
+Estrutura sugerida:
+
+```text
+backend/
+  src/
+    app/
+    config/
+    db/
+    modules/
+      auth/
+      players/
+      game/
+      economy/
+      inventory/
+      leaderboard/
+      seasons/
+      admin/
+    shared/
+      errors/
+      validation/
+      logging/
+      security/
+  migrations/
+  tests/
+```
+
+#### Fase 2 — Identidade e contas
+
+Implementar criação de conta, login, logout, refresh, recuperação, alteração de username, país, exclusão, isolamento por `user_id`, normalização/unicidade de username, auditoria e expiração/revogação de sessões.
+
+Tabelas iniciais:
+
+- `users`;
+- `user_profiles`;
+- `sessions`;
+- `refresh_tokens`;
+- `auth_events`.
+
+Senhas nunca serão armazenadas em texto puro; usar Argon2id ou bcrypt adequadamente configurado.
+
+#### Fase 3 — Perfil e progresso
+
+Migrar para o servidor nível, XP, mundos/regiões desbloqueados, coleção, skins, redes, multiplicadores, estatísticas e preferências persistentes.
+
+O servidor deverá calcular ou validar XP, níveis, desbloqueios, capacidade e progressão máxima. O cliente enviará intenções/ações, não saldo ou estado final confiável.
+
+#### Fase 4 — Domínio de pesca server-side
+
+Reutilizar e adaptar o domínio existente de raridade, pools, peso, XP, moedas, regiões, mundos e captura em lote.
+
+Fluxo planejado:
+
+1. cliente solicita início de sessão de pesca;
+2. servidor cria `fishing_session`;
+3. servidor fornece identificador e parâmetros;
+4. cliente executa a interação visual;
+5. cliente envia o resultado da ação;
+6. servidor valida sessão, tempo, estado e regras;
+7. servidor calcula a captura;
+8. servidor grava o resultado em transação;
+9. servidor retorna o estado autorizado.
+
+Tabelas possíveis:
+
+- `fishing_sessions`;
+- `fishing_attempts`;
+- `catches`;
+- `fish_catalog_versions`;
+- `game_rules_versions`.
+
+Cada captura deverá registrar jogador, região, mundo, peixe, peso, raridade, XP, moedas, multiplicadores, timestamp, versão de regras e idempotency key.
+
+#### Fase 5 — Economia e inventário
+
+Migrar carteira, histórico de saldo, venda, compras, consumo de redes/multiplicadores, roletas, skins, aquário, armazém e recompensas para operações transacionais.
+
+Usar ledger imutável, impedir saldo negativo, validar duplicação por idempotency key, registrar origem e executar operações econômicas em transação.
+
+Tabelas possíveis:
+
+- `wallets`;
+- `wallet_transactions`;
+- `inventory_items`;
+- `inventory_transactions`;
+- `warehouse_fish`;
+- `aquarium_fish`;
+- `owned_skins`;
+- `owned_boats`;
+- `owned_rods`;
+- `multiplier_items`;
+- `net_items`.
+
+#### Fase 6 — Catálogo e regras de conteúdo
+
+Versionar peixes, regiões, mundos, pesos, raridades, probabilidades, recompensas, preços, skins, roletas, presentes e regras de Campeonato.
+
+Manter IDs estáveis, validação no deploy, histórico de mudanças, conteúdo público separado de regras internas, ativação/desativação e compatibilidade com saves antigos.
+
+#### Fase 7 — Ranking global
+
+Substituir o ranking local por ranking server-side com peso máximo, XP, moedas obtidas e peixes raros, incluindo temporadas, paginação, limites, cache e desempates explícitos.
+
+Preservar eventos de pontuação, snapshots, período da temporada, versão das regras e origem da pontuação.
+
+#### Fase 8 — Presentes, roletas e recompensas
+
+Migrar presentes diários, roletas e bônus para sorteio server-side, limite diário, timezone definido, idempotência, registro do resultado e auditoria.
+
+#### Fase 9 — Migração do modo local
+
+Fluxo planejado:
+
+1. usuário faz login;
+2. frontend lê o save local;
+3. frontend envia para pré-validação;
+4. servidor valida catálogo, pesos e limites;
+5. servidor retorna inconsistências;
+6. usuário confirma;
+7. servidor importa somente dados aceitos;
+8. migração é registrada;
+9. save local permanece como backup temporário;
+10. dados online tornam-se a fonte principal.
+
+#### Fase 10 — Integração gradual
+
+Migrar por módulos nesta ordem:
+
+1. autenticação;
+2. perfil;
+3. carregamento do jogador;
+4. inventário;
+5. carteira;
+6. captura;
+7. lojas;
+8. roletas e presentes;
+9. ranking;
+10. modo competitivo.
+
+Separar progressivamente `useGameState` em cliente de API, cache/query state, estado visual local, domínio compartilhado e adaptador de compatibilidade.
+
+#### Fase 11 — Segurança e antifraude
+
+Antes de ranking competitivo: autorização por recurso, rate limiting, proteção contra replay, idempotência, validação temporal, limites de captura, detecção de padrões impossíveis, auditoria, rotação de tokens, CSP, CORS restritivo, proteção XSS, validação de payloads, proteção de roletas e revisão/bloqueio de contas suspeitas.
+
+O servidor nunca deverá confiar em moedas, XP, peso, raridade, inventário, pontuação, nível ou desbloqueios enviados pelo cliente.
+
+#### Fase 12 — Campeonato e temporadas
+
+Somente depois da identidade, economia e ranking estarem estáveis.
+
+Tabelas possíveis:
+
+- `seasons`;
+- `season_rules`;
+- `season_entries`;
+- `season_scores`;
+- `season_rewards`;
+- `season_audit_events`.
+
+Definir antes da implementação duração, pontuação, categorias, elegibilidade, reset, desempates, premiações, encerramento, contestação, correções administrativas e publicação final.
+
+### Critérios de pronto do backend
+
+- entradas validadas;
+- endpoints protegidos;
+- autorização testada;
+- economia transacional;
+- ações importantes idempotentes;
+- recompensas calculadas pelo servidor;
+- auditoria disponível;
+- testes unitários, de integração e de contrato;
+- migrações reproduzíveis;
+- OpenAPI publicada;
+- secrets apenas em variáveis de ambiente/secret manager;
+- staging funcional;
+- backup e restauração testados;
+- fluxo de erros de rede definido no frontend;
+- modo local e migração documentados.
+
+### Próxima sessão
+
+Retomar pela Fase 0, com a stack já decidida:
+
+1. escrever e revisar o documento de arquitetura;
+2. desenhar o modelo de dados;
+3. definir os primeiros contratos OpenAPI;
+4. definir a estratégia de migração do `localStorage`;
+5. definir a matriz de permissões e o threat model;
+6. criar a branch própria da fundação;
+7. somente depois implementar autenticação e módulos de domínio.
+
+### Implementação iniciada — fundação do backend
+
+Decisões confirmadas pelo utilizador em 2026-09-04:
+
+- HTTP: Fastify.
+- Persistência: PostgreSQL com Drizzle ORM.
+- Autenticação futura: access token curto com refresh token rotativo.
+- Escopo inicial: somente fundação, contratos básicos e health checks; sem economia, pesca ou Campeonato.
+
+Arquivos adicionados:
+
+- `backend/src/app.ts`;
+- `backend/src/server.ts`;
+- `backend/src/config/env.ts`;
+- `backend/src/db/client.ts`;
+- `backend/src/http/errors.ts`;
+- `backend/src/http/routes/system.ts`;
+- `backend/src/app.test.ts`;
+- `backend/migrations/0000_foundation.sql`;
+- `tsconfig.backend.json`;
+- `.env.example`.
+
+Arquivos de integração alterados:
+
+- `package.json`;
+- `package-lock.json`;
+- `vitest.config.ts`.
+
+Capacidades atuais:
+
+- configuração validada com Zod;
+- servidor Fastify inicial;
+- tratamento centralizado de erros;
+- endpoint `GET /health`;
+- endpoint `GET /ready`;
+- endpoint inicial `GET /openapi.json`;
+- cliente Drizzle para PostgreSQL;
+- migração inicial de controle `schema_migrations`;
+- teste automatizado da fundação;
+- configuração sem secrets commitados.
+
+Validação da fundação:
+
+- `npm run backend:typecheck`: passou;
+- `npm test -- --run`: 22 testes passaram;
+- `npm run build`: passou;
+- teste manual em `http://127.0.0.1:8090/health`: HTTP 200;
+- teste manual em `http://127.0.0.1:8090/ready`: HTTP 503 esperado sem `DATABASE_URL`;
+- teste manual em `http://127.0.0.1:8090/openapi.json`: HTTP 200.
+
+Observações:
+
+- A porta padrão `8082` estava ocupada pelo frontend; a verificação manual do backend foi feita em `8090`.
+- O frontend em `8081` não foi alterado.
+- `npm install` reporta vulnerabilidades transitivas existentes; não foi executado `npm audit fix`.
+- O próximo passo técnico é escrever o documento de arquitetura e o modelo de dados da Fase 0 antes de implementar autenticação ou módulos de domínio.
