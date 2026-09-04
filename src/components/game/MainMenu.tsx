@@ -36,6 +36,7 @@ interface Props {
 const LANGS: Lang[] = ['pt', 'en', 'es', 'fr', 'de', 'ja'];
 
 const ACCOUNT_KEY = 'fishing-game-account';
+const TUTORIAL_KEY = 'fishing-game-tutorial-seen';
 
 interface Account { email: string; birthdate: string; username?: string; country?: string; }
 
@@ -45,7 +46,9 @@ function loadAccount(): Account | null {
   try {
     const saved = localStorage.getItem(ACCOUNT_KEY);
     if (saved) return JSON.parse(saved) as Account;
-  } catch {}
+  } catch {
+    return null;
+  }
   return null;
 }
 
@@ -73,6 +76,12 @@ export default function MainMenu({ player, onPlay, onCollection, onWarehouse, on
   const [step, setStep] = useState<'credentials' | 'username' | 'login'>(needsUsername ? 'username' : 'credentials');
   const [loginUsername, setLoginUsername] = useState('');
   const [loginError, setLoginError] = useState(false);
+  const [tutorialVisible, setTutorialVisible] = useState(() => localStorage.getItem(TUTORIAL_KEY) !== '1');
+
+  const dismissTutorial = () => {
+    localStorage.setItem(TUTORIAL_KEY, '1');
+    setTutorialVisible(false);
+  };
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -132,7 +141,7 @@ export default function MainMenu({ player, onPlay, onCollection, onWarehouse, on
   };
 
   return (
-    <div className={`flex min-h-screen flex-col items-center justify-center relative overflow-hidden ${world === 2 ? 'world-bg-2' : world === 3 ? 'world-bg-3' : 'bg-background'}`}>
+    <div className={`relative flex min-h-screen flex-col items-center justify-start overflow-x-hidden overflow-y-auto px-2 py-20 sm:px-4 md:justify-center md:py-8 ${world === 2 ? 'world-bg-2' : world === 3 ? 'world-bg-3' : 'bg-background'}`}>
       {/* Animated background waves */}
       <div className="absolute inset-0 opacity-20">
         {[...Array(5)].map((_, i) => (
@@ -147,7 +156,7 @@ export default function MainMenu({ player, onPlay, onCollection, onWarehouse, on
       </div>
 
       {/* Settings bar */}
-      <div className="absolute top-4 right-4 z-20 flex items-center gap-3">
+      <div className="absolute top-2 right-2 z-20 flex max-w-[calc(100%-1rem)] flex-wrap items-center justify-end gap-1.5 sm:top-4 sm:right-4 sm:gap-3">
         <div ref={langRef} className="relative">
           <Button variant="outline" size="sm" onClick={() => setLangOpen(!langOpen)} className="bg-background/80 backdrop-blur gap-1.5">
             <Globe className="w-4 h-4" />
@@ -196,7 +205,7 @@ export default function MainMenu({ player, onPlay, onCollection, onWarehouse, on
 
 
       {/* Coins display + World toggle */}
-      <div className="absolute top-4 left-4 z-20 flex items-center gap-2">
+      <div className="absolute top-2 left-2 z-20 flex max-w-[calc(100%-1rem)] flex-wrap items-center gap-1.5 sm:top-4 sm:left-4 sm:gap-2">
         <div className="bg-background/80 backdrop-blur rounded-lg px-4 py-2 text-sm font-bold text-foreground">
           💰 {player.coins} {t('mult.coins')}
         </div>
@@ -241,7 +250,7 @@ export default function MainMenu({ player, onPlay, onCollection, onWarehouse, on
       </div>
 
       {/* Register button - bottom left */}
-      <div className="absolute bottom-4 left-4 z-20">
+      <div className="absolute bottom-2 left-2 z-20 sm:bottom-4 sm:left-4">
         <Button onClick={() => setAccountModalOpen(true)} variant="outline" size="sm" className="bg-background/80 backdrop-blur gap-1.5">
           <User className="w-4 h-4" />
           {account ? <span className="truncate max-w-[140px]">{account.username ? `${account.country || ''} ${account.username}` : account.email}</span> : t('menu.register')}
@@ -258,6 +267,15 @@ export default function MainMenu({ player, onPlay, onCollection, onWarehouse, on
             className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
             onClick={() => setAccountModalOpen(false)}
           >
+            {tutorialVisible && (
+              <div className="mb-5 rounded-xl border border-primary/40 bg-card/90 p-4 text-left shadow-lg backdrop-blur" role="status">
+                <h2 className="mb-1 text-base font-bold text-foreground">{t('menu.tutorialTitle')}</h2>
+                <p className="mb-3 text-sm leading-relaxed text-muted-foreground">{t('menu.tutorialBody')}</p>
+                <Button type="button" size="sm" onClick={dismissTutorial} className="min-h-10 touch-manipulation">
+                  {t('menu.tutorialDismiss')}
+                </Button>
+              </div>
+            )}
             <motion.div
               initial={{ scale: 0.9, y: 20 }}
               animate={{ scale: 1, y: 0 }}
@@ -375,19 +393,19 @@ export default function MainMenu({ player, onPlay, onCollection, onWarehouse, on
       </AnimatePresence>
 
       <motion.div
-        className="z-10 text-center"
+        className="z-10 w-full max-w-md text-center"
         initial={{ opacity: 0, y: -40 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.8 }}
       >
         <motion.div
-          className="text-7xl mb-4"
+          className="mb-4 text-6xl sm:text-7xl"
           animate={{ rotate: [0, -10, 10, 0] }}
           transition={{ duration: 3, repeat: Infinity }}
         >
           🎣
         </motion.div>
-        <h1 className="text-5xl md:text-7xl font-black text-foreground tracking-tight mb-2">
+        <h1 className="mb-2 text-4xl font-black tracking-tight text-foreground sm:text-5xl md:text-7xl">
           PESCA<span className="text-primary">3D</span>
         </h1>
         <p className="text-muted-foreground text-lg mb-8">

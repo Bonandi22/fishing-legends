@@ -33,7 +33,9 @@ function readAll(): Record<string, StoredEntry> {
   try {
     const raw = localStorage.getItem(LB_KEY);
     if (raw) return JSON.parse(raw);
-  } catch {}
+  } catch {
+    return {};
+  }
   return {};
 }
 
@@ -45,7 +47,9 @@ function getAccount(): { email: string; username?: string; country?: string } | 
   try {
     const raw = localStorage.getItem(ACCOUNT_KEY);
     if (raw) return JSON.parse(raw);
-  } catch {}
+  } catch {
+    return null;
+  }
   return null;
 }
 

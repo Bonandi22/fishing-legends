@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
@@ -101,7 +100,10 @@ function LakeMist() {
     refs.current.forEach((mesh, i) => {
       if (!mesh) return;
       const t = clock.getElapsedTime();
-      mesh.material.opacity = 0.06 + Math.sin(t * 0.2 + i * 1.5) * 0.03;
+      const material = mesh.material;
+      if (!Array.isArray(material) && 'opacity' in material) {
+        material.opacity = 0.06 + Math.sin(t * 0.2 + i * 1.5) * 0.03;
+      }
       mesh.position.y = 0.1 + Math.sin(t * 0.15 + i) * 0.1;
     });
   });

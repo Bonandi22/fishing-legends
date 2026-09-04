@@ -91,11 +91,14 @@ export default function PullMinigame({ fish, strengthActive, strengthPower, onWi
 
   return (
     <motion.div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-background/90 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-background/90 px-2 py-4 backdrop-blur-sm sm:px-4"
+      role="dialog"
+      aria-modal="true"
+      aria-label={`${t('fish.pull')}: ${fish.name}`}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
     >
-      <div className="w-full max-w-md px-6">
+      <div className="w-full max-w-md px-2 sm:px-6">
         <motion.div
           className="text-center mb-6"
           initial={{ y: -20, opacity: 0 }}
@@ -106,13 +109,14 @@ export default function PullMinigame({ fish, strengthActive, strengthPower, onWi
           <p className={`text-sm font-semibold text-rarity-${fish.rarity}`}>
             {getRarityLabel(fish.rarity, lang)}
           </p>
-          <p className="text-muted-foreground text-sm mt-1">{t('pull.instruction')}</p>
+          <p className="mt-1 text-sm text-muted-foreground">{t('pull.instruction')}</p>
+          <p className="mt-1 text-xs text-primary">{t('pull.tapHint')}</p>
           {strengthActive && (
             <p className="text-xs text-primary font-bold mt-1">💪 {t('mult.strength')} {t('mult.active')}</p>
           )}
         </motion.div>
 
-        <div className="relative h-14 rounded-xl overflow-hidden border-2 border-border bg-secondary mb-6">
+        <div className="relative mb-6 h-14 touch-none overflow-hidden rounded-xl border-2 border-border bg-secondary" aria-label={`${t('pull.capture')} ${Math.round(greenProgress * 100)}%`}>
           <div className="absolute inset-0 bg-destructive/80" />
           <div
             className="absolute top-0 bottom-0 bg-accent"
@@ -128,7 +132,7 @@ export default function PullMinigame({ fish, strengthActive, strengthPower, onWi
           <Button
             onClick={handlePull}
             size="lg"
-            className="bg-accent text-accent-foreground hover:bg-accent/90 font-bold text-xl px-10 py-6 animate-pulse"
+            className="min-h-14 touch-manipulation bg-accent px-10 py-6 text-xl font-bold text-accent-foreground hover:bg-accent/90 animate-pulse"
           >
             {t('fish.pull')}
           </Button>

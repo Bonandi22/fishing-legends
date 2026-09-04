@@ -41,14 +41,14 @@ export default function LocationSelect({ playerLevel, unlockedLocations, world =
   const visibleLocations = LOCATIONS.filter(l => (l.world ?? 1) === world);
 
   return (
-    <div className="min-h-screen bg-background p-4 md:p-8">
+    <div className="min-h-screen overflow-y-auto bg-background p-4 pb-8 md:p-8">
       <div className="max-w-5xl mx-auto">
-        <div className="flex items-center justify-between mb-8">
+        <div className="mb-6 flex flex-col gap-4 sm:mb-8 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-3xl font-bold text-foreground">{t('loc.title')} {world > 1 && <span className="text-primary">— Mundo {world}</span>}</h1>
             <p className="text-muted-foreground">{t('loc.level')} {playerLevel} — {visibleLocations.filter(l => unlockedLocations.includes(l.id)).length}/{visibleLocations.length} {t('loc.unlocked')}</p>
           </div>
-          <Button variant="outline" onClick={onBack}>{t('loc.back')}</Button>
+          <Button variant="outline" onClick={onBack} className="w-full sm:w-auto">{t('loc.back')}</Button>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -58,8 +58,18 @@ export default function LocationSelect({ playerLevel, unlockedLocations, world =
             return (
               <motion.div key={loc.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
                 <Card
-                  className={`cursor-pointer transition-all border-2 overflow-hidden ${unlocked ? 'hover:border-primary hover:shadow-lg hover:shadow-primary/10 border-border' : 'opacity-50 border-border cursor-not-allowed'}`}
+                  className={`touch-manipulation select-none cursor-pointer border-2 overflow-hidden transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${unlocked ? 'border-border hover:border-primary hover:shadow-lg hover:shadow-primary/10' : 'cursor-not-allowed border-border opacity-50'}`}
+                  role={unlocked ? 'button' : undefined}
+                  tabIndex={unlocked ? 0 : -1}
+                  aria-label={unlocked ? `${t('loc.title')}: ${loc.name}` : `${loc.name}, ${t('loc.level')} ${loc.requiredLevel}`}
+                  aria-disabled={!unlocked}
                   onClick={() => unlocked && onSelect(loc)}
+                  onKeyDown={(event) => {
+                    if (unlocked && (event.key === 'Enter' || event.key === ' ')) {
+                      event.preventDefault();
+                      onSelect(loc);
+                    }
+                  }}
                 >
                   <div className="relative h-36 overflow-hidden" style={!img ? { background: `linear-gradient(135deg, ${loc.waterColor}, ${loc.skyColor})` } : undefined}>
                     {img ? (

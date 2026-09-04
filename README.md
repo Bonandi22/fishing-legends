@@ -53,7 +53,7 @@ npm test
 npm run build
 ```
 
-Pull Requests para `main` executam automaticamente o workflow **Code Review**, que valida TypeScript, testes, build de produção e análise CodeQL. O merge deve ocorrer somente após os checks obrigatórios aprovarem e a revisão do código ser concluída.
+Pull Requests para `main` executam automaticamente o workflow **Code Review**, que valida TypeScript, testes e build de produção. O merge deve ocorrer somente após os checks obrigatórios aprovarem e a revisão do código ser concluída.
 
 ## Estratégia de branches
 
@@ -66,19 +66,19 @@ feature/task-02
   ↑
 feature/task-03
   ↑
-feature/task-04
+feature/task-04-frontend-complete
   ↑
 feature/task-05
 ```
 
-O trabalho atual está em `feature/task-02`, dedicada à refatoração arquitetural. A memória técnica, os commits e o roadmap completo estão em [`PROJECT_MEMORY.md`](./PROJECT_MEMORY.md).
+O trabalho atual está em `feature/task-04-frontend-complete`, dedicada à conclusão e à qualidade do frontend. A memória técnica, os commits e o roadmap completo estão em [`PROJECT_MEMORY.md`](./PROJECT_MEMORY.md).
 
 ## Roadmap resumido
 
 1. **Task 1 — Estabilização do núcleo:** concluída.
-2. **Task 2 — Refatoração arquitetural:** em andamento.
-3. **Task 3 — Conteúdo e balanceamento:** em andamento.
-4. **Task 4 — Backend e autenticação:** planejada.
+2. **Task 2 — Refatoração arquitetural:** concluída.
+3. **Task 3 — Conteúdo e balanceamento:** concluída.
+4. **Task 4 — Qualidade e conclusão do frontend:** em andamento.
 5. **Task 5 — Campeonato e ranking global:** planejada.
 
 ## Origem

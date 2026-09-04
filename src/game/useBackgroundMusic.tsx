@@ -141,7 +141,11 @@ export function useBackgroundMusic() {
   const startMusic = useCallback(() => {
     if (activeRef.current) return;
     try {
-      const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const AudioContextConstructor = window.AudioContext ?? (window as Window & {
+        webkitAudioContext?: typeof AudioContext;
+      }).webkitAudioContext;
+      if (!AudioContextConstructor) return;
+      const ctx = new AudioContextConstructor();
       ctxRef.current = ctx;
       const masterGain = ctx.createGain();
       masterGain.connect(ctx.destination);
