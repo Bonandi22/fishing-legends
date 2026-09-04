@@ -73,6 +73,7 @@ Task 2 foi fechada e publicada no Pull Request `Bonandi22/deep-blue-lure#1`.
 - Medir progressão de XP, moedas, pesos, raridades e capacidade do armazém.
 - Criar testes de balanceamento e regressão de conteúdo.
 - Adicionado `validateCatalog()` para detectar IDs duplicados, referências quebradas e faixas de peso inválidas.
+- Adicionado `getNormalizedRarityWeights()` para expor probabilidades normalizadas por pool e nível, com teste de soma igual a 1.
 - Branch criada e publicada: `feature/task-03`.
 - Workflow `.github/workflows/code-review.yml` criado para validar TypeScript, testes, build e CodeQL em Pull Requests para `main`.
 
