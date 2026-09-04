@@ -53,6 +53,8 @@ npm test
 npm run build
 ```
 
+Pull Requests para `main` executam automaticamente o workflow **Code Review**, que valida TypeScript, testes, build de produção e análise CodeQL. O merge deve ocorrer somente após os checks obrigatórios aprovarem e a revisão do código ser concluída.
+
 ## Estratégia de branches
 
 ```text
