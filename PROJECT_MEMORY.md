@@ -10,7 +10,7 @@ Este arquivo mantém o contexto técnico e o roadmap versionados no repositório
 - Persistência atual: `localStorage`, com saves versionados e validação Zod.
 - Branch atual: `feature/task-03`.
 - Pull Request da Task 2: `Bonandi22/deep-blue-lure#1`.
-- Último commit da Task 2: `d02c94e` — `Complete architecture domain extraction`.
+- Último commit da Task 3: `a132aad` — `Complete content balance validation`.
 - `main` continua sendo a base de integração.
 
 ## Estratégia de branches
@@ -65,7 +65,7 @@ Commit atual: `9c1977b`.
 
 Task 2 foi fechada e publicada no Pull Request `Bonandi22/deep-blue-lure#1`.
 
-### Task 3 — Conteúdo e balanceamento — em andamento
+### Task 3 — Conteúdo e balanceamento — concluída
 
 - Validar automaticamente IDs de peixes e regiões.
 - Revisar pools exibidos versus pools efetivamente sorteados.
@@ -75,6 +75,7 @@ Task 2 foi fechada e publicada no Pull Request `Bonandi22/deep-blue-lure#1`.
 - Adicionado `validateCatalog()` para detectar IDs duplicados, referências quebradas e faixas de peso inválidas.
 - Adicionado `getNormalizedRarityWeights()` para expor probabilidades normalizadas por pool e nível, com teste de soma igual a 1.
 - Branch criada e publicada: `feature/task-03`.
+- Pull Request aberto: `Bonandi22/deep-blue-lure#2`.
 - Workflow `.github/workflows/code-review.yml` criado para validar TypeScript, testes, build e CodeQL em Pull Requests para `main`.
 
 ### Task 4 — Backend e autenticação — planejada
@@ -118,9 +119,9 @@ Estes itens não fazem parte da fase frontend-only, mas são obrigatórios antes
 
 ## Validação registrada
 
-Na conclusão da Task 1, Task 2 e início da Task 3:
+Na conclusão das Tasks 1, 2 e 3:
 
 - TypeScript passa com `npx tsc --noEmit -p tsconfig.app.json`.
-- Vitest passa com 19 testes.
+- Vitest passa com 20 testes.
 - Build de produção passa.
 - O build ainda emite o alerta de chunks grandes do Vite.
