@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
 import type { Database } from '../db/client.js';
 import { walletTransactions, wallets } from '../db/schema.js';
@@ -16,8 +16,8 @@ export function createPgEconomyService(db: Database) {
       if (!Number.isSafeInteger(amount) || amount <= 0) throw new Error('INVALID_WALLET_AMOUNT');
       return db.transaction(async tx => {
         const existing = await tx.select().from(walletTransactions)
-          .where(eq(walletTransactions.idempotencyKey, idempotencyKey)).limit(1);
-        if (existing[0] && existing[0].userId === userId) return existing[0];
+          .where(and(eq(walletTransactions.userId, userId), eq(walletTransactions.idempotencyKey, idempotencyKey))).limit(1);
+        if (existing[0]) return existing[0];
 
         await tx.insert(wallets).values({ userId, balance: 0 }).onConflictDoNothing();
         const current = await tx.select().from(wallets).where(eq(wallets.userId, userId)).limit(1);

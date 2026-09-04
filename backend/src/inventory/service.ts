@@ -38,5 +38,9 @@ export function createMemoryInventoryService(
       warehouse.set(userId, []);
       return { sold: items.length, value, transaction };
     },
+    aquarium(_userId: string, sector: number) {
+      if (!Number.isInteger(sector) || sector < 1 || sector > 5) throw new Error('INVALID_AQUARIUM_SECTOR');
+      return { items: [] };
+    },
   };
 }

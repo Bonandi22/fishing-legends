@@ -20,11 +20,11 @@ export function registerErrorHandling(app: FastifyInstance): void {
       });
     }
 
-    if (error instanceof Error && ['ACCOUNT_ALREADY_EXISTS', 'INVALID_CREDENTIALS', 'INVALID_REFRESH_TOKEN', 'INVALID_ACCESS_TOKEN', 'INVALID_FISHING_REQUEST', 'LOCATION_LOCKED', 'INVALID_FISHING_SESSION', 'INVALID_IDEMPOTENCY_KEY', 'INVALID_WALLET_AMOUNT', 'INSUFFICIENT_FUNDS', 'WAREHOUSE_EMPTY'].includes(error.message)) {
+    if (error instanceof Error && ['ACCOUNT_ALREADY_EXISTS', 'INVALID_CREDENTIALS', 'INVALID_REFRESH_TOKEN', 'INVALID_ACCESS_TOKEN', 'INVALID_FISHING_REQUEST', 'LOCATION_LOCKED', 'INVALID_FISHING_SESSION', 'INVALID_IDEMPOTENCY_KEY', 'INVALID_WALLET_AMOUNT', 'INSUFFICIENT_FUNDS', 'WAREHOUSE_EMPTY', 'INVALID_AQUARIUM_SECTOR'].includes(error.message)) {
       const status = error.message === 'ACCOUNT_ALREADY_EXISTS' ? 409
         : error.message === 'LOCATION_LOCKED' ? 403
         : error.message === 'INVALID_IDEMPOTENCY_KEY' ? 400
-        : error.message === 'WAREHOUSE_EMPTY' ? 422
+        : error.message === 'WAREHOUSE_EMPTY' || error.message === 'INVALID_AQUARIUM_SECTOR' ? 422
         : error.message.startsWith('INVALID_FISHING') ? 422
         : 401;
       return reply.status(status).send({

@@ -212,5 +212,12 @@ describe('backend foundation', () => {
       headers: { ...headers, 'idempotency-key': 'warehouse-sale-123456' },
     });
     expect(sale.statusCode).toBe(422);
+    const aquarium = await app.inject({
+      method: 'GET',
+      url: '/api/v1/inventory/aquarium/1',
+      headers,
+    });
+    expect(aquarium.statusCode).toBe(200);
+    expect(aquarium.json()).toEqual({ items: [] });
   });
 });

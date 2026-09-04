@@ -1,7 +1,7 @@
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
 import type { Database } from '../db/client.js';
-import { warehouseFish } from '../db/schema.js';
+import { aquariumFish, walletTransactions, wallets, warehouseFish } from '../db/schema.js';
 import type { EconomyService } from '../economy/service.js';
 import type { createCatalogService } from '../catalog/service.js';
 import type { WarehouseFish } from './service.js';
@@ -35,10 +35,31 @@ export function createPgInventoryService(
           const fish = catalog.findFish(item.fishId);
           return total + (fish ? Math.max(1, Math.floor(fish.xp / 2)) : 0);
         }, 0);
-        const transaction = await economy.credit(userId, value, 'warehouse_sale', idempotencyKey);
+        const existing = await tx.select().from(walletTransactions)
+          .where(and(eq(walletTransactions.userId, userId), eq(walletTransactions.idempotencyKey, idempotencyKey))).limit(1);
+        if (existing[0]) {
+          return { sold: items.length, value, transaction: existing[0] };
+        }
+        await tx.insert(wallets).values({ userId, balance: 0 }).onConflictDoNothing();
+        const current = await tx.select().from(wallets).where(eq(wallets.userId, userId)).limit(1);
+        const balanceAfter = (current[0]?.balance ?? 0) + value;
+        const [transaction] = await tx.insert(walletTransactions).values({
+          id: randomUUID(),
+          userId,
+          amount: value,
+          balanceAfter,
+          reason: 'warehouse_sale',
+          idempotencyKey,
+        }).returning();
+        await tx.update(wallets).set({ balance: balanceAfter, updatedAt: new Date() }).where(eq(wallets.userId, userId));
         await tx.delete(warehouseFish).where(eq(warehouseFish.userId, userId));
         return { sold: items.length, value, transaction };
       });
+    },
+    async aquarium(userId: string, sector: number) {
+      if (!Number.isInteger(sector) || sector < 1 || sector > 5) throw new Error('INVALID_AQUARIUM_SECTOR');
+      const items = await db.select().from(aquariumFish).where(and(eq(aquariumFish.userId, userId), eq(aquariumFish.sector, sector)));
+      return { items };
     },
   };
 }

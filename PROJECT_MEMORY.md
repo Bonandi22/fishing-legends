@@ -581,3 +581,11 @@ Observações:
 - Em desenvolvimento/testes, o fluxo continua usando os adaptadores em memória.
 - O ledger PostgreSQL e a remoção do armazém ainda precisam ser consolidados em uma única transação de banco antes de produção.
 - A etapa de economia/inventário permanece em andamento até incluir aquário, redes, multiplicadores, compras e transações integradas.
+
+### Fechamento transacional parcial da economia
+
+- Venda PostgreSQL agora executa consulta, crédito no ledger e remoção do armazém na mesma transação.
+- Idempotência da carteira é validada por `user_id` e chave.
+- Adicionada migração `0006_aquarium.sql`.
+- Adicionado endpoint `GET /api/v1/inventory/aquarium/:sector`.
+- O aquário está persistido no schema PostgreSQL e pronto para receber operações de colocação.
