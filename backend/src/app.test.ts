@@ -188,4 +188,29 @@ describe('backend foundation', () => {
     expect(response.statusCode).toBe(200);
     expect(response.json()).toEqual({ balance: 0 });
   });
+
+  it('exposes an authenticated warehouse and rejects an empty sale', async () => {
+    const app = createApp({ config: testConfig });
+    apps.add(app);
+    const registration = await app.inject({
+      method: 'POST',
+      url: '/api/v1/auth/register',
+      payload: {
+        email: 'warehouse@example.com',
+        password: 'a-strong-password-123',
+        username: 'warehouse_user',
+        country: 'br',
+      },
+    });
+    const headers = { authorization: `Bearer ${registration.json().accessToken}` };
+    const list = await app.inject({ method: 'GET', url: '/api/v1/inventory/warehouse', headers });
+    expect(list.statusCode).toBe(200);
+    expect(list.json()).toEqual({ items: [] });
+    const sale = await app.inject({
+      method: 'POST',
+      url: '/api/v1/inventory/warehouse/sell',
+      headers: { ...headers, 'idempotency-key': 'warehouse-sale-123456' },
+    });
+    expect(sale.statusCode).toBe(422);
+  });
 });

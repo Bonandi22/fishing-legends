@@ -565,3 +565,10 @@ Observações:
 - O endpoint usa PostgreSQL quando `DATABASE_URL` existe e memória apenas no modo local/teste.
 - O serviço de memória já aplica idempotência e impede saldo negativo para futuros créditos/débitos internos.
 - Créditos, débitos, venda de capturas e integração transacional com pesca/recompensas ainda precisam ser fechados antes de produção.
+
+### Inventário server-side inicial
+
+- Adicionada migração `backend/migrations/0005_inventory.sql` para o armazém.
+- Adicionados endpoints autenticados `GET /api/v1/inventory/warehouse` e `POST /api/v1/inventory/warehouse/sell`.
+- Venda usa ledger idempotente e rejeita armazém vazio.
+- O slice atual mantém itens em memória; a tabela PostgreSQL foi preparada, mas o repositório transacional de inventário e a integração automática da captura ainda precisam ser concluídos antes de produção.
