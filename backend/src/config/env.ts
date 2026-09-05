@@ -9,6 +9,9 @@ const envSchema = z.object({
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
   ACCESS_TOKEN_TTL_SECONDS: z.coerce.number().int().positive().default(900),
   REFRESH_TOKEN_TTL_SECONDS: z.coerce.number().int().positive().default(2_592_000),
+  CORS_ORIGINS: z.string().default(''),
+  RATE_LIMIT_MAX: z.coerce.number().int().positive().default(120),
+  RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(60_000),
 });
 
 export type AppConfig = {
@@ -20,6 +23,9 @@ export type AppConfig = {
   logLevel: string;
   accessTokenTtlSeconds: number;
   refreshTokenTtlSeconds: number;
+  corsOrigins: string[];
+  rateLimitMax: number;
+  rateLimitWindowMs: number;
 };
 
 export function loadConfig(source: NodeJS.ProcessEnv = process.env): AppConfig {
@@ -34,5 +40,8 @@ export function loadConfig(source: NodeJS.ProcessEnv = process.env): AppConfig {
     logLevel: parsed.LOG_LEVEL,
     accessTokenTtlSeconds: parsed.ACCESS_TOKEN_TTL_SECONDS,
     refreshTokenTtlSeconds: parsed.REFRESH_TOKEN_TTL_SECONDS,
+    corsOrigins: parsed.CORS_ORIGINS.split(',').map(value => value.trim()).filter(Boolean),
+    rateLimitMax: parsed.RATE_LIMIT_MAX,
+    rateLimitWindowMs: parsed.RATE_LIMIT_WINDOW_MS,
   };
 }

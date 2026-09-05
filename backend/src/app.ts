@@ -30,6 +30,7 @@ import { createPgLeaderboardService } from './leaderboard/pgRepository.js';
 import { registerRewardsRoutes } from './rewards/routes.js';
 import { createMemoryRewardsService } from './rewards/memoryRepository.js';
 import { createPgRewardsService } from './rewards/pgRepository.js';
+import { registerSecurityHooks } from './security/http.js';
 
 export type AppDependencies = {
   config: AppConfig;
@@ -41,6 +42,11 @@ export function createApp({ config }: AppDependencies): FastifyInstance {
   }
 
   const app = Fastify({ logger: { level: config.logLevel } });
+  registerSecurityHooks(app, {
+    allowedOrigins: config.corsOrigins ?? [],
+    rateLimitMax: config.rateLimitMax ?? 120,
+    rateLimitWindowMs: config.rateLimitWindowMs ?? 60_000,
+  });
 
   registerErrorHandling(app);
   registerSystemRoutes(app, {

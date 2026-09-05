@@ -650,3 +650,11 @@ Observações:
 - Cada usuário pode receber uma recompensa por dia; repetição retorna o resultado já registrado.
 - Crédito na carteira, claim e ledger são gravados na mesma transação PostgreSQL.
 - O primeiro slice server-side cobre recompensas em moedas; multiplicadores e skins permanecem para o módulo de recompensas completo.
+
+### Endurecimento HTTP inicial
+
+- Adicionados cabeçalhos de segurança, política CORS configurável e respostas OPTIONS.
+- Adicionado rate limiting por origem/IP com janela configurável.
+- Origens não permitidas recebem HTTP 403.
+- Requisições de autenticação geram auditoria estruturada sem tokens ou payloads sensíveis.
+- Os limites são locais ao processo; produção com múltiplas instâncias ainda deve usar Redis ou gateway compartilhado.

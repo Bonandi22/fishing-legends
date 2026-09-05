@@ -12,6 +12,9 @@ const testConfig: AppConfig = {
   logLevel: 'silent',
   accessTokenTtlSeconds: 900,
   refreshTokenTtlSeconds: 2_592_000,
+  corsOrigins: [],
+  rateLimitMax: 120,
+  rateLimitWindowMs: 60_000,
 };
 
 const apps = new Set<Awaited<ReturnType<typeof createApp>>>();
@@ -33,6 +36,8 @@ describe('backend foundation', () => {
       status: 'ok',
       service: 'deep-blue-lure-api',
     });
+    expect(response.headers['x-content-type-options']).toBe('nosniff');
+    expect(response.headers['x-frame-options']).toBe('DENY');
   });
 
   it('reports readiness failure when the database is not configured', async () => {
