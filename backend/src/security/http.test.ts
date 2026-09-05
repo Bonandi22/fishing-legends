@@ -24,6 +24,42 @@ afterEach(async () => {
   apps.clear();
 });
 
+describe('CORS', () => {
+  it('does not reflect an arbitrary Origin when no allowlist is configured', async () => {
+    const app = createApp({ config: baseConfig });
+    apps.add(app);
+
+    const response = await app.inject({
+      method: 'GET',
+      url: '/health',
+      headers: { origin: 'https://evil.example' },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.headers['access-control-allow-origin']).toBeUndefined();
+  });
+
+  it('echoes an allowed Origin and rejects a disallowed one', async () => {
+    const app = createApp({ config: { ...baseConfig, corsOrigins: ['https://app.example'] } });
+    apps.add(app);
+
+    const allowed = await app.inject({ method: 'GET', url: '/health', headers: { origin: 'https://app.example' } });
+    expect(allowed.headers['access-control-allow-origin']).toBe('https://app.example');
+
+    const denied = await app.inject({ method: 'GET', url: '/health', headers: { origin: 'https://evil.example' } });
+    expect(denied.statusCode).toBe(403);
+    expect(denied.json().error.code).toBe('ORIGIN_NOT_ALLOWED');
+  });
+
+  it('honours a wildcard allowlist', async () => {
+    const app = createApp({ config: { ...baseConfig, corsOrigins: ['*'] } });
+    apps.add(app);
+
+    const response = await app.inject({ method: 'GET', url: '/health', headers: { origin: 'https://anything.example' } });
+    expect(response.headers['access-control-allow-origin']).toBe('*');
+  });
+});
+
 describe('rate limiting', () => {
   it('cannot be bypassed by spoofing X-Forwarded-For when no proxy is trusted', async () => {
     const app = createApp({ config: baseConfig });

@@ -123,11 +123,16 @@ user?.passwordHash ?? decoy)` antes de rejeitar. Teste de tempo em
 `auth/service.test.ts`: login com email inexistente demora comparável ao login
 com password errada (antes era ~instantâneo).
 
-### M3 · CORS default reflete qualquer origem · esforço P
-`security-review.md` S4. `CORS_ORIGINS` vazio → eco de `Origin`.
-**Ajuste**: sem config → negar/omitir ACAO. Adicionar `CORS_ORIGINS`,
-`RATE_LIMIT_MAX`, `RATE_LIMIT_WINDOW_MS` ao `.env.example`. Adicionar
-`ACCESS_TOKEN_SECRET` com placeholder que passe o `min(32)` em dev.
+### M3 · CORS default reflete qualquer origem · esforço P · ✅ feito 2026-09-05
+`security-review.md` S4.
+**Feito**: `security/http.ts` — sem allowlist configurada, nenhum
+`Access-Control-Allow-Origin` é emitido (o browser aplica same-origin); uma origem
+arbitrária nunca é refletida. Com allowlist: eco das permitidas, `*` para wildcard,
+403 `ORIGIN_NOT_ALLOWED` para as restantes. `CORS_ORIGINS`, `RATE_LIMIT_MAX`,
+`RATE_LIMIT_WINDOW_MS` adicionados ao `.env.example`. 3 testes em
+`security/http.test.ts`.
+**Pendente menor**: `.env.example` ainda tem `ACCESS_TOKEN_SECRET=` vazio (falha o
+`min(32)` em dev) — deixar assim obriga a definir um secret conscientemente.
 
 ### M4 · Valores de venda/economia divergem entre servidor e cliente · esforço M
 `backend-review.md` inventory/economy. Servidor: `Math.floor(fish.xp/2)`; cliente:

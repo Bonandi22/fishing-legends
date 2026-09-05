@@ -9,18 +9,22 @@ type SecurityOptions = {
 export function registerSecurityHooks(app: FastifyInstance, options: SecurityOptions): void {
   const requests = new Map<string, { count: number; resetAt: number }>();
 
+  const { allowedOrigins } = options;
+
   app.addHook('onRequest', async (request, reply) => {
     const origin = request.headers.origin;
-    if (origin && options.allowedOrigins.length > 0 && !options.allowedOrigins.includes('*') && !options.allowedOrigins.includes(origin)) {
-      reply.header('vary', 'Origin');
-      return reply.status(403).send({ error: { code: 'ORIGIN_NOT_ALLOWED', message: 'Origin is not allowed' } });
-    }
-
-    if (origin && options.allowedOrigins.includes('*')) {
-      reply.header('access-control-allow-origin', '*');
-    } else if (origin) {
-      reply.header('access-control-allow-origin', origin);
-      reply.header('vary', 'Origin');
+    if (origin) {
+      if (allowedOrigins.includes('*')) {
+        reply.header('access-control-allow-origin', '*');
+      } else if (allowedOrigins.includes(origin)) {
+        reply.header('access-control-allow-origin', origin);
+        reply.header('vary', 'Origin');
+      } else if (allowedOrigins.length > 0) {
+        // An allowlist is configured and this origin is not on it.
+        reply.header('vary', 'Origin');
+        return reply.status(403).send({ error: { code: 'ORIGIN_NOT_ALLOWED', message: 'Origin is not allowed' } });
+      }
+      // No allowlist configured: emit no ACAO — the browser enforces same-origin.
     }
     reply.header('access-control-allow-headers', 'authorization, content-type, idempotency-key');
     reply.header('access-control-allow-methods', 'GET, POST, OPTIONS');
