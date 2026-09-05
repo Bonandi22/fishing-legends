@@ -90,11 +90,20 @@ CIDRs/endereços de proxy a confiar. Adicionada a `.env.example` e
 comportamento (`security/http.test.ts` — spoof de XFF não escapa ao limite com
 default; com `trustProxy: true` os buckets separam por IP encaminhado).
 
-### A3 · Sorteio de captura ignora a raridade · esforço M
-`security-review.md` S7. Seleção uniforme; `RARITY_CONFIG` do cliente ignorado.
-**Ajuste**: portar `rollFish`/`getNormalizedRarityWeights` para o serviço de pesca
-do servidor (partilhar o módulo `src/game/fishingLogic`), registar a versão do
-ruleset na sessão. Testes de distribuição.
+### A3 · Sorteio de captura ignora a raridade · esforço M · ✅ feito 2026-09-05
+`security-review.md` S7.
+**Feito**: `backend/src/fishing/roll.ts` — `normalizedRarityWeights` +
+`rollCatch(fish, playerLevel, random?)`, port fiel de `getNormalizedRarityWeights`
+e do caminho não-lucky de `rollFish`. Importa `RARITY_CONFIG` de `src/game/types`
+(fonte única das odds); o algoritmo de seleção é duplicado (a versão do frontend
+está acoplada ao seu próprio tipo `Fish` e a `getFishForLocation`).
+`fishing/service.ts` (memória) e `fishing/pgService.ts` chamam
+`rollCatch(available, profile.level)` em vez do `Math.random` uniforme. A versão do
+ruleset já era registada na sessão (`rulesetVersion` = versão do catálogo). 8 testes
+unitários (soma = 1, raro < comum, roll→0 dá o mais raro, roll→1 dá o mais comum,
+peso uniforme no intervalo, não-uniforme em 4000 amostras); RNG injetável.
+**Fora do âmbito**: RNG seedado/auditável (L7); lucky mode server-side
+(multiplicadores não estão ligados à conclusão de pesca).
 
 ---
 
@@ -221,9 +230,9 @@ payload de migração de save pode ser grande — dimensionar conscientemente).
 1. ~~**B2 → B1 → B4**~~ ✅ feito 2026-09-05.
 2. ~~**B3**~~ ✅ feito 2026-09-05 (35 testes de integração; falta só expandir cobertura
    conforme novos módulos).
-3. ~~**A1, A2**~~ ✅ feito 2026-09-05. **A3** (raridade no sorteio de pesca) — **← próximo**
+3. ~~**A1, A2, A3**~~ ✅ feito 2026-09-05.
 4. **M1, M2, M3, M6, M9** (segurança de rotas + CORS + idempotência da venda) —
-   vários são P e M6 remove M1.
+   vários são P e M6 remove M1. **← próximo**
 5. **M4, M5** (consistência de economia e memória/PG).
 6. **M7, M8** (refresh tokens, OpenAPI) — antes de o frontend ligar auth.
 7. **L1–L11** conforme se toca em cada módulo.

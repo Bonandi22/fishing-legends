@@ -4,6 +4,7 @@ import type { Database } from '../db/client.js';
 import { fishingSessions, playerProgress, warehouseFish } from '../db/schema.js';
 import type { createCatalogService } from '../catalog/service.js';
 import type { PlayerRepository } from '../players/types.js';
+import { rollCatch } from './roll.js';
 
 const MAX_LEVEL = 30;
 function xpForLevel(level: number): number {
@@ -66,8 +67,8 @@ export function createPgFishingService(
       const available = location.fishIds.map(id => catalog.findFish(id))
         .filter((fish): fish is NonNullable<typeof fish> => Boolean(fish));
       if (available.length === 0) throw new Error('INVALID_FISHING_SESSION');
-      const fish = available[Math.floor(Math.random() * available.length)];
-      const weight = Math.round((fish.minWeight + Math.random() * (fish.maxWeight - fish.minWeight)) * 100) / 100;
+      const profile = await players.getProfile(userId);
+      const { fish, weight } = rollCatch(available, profile?.level ?? 1);
       const result = { fishId: fish.id, weight, xp: fish.xp };
 
       return db.transaction(async tx => {

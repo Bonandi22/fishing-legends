@@ -794,3 +794,18 @@ Próximo: completar B3 (pesca/inventário/rewards/migração) e seguir para A1�
   encaminhado quando `trustProxy: true`).
 - Verificação: `backend:typecheck` ✅ · `npm test` ✅ 49 · `test:integration` ✅ 39.
 - Próximo: A3 (portar `rollFish`/raridade para o serviço de pesca do servidor).
+
+### A3 — sorteio de captura ponderado por raridade — 2026-09-05
+
+- `backend/src/fishing/roll.ts`: `normalizedRarityWeights` + `rollCatch(fish,
+  playerLevel, random?)` — port fiel de `getNormalizedRarityWeights` e do caminho
+  não-lucky de `rollFish`. Reutiliza `RARITY_CONFIG` de `src/game/types` (odds);
+  duplica o algoritmo de seleção (frontend acoplado ao seu tipo `Fish`).
+- `fishing/service.ts` e `fishing/pgService.ts` chamam `rollCatch(available,
+  profile.level)` — antes era `available[Math.floor(Math.random()*length)]`.
+- A versão do ruleset já era gravada na sessão (`rulesetVersion`).
+- TDD: 8 testes unitários (RNG injetável; distribuição não-uniforme em 4000
+  amostras). Testes de pesca existentes continuam verdes.
+- Verificação: `backend:typecheck` ✅ · `npm test` ✅ 57 · `test:integration` ✅ 39.
+- Fora do âmbito: RNG seedado (L7), lucky mode server-side.
+- **A1, A2 e A3 concluídos.** Próximo bloco: M1/M2/M3/M6/M9.
