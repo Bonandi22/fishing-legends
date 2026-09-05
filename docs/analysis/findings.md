@@ -240,9 +240,12 @@ Testes: `app.test.ts` (memória) + integração (`Angler` vs `angler` → `USERN
 Argon2id.
 **Ajuste**: Argon2id (`@node-rs/argon2`) ou incluir custo no hash + verificação.
 
-### L6 · Testes unitários de domínio no backend · esforço P
-`quality-review.md` §2.2. `applyProgress`, `validateLocalSave`, `rewardForDay`,
-`score` — funções puras sem teste.
+### L6 · Testes unitários de domínio no backend · esforço P · ✅ feito 2026-09-06
+`quality-review.md` §2.2.
+**Feito**: `players/progress.test.ts` (`applyCatchProgress` — M5), `rewards/service.test.ts`
+(`resolveRewardDay` — A1), `fishing/roll.test.ts` (raridade — A3),
+`config/env.test.ts` (A2), `economy/pricing.test.ts` (M4), `migration/service.test.ts`
+(`validateLocalSave` — 6 casos). Score do leaderboard coberto pela integração.
 
 ### L7 · Fishing session sem expiração / limite de frequência · esforço M
 `backend-review.md` fishing. `status='expired'` no CHECK mas nunca usado.
@@ -256,12 +259,16 @@ Argon2id.
 `quality-review.md` §4. `example.test.ts` placeholder; `bun.lock`+`bun.lockb`+
 `package-lock.json` coexistem; Browserslist desatualizado.
 
-### L10 · `bodyLimit` explícito no Fastify · esforço P
-`security-review.md` threat model. Definir `bodyLimit` (o default é 1 MB; o
-payload de migração de save pode ser grande — dimensionar conscientemente).
+### L10 · `bodyLimit` explícito no Fastify · esforço P · ✅ feito 2026-09-06
+`security-review.md` threat model.
+**Feito**: `bodyLimit: 128 KB` global; as rotas `/api/v1/migration/local/*` sobem
+para 2 MB via `bodyLimit` de rota.
 
-### L11 · `leaderboard.total` com semântica estranha · esforço P
-`backend-review.md` leaderboard. Trocar por `COUNT(*)` ou omitir.
+### L11 · `leaderboard.total` com semântica estranha · esforço P · ✅ feito 2026-09-06
+`backend-review.md` leaderboard.
+**Feito**: `total` = `COUNT(*)` de `player_progress` (era `entries.length < limit ?
+offset + entries.length : null`). Memória já devolvia um número. Teste de integração
+novo (`leaderboard/pgRepository.integration.test.ts`).
 
 ---
 

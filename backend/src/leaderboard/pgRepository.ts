@@ -1,10 +1,11 @@
-import { desc, eq } from 'drizzle-orm';
+import { count, desc, eq } from 'drizzle-orm';
 import type { Database } from '../db/client.js';
 import { playerProgress, userProfiles } from '../db/schema.js';
 
 export function createPgLeaderboardService(db: Database) {
   return {
     async list(_userId: string, limit: number, offset: number) {
+      const [{ total }] = await db.select({ total: count() }).from(playerProgress);
       const rows = await db
         .select({
           userId: playerProgress.userId,
@@ -28,7 +29,7 @@ export function createPgLeaderboardService(db: Database) {
         level: row.level,
         totalFishCaught: row.totalFishCaught,
       }));
-      return { season: 'all-time', entries, total: entries.length < limit ? offset + entries.length : null };
+      return { season: 'all-time', entries, total };
     },
   };
 }

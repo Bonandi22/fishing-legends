@@ -48,6 +48,9 @@ export function createApp({ config }: AppDependencies): FastifyInstance {
   const serverOptions: FastifyServerOptions = {
     logger: { level: config.logLevel },
     trustProxy: config.trustProxy,
+    // Every current endpoint takes a small JSON body; the local-save migration
+    // routes raise their own limit.
+    bodyLimit: 128 * 1024,
   };
   const app = Fastify(serverOptions);
   registerSecurityHooks(app, {
