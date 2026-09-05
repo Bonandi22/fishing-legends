@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import type { Database } from '../db/client.js';
 import { aquariumFish, walletTransactions, wallets, warehouseFish } from '../db/schema.js';
 import type { EconomyService } from '../economy/service.js';
+import { fishSaleValue } from '../economy/pricing.js';
 import type { createCatalogService } from '../catalog/service.js';
 import type { WarehouseFish } from './service.js';
 
@@ -41,7 +42,7 @@ export function createPgInventoryService(
         if (items.length === 0) throw new Error('WAREHOUSE_EMPTY');
         const value = items.reduce((total, item) => {
           const fish = catalog.findFish(item.fishId);
-          return total + (fish ? Math.max(1, Math.floor(fish.xp / 2)) : 0);
+          return total + (fish ? fishSaleValue(fish.rarity) : 0);
         }, 0);
         await tx.insert(wallets).values({ userId, balance: 0 }).onConflictDoNothing();
         const current = await tx.select().from(wallets).where(eq(wallets.userId, userId)).limit(1);

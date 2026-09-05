@@ -134,12 +134,16 @@ arbitrária nunca é refletida. Com allowlist: eco das permitidas, `*` para wild
 **Pendente menor**: `.env.example` ainda tem `ACCESS_TOKEN_SECRET=` vazio (falha o
 `min(32)` em dev) — deixar assim obriga a definir um secret conscientemente.
 
-### M4 · Valores de venda/economia divergem entre servidor e cliente · esforço M
-`backend-review.md` inventory/economy. Servidor: `Math.floor(fish.xp/2)`; cliente:
-`FISH_COIN_VALUE` por raridade. Ao ligar o frontend os números não batem.
-**Ajuste**: decidir a fonte de verdade (servidor) e alinhar — idealmente um módulo
-de regras de economia partilhado. Inclui `WAREHOUSE_LIMIT` não aplicado no servidor
-e ausência de venda individual.
+### M4 · Valores de venda/economia divergem entre servidor e cliente · esforço M · ✅ feito 2026-09-05
+`backend-review.md` inventory/economy.
+**Feito**: `backend/src/economy/pricing.ts` — `fishSaleValue(rarity)` (usa
+`FISH_COIN_VALUE`), `netUnitPrice` (`NET_PRICE`), `multiplierPrice(power)`
+(`MULTIPLIER_COST`/`_4X`), todos importados de `src/game/types`. `inventory`
+(venda) e `economy` (redes, multiplicadores) deixaram de usar `xp/2` e números
+hard-coded. 3 testes unitários + o teste de integração de venda passou a esperar
+o valor por raridade.
+**Ainda em aberto** (não é M4 estrito): `WAREHOUSE_LIMIT` não aplicado no servidor,
+sem venda individual — registar como L-item se relevante ao ligar o frontend.
 
 ### M5 · Comportamento memória vs PostgreSQL diverge · esforço M
 `backend-review.md` §3. Pesca em memória não aplica XP/nível; `players` em memória

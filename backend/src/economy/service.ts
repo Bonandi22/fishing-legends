@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { multiplierPrice, netUnitPrice } from './pricing.js';
 
 export type WalletTransaction = {
   id: string;
@@ -65,7 +66,7 @@ export function createMemoryEconomyService() {
       if (existing) return { nets: nets.get(userId) ?? 10, transaction: existing };
       const currentNets = nets.get(userId) ?? 10;
       if (currentNets + quantity > 10) throw new Error('NET_LIMIT_REACHED');
-      const amount = quantity * 5000;
+      const amount = quantity * netUnitPrice;
       const balance = balances.get(userId) ?? 0;
       if (balance < amount) throw new Error('INSUFFICIENT_FUNDS');
       const transaction = { id: randomUUID(), userId, amount: -amount, balanceAfter: balance - amount, reason: 'net_purchase' };
@@ -79,7 +80,7 @@ export function createMemoryEconomyService() {
       const existing = idempotency.get(`${userId}:${key}`);
       const current = multipliers.get(`${userId}:${type}`);
       if (existing && current) return { ...current, transaction: existing };
-      const amount = power === 4 ? 6000 : 3000;
+      const amount = multiplierPrice(power);
       const balance = balances.get(userId) ?? 0;
       if (balance < amount) throw new Error('INSUFFICIENT_FUNDS');
       const expiresAt = new Date(Date.now() + 60_000);

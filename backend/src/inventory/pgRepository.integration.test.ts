@@ -45,17 +45,17 @@ describe('pg inventory service (integration)', () => {
     expect(listed.items[0].fishId).toBe('tilapia');
   });
 
-  it('sells the whole warehouse in one transaction and credits the wallet', async () => {
+  it('sells the whole warehouse in one transaction and credits the wallet by rarity value', async () => {
     const userId = await seedUser();
-    await inventory.addCatch({ userId, ...tilapia() });
+    await inventory.addCatch({ userId, ...tilapia() }); // common
     await inventory.addCatch({ userId, ...tilapia() });
 
     const result = await inventory.sell(userId, `sell-${crypto.randomUUID()}`);
     expect(result.sold).toBe(2);
-    expect(result.value).toBe(10); // max(1, floor(10/2)) per tilapia
+    expect(result.value).toBe(20); // FISH_COIN_VALUE.common (10) per tilapia
 
     expect(await inventory.list(userId)).toEqual({ items: [] });
-    expect(await economy.getBalance(userId)).toEqual({ balance: 10 });
+    expect(await economy.getBalance(userId)).toEqual({ balance: 20 });
   });
 
   it('rejects selling an empty warehouse', async () => {

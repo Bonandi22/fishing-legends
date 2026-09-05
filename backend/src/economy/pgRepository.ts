@@ -2,6 +2,7 @@ import { and, eq } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
 import type { Database } from '../db/client.js';
 import { playerProgress, walletTransactions, wallets } from '../db/schema.js';
+import { multiplierPrice, netUnitPrice } from './pricing.js';
 
 export function createPgEconomyService(db: Database) {
   return {
@@ -43,7 +44,7 @@ export function createPgEconomyService(db: Database) {
         const currentNets = progress[0]?.nets ?? 10;
         if (existing[0]) return { nets: currentNets, transaction: existing[0] };
         if (currentNets + quantity > 10) throw new Error('NET_LIMIT_REACHED');
-        const amount = quantity * 5000;
+        const amount = quantity * netUnitPrice;
         await tx.insert(wallets).values({ userId, balance: 0 }).onConflictDoNothing();
         const currentWallet = await tx.select().from(wallets).where(eq(wallets.userId, userId)).limit(1);
         const balance = currentWallet[0]?.balance ?? 0;
@@ -68,7 +69,7 @@ export function createPgEconomyService(db: Database) {
         if (existing[0] && existingExpiry) {
           return { type, power: existingPower as 2 | 4, expiresAt: existingExpiry, transaction: existing[0] };
         }
-        const amount = power === 4 ? 6000 : 3000;
+        const amount = multiplierPrice(power);
         await tx.insert(wallets).values({ userId, balance: 0 }).onConflictDoNothing();
         const currentWallet = await tx.select().from(wallets).where(eq(wallets.userId, userId)).limit(1);
         const balance = currentWallet[0]?.balance ?? 0;

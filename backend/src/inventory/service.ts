@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import type { createCatalogService } from '../catalog/service.js';
 import type { EconomyService } from '../economy/service.js';
+import { fishSaleValue } from '../economy/pricing.js';
 
 export type WarehouseFish = {
   id: string;
@@ -36,7 +37,7 @@ export function createMemoryInventoryService(
       if (items.length === 0) throw new Error('WAREHOUSE_EMPTY');
       const value = items.reduce((total, item) => {
         const fish = catalog.findFish(item.fishId);
-        return total + (fish ? Math.max(1, Math.floor(fish.xp / 2)) : 0);
+        return total + (fish ? fishSaleValue(fish.rarity) : 0);
       }, 0);
       const transaction = await economy.credit(userId, value, 'warehouse_sale', idempotencyKey);
       warehouse.set(userId, []);
