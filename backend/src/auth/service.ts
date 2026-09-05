@@ -38,7 +38,7 @@ export function createAuthService(repository: AuthRepository, config: AuthServic
       const refreshToken = createOpaqueToken();
       const session = await repository.createSession({
         userId: user.id,
-        refreshTokenHash: hashToken(refreshToken),
+        tokenHash: hashToken(refreshToken),
         expiresAt: new Date(Date.now() + config.refreshTokenTtlSeconds * 1000),
       });
       return { accessToken: await issueAccessToken(user.id), refreshToken, session, user };
@@ -57,30 +57,26 @@ export function createAuthService(repository: AuthRepository, config: AuthServic
       const refreshToken = createOpaqueToken();
       const session = await repository.createSession({
         userId: user.id,
-        refreshTokenHash: hashToken(refreshToken),
+        tokenHash: hashToken(refreshToken),
         expiresAt: new Date(Date.now() + config.refreshTokenTtlSeconds * 1000),
       });
       return { accessToken: await issueAccessToken(user.id), refreshToken, session, user };
     },
 
     async refresh(refreshToken: string) {
-      const session = await repository.findSessionByTokenHash(hashToken(refreshToken));
-      if (!session || session.revokedAt || session.expiresAt <= new Date()) {
-        throw new Error('INVALID_REFRESH_TOKEN');
-      }
+      const nextRefreshToken = createOpaqueToken();
+      const rotation = await repository.rotateRefreshToken({
+        presentedHash: hashToken(refreshToken),
+        nextHash: hashToken(nextRefreshToken),
+        nextExpiresAt: new Date(Date.now() + config.refreshTokenTtlSeconds * 1000),
+      });
+      if (rotation.outcome === 'reuse_detected') throw new Error('REFRESH_TOKEN_REUSED');
+      if (rotation.outcome === 'invalid') throw new Error('INVALID_REFRESH_TOKEN');
 
-      const user = await repository.findUserById(session.userId);
+      const user = await repository.findUserById(rotation.userId);
       if (!user || user.status !== 'active') throw new Error('INVALID_REFRESH_TOKEN');
 
-      const nextRefreshToken = createOpaqueToken();
-      const rotated = await repository.rotateSession({
-        sessionId: session.id,
-        refreshTokenHash: hashToken(nextRefreshToken),
-        expiresAt: new Date(Date.now() + config.refreshTokenTtlSeconds * 1000),
-      });
-      if (!rotated) throw new Error('INVALID_REFRESH_TOKEN');
-
-      return { accessToken: await issueAccessToken(user.id), refreshToken: nextRefreshToken, session: rotated, user };
+      return { accessToken: await issueAccessToken(user.id), refreshToken: nextRefreshToken, session: rotation.session, user };
     },
 
     async logout(sessionId: string) {

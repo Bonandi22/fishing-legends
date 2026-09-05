@@ -861,3 +861,22 @@ Próximo: completar B3 (pesca/inventário/rewards/migração) e seguir para A1�
   não persiste — aceitável até o frontend ligar.
 - Verificação: `backend:typecheck` ✅ · `npm test` ✅ 71 · `test:integration` ✅ 39 · `lint` ✅.
 - Próximo: M7 (reuse detection de refresh tokens) e M8 (OpenAPI dos schemas Zod).
+
+### M7 — reuse detection de refresh tokens — 2026-09-05
+
+- Migração `0013_refresh_tokens.sql`: tabela `refresh_tokens` (id, session_id→sessions,
+  token_hash unique, replaced_by→self, replaced_at, revoked_at); backfill dos hashes
+  de `sessions`; `sessions.refresh_token_hash` removido. `sessions` = a família.
+- `AuthRepository` reformulado: `createSession({userId, tokenHash, expiresAt})`,
+  `rotateRefreshToken(...)` → `{ outcome: 'rotated' | 'reuse_detected' | 'invalid' }`,
+  `revokeSession`. Removidos `rotateSession` e `findSessionByTokenHash`.
+- Reuse (token já `replaced_at`/`revoked_at`, ou sessão revogada) → revoga todos os
+  tokens da sessão + a sessão; o serviço lança `REFRESH_TOKEN_REUSED` (401, novo
+  código em `http/errors.ts`).
+- Impl. PostgreSQL (transacional) e memória. `AuthSession` perdeu `refreshTokenHash`.
+- Testes: 4 de integração + 1 HTTP em `app.test.ts` (reuse → 401 + token rotacionado
+  também morre). Smoke `docker compose` no servidor real: rotação ok, reuse do token
+  antigo → `REFRESH_TOKEN_REUSED`, token rotacionado → 401.
+- Verificação: `backend:typecheck` ✅ · `npm test` ✅ 72 · `test:integration` ✅ 41
+  (migração 0013 aplicada) · `lint` ✅ · `drizzle-kit generate` ✅.
+- Próximo: M8 (OpenAPI dos schemas Zod).

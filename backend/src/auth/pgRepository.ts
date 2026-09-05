@@ -1,8 +1,8 @@
 import { randomUUID } from 'node:crypto';
-import { and, eq, gt, isNull } from 'drizzle-orm';
+import { and, eq, isNull } from 'drizzle-orm';
 import type { Database } from '../db/client.js';
-import { playerProgress, sessions, userProfiles, users } from '../db/schema.js';
-import type { AuthRepository, AuthSession, AuthUser } from './types.js';
+import { playerProgress, refreshTokens, sessions, userProfiles, users } from '../db/schema.js';
+import type { AuthRepository, AuthSession, AuthUser, RefreshRotation } from './types.js';
 
 function toAuthUser(row: {
   user: typeof users.$inferSelect;
@@ -26,7 +26,6 @@ function toAuthSession(row: typeof sessions.$inferSelect): AuthSession {
   return {
     id: row.id,
     userId: row.userId,
-    refreshTokenHash: row.refreshTokenHash,
     expiresAt: row.expiresAt,
     revokedAt: row.revokedAt ?? undefined,
   };
@@ -71,36 +70,59 @@ export function createPgAuthRepository(db: Database): AuthRepository {
       return toAuthUser(result[0]);
     },
     async createSession(input) {
-      const id = randomUUID();
-      const result = await db.insert(sessions).values({
-        id,
-        userId: input.userId,
-        refreshTokenHash: input.refreshTokenHash,
-        expiresAt: input.expiresAt,
-      }).returning();
-      return toAuthSession(result[0]);
-    },
-    async rotateSession(input) {
-      const result = await db.update(sessions)
-        .set({
-          refreshTokenHash: input.refreshTokenHash,
+      const sessionId = randomUUID();
+      return db.transaction(async tx => {
+        const [session] = await tx.insert(sessions).values({
+          id: sessionId,
+          userId: input.userId,
           expiresAt: input.expiresAt,
-          lastUsedAt: new Date(),
-        })
-        .where(and(eq(sessions.id, input.sessionId), isNull(sessions.revokedAt), gt(sessions.expiresAt, new Date())))
-        .returning();
-      return result[0] ? toAuthSession(result[0]) : null;
+        }).returning();
+        await tx.insert(refreshTokens).values({
+          id: randomUUID(),
+          sessionId,
+          tokenHash: input.tokenHash,
+        });
+        return toAuthSession(session);
+      });
+    },
+    async rotateRefreshToken({ presentedHash, nextHash, nextExpiresAt }): Promise<RefreshRotation> {
+      return db.transaction(async tx => {
+        const [token] = await tx.select().from(refreshTokens)
+          .where(eq(refreshTokens.tokenHash, presentedHash)).limit(1);
+        if (!token) return { outcome: 'invalid' };
+        const [session] = await tx.select().from(sessions)
+          .where(eq(sessions.id, token.sessionId)).limit(1);
+
+        if (token.replacedAt || token.revokedAt || session?.revokedAt) {
+          const now = new Date();
+          await tx.update(refreshTokens).set({ revokedAt: now })
+            .where(and(eq(refreshTokens.sessionId, token.sessionId), isNull(refreshTokens.revokedAt)));
+          await tx.update(sessions).set({ revokedAt: now })
+            .where(and(eq(sessions.id, token.sessionId), isNull(sessions.revokedAt)));
+          return { outcome: 'reuse_detected' };
+        }
+
+        if (!session || session.expiresAt <= new Date()) return { outcome: 'invalid' };
+
+        const nextId = randomUUID();
+        await tx.insert(refreshTokens).values({ id: nextId, sessionId: token.sessionId, tokenHash: nextHash });
+        await tx.update(refreshTokens)
+          .set({ replacedBy: nextId, replacedAt: new Date() })
+          .where(eq(refreshTokens.id, token.id));
+        const [updated] = await tx.update(sessions)
+          .set({ expiresAt: nextExpiresAt, lastUsedAt: new Date() })
+          .where(eq(sessions.id, token.sessionId))
+          .returning();
+        return { outcome: 'rotated', session: toAuthSession(updated), userId: session.userId };
+      });
     },
     async revokeSession(sessionId) {
-      await db.update(sessions)
-        .set({ revokedAt: new Date() })
-        .where(and(eq(sessions.id, sessionId), isNull(sessions.revokedAt)));
-    },
-    async findSessionByTokenHash(tokenHash) {
-      const result = await db.select().from(sessions)
-        .where(and(eq(sessions.refreshTokenHash, tokenHash), isNull(sessions.revokedAt)))
-        .limit(1);
-      return result[0] ? toAuthSession(result[0]) : null;
+      await db.transaction(async tx => {
+        await tx.update(refreshTokens).set({ revokedAt: new Date() })
+          .where(and(eq(refreshTokens.sessionId, sessionId), isNull(refreshTokens.revokedAt)));
+        await tx.update(sessions).set({ revokedAt: new Date() })
+          .where(and(eq(sessions.id, sessionId), isNull(sessions.revokedAt)));
+      });
     },
   };
 }

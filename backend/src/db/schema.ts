@@ -1,5 +1,6 @@
 import { sql } from 'drizzle-orm';
 import {
+  type AnyPgColumn,
   bigint,
   char,
   check,
@@ -50,14 +51,25 @@ export const userProfiles = pgTable('user_profiles', {
 export const sessions = pgTable('sessions', {
   id: uuid('id').primaryKey(),
   userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
-  refreshTokenHash: text('refresh_token_hash').notNull(),
   expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
   revokedAt: timestamp('revoked_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   lastUsedAt: timestamp('last_used_at', { withTimezone: true }).notNull().defaultNow(),
 }, table => ({
   userIdIdx: index('sessions_user_id_idx').on(table.userId),
-  refreshTokenHashIdx: index('sessions_refresh_token_hash_idx').on(table.refreshTokenHash),
+}));
+
+export const refreshTokens = pgTable('refresh_tokens', {
+  id: uuid('id').primaryKey(),
+  sessionId: uuid('session_id').notNull().references(() => sessions.id, { onDelete: 'cascade' }),
+  tokenHash: text('token_hash').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  replacedBy: uuid('replaced_by').references((): AnyPgColumn => refreshTokens.id, { onDelete: 'set null' }),
+  replacedAt: timestamp('replaced_at', { withTimezone: true }),
+  revokedAt: timestamp('revoked_at', { withTimezone: true }),
+}, table => ({
+  tokenHashUnique: uniqueIndex('refresh_tokens_token_hash_unique').on(table.tokenHash),
+  sessionIdIdx: index('refresh_tokens_session_id_idx').on(table.sessionId),
 }));
 
 export const fishingSessions = pgTable('fishing_sessions', {
@@ -194,6 +206,7 @@ export const schema = {
   users,
   userProfiles,
   sessions,
+  refreshTokens,
   fishingSessions,
   localSaveMigrations,
   seasons,

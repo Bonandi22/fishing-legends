@@ -10,10 +10,21 @@ export type AuthUser = {
 export type AuthSession = {
   id: string;
   userId: string;
-  refreshTokenHash: string;
   expiresAt: Date;
   revokedAt?: Date;
 };
+
+/**
+ * Result of presenting a refresh token for rotation.
+ * - `rotated`: the token was the live tip of its chain; a new token was issued.
+ * - `reuse_detected`: the token had already been rotated away or revoked — the
+ *   whole session family has now been revoked.
+ * - `invalid`: unknown token, or the session is expired/revoked.
+ */
+export type RefreshRotation =
+  | { outcome: 'rotated'; session: AuthSession; userId: string }
+  | { outcome: 'reuse_detected' }
+  | { outcome: 'invalid' };
 
 export type AuthRepository = {
   findUserByEmail(email: string): Promise<AuthUser | null>;
@@ -26,14 +37,13 @@ export type AuthRepository = {
   }): Promise<AuthUser>;
   createSession(input: {
     userId: string;
-    refreshTokenHash: string;
+    tokenHash: string;
     expiresAt: Date;
   }): Promise<AuthSession>;
-  rotateSession(input: {
-    sessionId: string;
-    refreshTokenHash: string;
-    expiresAt: Date;
-  }): Promise<AuthSession | null>;
+  rotateRefreshToken(input: {
+    presentedHash: string;
+    nextHash: string;
+    nextExpiresAt: Date;
+  }): Promise<RefreshRotation>;
   revokeSession(sessionId: string): Promise<void>;
-  findSessionByTokenHash(tokenHash: string): Promise<AuthSession | null>;
 };

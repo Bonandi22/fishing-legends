@@ -49,42 +49,46 @@ describe('pg auth repository (integration)', () => {
     expect(await repo.findUserByEmail('nobody@example.com')).toBeNull();
   });
 
-  it('rotates a session: the old token stops resolving, the new one resolves', async () => {
+  const later = () => new Date(Date.now() + 60_000);
+
+  it('rotates the refresh token chain, keeping the same session', async () => {
     const user = await repo.createUser(newUser());
-    const session = await repo.createSession({
-      userId: user.id,
-      refreshTokenHash: 'hash-1',
-      expiresAt: new Date(Date.now() + 60_000),
-    });
+    const session = await repo.createSession({ userId: user.id, tokenHash: 'h1', expiresAt: later() });
 
-    const rotated = await repo.rotateSession({
-      sessionId: session.id,
-      refreshTokenHash: 'hash-2',
-      expiresAt: new Date(Date.now() + 60_000),
-    });
-    expect(rotated?.id).toBe(session.id);
+    const first = await repo.rotateRefreshToken({ presentedHash: 'h1', nextHash: 'h2', nextExpiresAt: later() });
+    expect(first).toMatchObject({ outcome: 'rotated', userId: user.id });
+    if (first.outcome === 'rotated') expect(first.session.id).toBe(session.id);
 
-    expect(await repo.findSessionByTokenHash('hash-1')).toBeNull();
-    expect((await repo.findSessionByTokenHash('hash-2'))?.id).toBe(session.id);
+    const second = await repo.rotateRefreshToken({ presentedHash: 'h2', nextHash: 'h3', nextExpiresAt: later() });
+    expect(second.outcome).toBe('rotated');
   });
 
-  it('revokes a session', async () => {
+  it('rejects an unknown refresh token', async () => {
+    expect(await repo.rotateRefreshToken({ presentedHash: 'nope', nextHash: 'x', nextExpiresAt: later() }))
+      .toEqual({ outcome: 'invalid' });
+  });
+
+  it('detects reuse of a rotated token and revokes the whole family', async () => {
     const user = await repo.createUser(newUser());
-    const session = await repo.createSession({
-      userId: user.id,
-      refreshTokenHash: 'hash-revoke',
-      expiresAt: new Date(Date.now() + 60_000),
-    });
+    await repo.createSession({ userId: user.id, tokenHash: 'r1', expiresAt: later() });
+    await repo.rotateRefreshToken({ presentedHash: 'r1', nextHash: 'r2', nextExpiresAt: later() });
+
+    // r1 was already rotated away -> reuse
+    const reuse = await repo.rotateRefreshToken({ presentedHash: 'r1', nextHash: 'attacker', nextExpiresAt: later() });
+    expect(reuse).toEqual({ outcome: 'reuse_detected' });
+
+    // r2 (the tip a moment ago) is now dead too
+    const afterReuse = await repo.rotateRefreshToken({ presentedHash: 'r2', nextHash: 'r3', nextExpiresAt: later() });
+    expect(afterReuse.outcome).not.toBe('rotated');
+  });
+
+  it('revokeSession blocks further rotation', async () => {
+    const user = await repo.createUser(newUser());
+    const session = await repo.createSession({ userId: user.id, tokenHash: 'rev1', expiresAt: later() });
 
     await repo.revokeSession(session.id);
 
-    expect(await repo.findSessionByTokenHash('hash-revoke')).toBeNull();
-    expect(
-      await repo.rotateSession({
-        sessionId: session.id,
-        refreshTokenHash: 'hash-after-revoke',
-        expiresAt: new Date(Date.now() + 60_000),
-      }),
-    ).toBeNull();
+    const after = await repo.rotateRefreshToken({ presentedHash: 'rev1', nextHash: 'rev2', nextExpiresAt: later() });
+    expect(after.outcome).not.toBe('rotated');
   });
 });

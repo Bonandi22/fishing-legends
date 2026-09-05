@@ -172,10 +172,19 @@ os helpers `getUserId`/`userId` duplicados. Rotas públicas (`/health`, `/ready`
 Verificado: 58 testes unitários + 39 de integração verdes; smoke no servidor real
 (`/me`, `/seasons/current`, `/catalog`).
 
-### M7 · Sem reuse detection / família de refresh tokens · esforço G
-`security-review.md` S5. Necessário antes de o frontend ligar auth.
-**Ajuste**: tabela de refresh tokens encadeados (`replaced_by`, `revoked_at`),
-revogação em cascata ao detetar uso de token já rotacionado.
+### M7 · Sem reuse detection / família de refresh tokens · esforço G · ✅ feito 2026-09-05
+`security-review.md` S5.
+**Feito**: migração `0013_refresh_tokens.sql` — tabela `refresh_tokens(id,
+session_id→sessions, token_hash unique, replaced_by→self, replaced_at, revoked_at)`;
+backfill dos hashes atuais; `sessions.refresh_token_hash` removido. A `sessions` é a
+família. `AuthRepository` reformulado: `createSession({userId, tokenHash, expiresAt})`,
+`rotateRefreshToken({presentedHash, nextHash, nextExpiresAt})` → `{outcome:
+'rotated'|'reuse_detected'|'invalid'}`, `revokeSession`. Reuse (token já
+`replaced_at`/`revoked_at`, ou sessão revogada) → revoga todos os tokens da sessão +
+a sessão, e o serviço lança `REFRESH_TOKEN_REUSED` (401). Impl. PG (transacional) e
+memória. Testes: 4 de integração (rotação encadeada, token desconhecido, reuse
+revoga a família, revokeSession bloqueia) + 1 HTTP em `app.test.ts`. Smoke no
+servidor real confirmou. `drizzle-kit generate` valida o schema.
 
 ### M9 · Venda do armazém: retry idempotente falha após esvaziar · esforço P · ✅ feito 2026-09-05
 Descoberto ao escrever os testes de integração de inventário.
@@ -262,5 +271,5 @@ payload de migração de save pode ser grande — dimensionar conscientemente).
 3. ~~**A1, A2, A3**~~ ✅ feito 2026-09-05.
 4. ~~**M1, M2, M3, M6, M9**~~ ✅ feito 2026-09-05.
 5. ~~**M4**~~ ✅ · ~~**M5**~~ 🟡 parcial (falta leaderboard/aquário em memória — dev-only) — 2026-09-05.
-6. **M7, M8** (refresh tokens, OpenAPI) — antes de o frontend ligar auth. **← próximo**
+6. ~~**M7**~~ ✅ 2026-09-05. **M8** (OpenAPI dos schemas Zod). **← próximo**
 7. **L1–L11** conforme se toca em cada módulo.

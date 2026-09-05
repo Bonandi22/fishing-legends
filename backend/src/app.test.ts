@@ -81,6 +81,40 @@ describe('backend foundation', () => {
     expect(refreshResponse.json().refreshToken).not.toBe(registered.refreshToken);
   });
 
+  it('detects a reused refresh token and revokes the session family', async () => {
+    const app = createApp({ config: testConfig });
+    apps.add(app);
+
+    const registered = (await app.inject({
+      method: 'POST',
+      url: '/api/v1/auth/register',
+      payload: { email: 'reuse@example.com', password: 'a-strong-password-123', username: 'reuse_user', country: 'br' },
+    })).json();
+
+    const rotated = (await app.inject({
+      method: 'POST',
+      url: '/api/v1/auth/refresh',
+      payload: { refreshToken: registered.refreshToken },
+    })).json();
+
+    // Replaying the original token is a reuse.
+    const reuse = await app.inject({
+      method: 'POST',
+      url: '/api/v1/auth/refresh',
+      payload: { refreshToken: registered.refreshToken },
+    });
+    expect(reuse.statusCode).toBe(401);
+    expect(reuse.json().error.code).toBe('REFRESH_TOKEN_REUSED');
+
+    // The token issued by the legitimate rotation is now dead too.
+    const afterReuse = await app.inject({
+      method: 'POST',
+      url: '/api/v1/auth/refresh',
+      payload: { refreshToken: rotated.refreshToken },
+    });
+    expect(afterReuse.statusCode).toBe(401);
+  });
+
   it('rejects invalid registration input with a safe error', async () => {
     const app = createApp({ config: testConfig });
     apps.add(app);
