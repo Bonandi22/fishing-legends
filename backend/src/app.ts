@@ -21,6 +21,9 @@ import { createMemoryInventoryService } from './inventory/service.js';
 import { registerInventoryRoutes } from './inventory/routes.js';
 import { createPgInventoryService } from './inventory/pgRepository.js';
 import { createPgFishingService } from './fishing/pgService.js';
+import { registerMigrationRoutes } from './migration/routes.js';
+import { createMemoryMigrationService } from './migration/memoryRepository.js';
+import { createPgMigrationService } from './migration/pgRepository.js';
 
 export type AppDependencies = {
   config: AppConfig;
@@ -47,8 +50,10 @@ export function createApp({ config }: AppDependencies): FastifyInstance {
   const playerRepository = database
     ? createPgPlayerRepository(database)
     : createMemoryPlayerRepository(authRepository);
+  const migrationService = database ? createPgMigrationService(database) : createMemoryMigrationService();
   void registerAuthRoutes(app, authService);
   registerPlayerRoutes(app, authService, playerRepository);
+  registerMigrationRoutes(app, authService, migrationService);
   const catalogService = createCatalogService();
   registerCatalogRoutes(app, catalogService);
   const economyService = database ? createPgEconomyService(database) : createMemoryEconomyService();

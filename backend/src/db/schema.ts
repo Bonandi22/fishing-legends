@@ -47,6 +47,15 @@ export const fishingSessions = pgTable('fishing_sessions', {
   idempotencyUnique: uniqueIndex('fishing_sessions_idempotency_unique').on(table.userId, table.idempotencyKey),
 }));
 
+export const localSaveMigrations = pgTable('local_save_migrations', {
+  id: uuid('id').primaryKey(),
+  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  sourceVersion: integer('source_version').notNull(),
+  importedAt: timestamp('imported_at', { withTimezone: true }).notNull().defaultNow(),
+}, table => ({
+  userUnique: uniqueIndex('local_save_migrations_user_unique').on(table.userId),
+}));
+
 export const playerProgress = pgTable('player_progress', {
   userId: uuid('user_id').primaryKey().references(() => users.id, { onDelete: 'cascade' }),
   level: integer('level').notNull().default(1),
@@ -98,4 +107,4 @@ export const aquariumFish = pgTable('aquarium_fish', {
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
-export const schema = { users, userProfiles, sessions, fishingSessions, playerProgress, wallets, walletTransactions, warehouseFish, aquariumFish };
+export const schema = { users, userProfiles, sessions, fishingSessions, localSaveMigrations, playerProgress, wallets, walletTransactions, warehouseFish, aquariumFish };

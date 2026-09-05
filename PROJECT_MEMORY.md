@@ -624,3 +624,12 @@ Observações:
 - A conclusão grava sessão, captura no armazém, XP, nível e total de peixes na mesma transação.
 - Conclusões concorrentes da mesma sessão retornam o resultado já persistido sem duplicar a captura.
 - O fallback em memória continua disponível somente para desenvolvimento/testes sem `DATABASE_URL`.
+
+### Migração do save local
+
+- Adicionada a migração `0010_local_save_migrations.sql`.
+- Adicionados `POST /api/v1/migration/local/preview` e `POST /api/v1/migration/local/import`.
+- O servidor valida peixes, locais, pesos, níveis e limites contra o catálogo.
+- A prévia retorna contagens aceitas e rejeitadas sem alterar estado.
+- A importação é única por usuário, idempotência é exigida na rota e a persistência PostgreSQL ocorre em transação.
+- O save local continua sendo responsabilidade do cliente como backup temporário.
