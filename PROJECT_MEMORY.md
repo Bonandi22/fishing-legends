@@ -4,10 +4,14 @@ Este arquivo mantém o contexto técnico e o roadmap versionados no repositório
 
 ## Estado atual
 
-- Data de referência: 2026-09-04.
+- Data de referência: 2026-09-05.
 - Projeto: jogo de pesca React/TypeScript com Vite, Vitest, Playwright e sistemas 3D.
-- Arquitetura online: ainda não existe backend, autenticação real ou ranking global.
-- Persistência atual: `localStorage`, com saves versionados e validação Zod.
+- Arquitetura online: backend Fastify + PostgreSQL em construção na branch
+  `feature/task-06-backend-foundation` (não integrado em `main`, não validado contra
+  PostgreSQL real, sem runner de migração funcional, fora do CI). O frontend ainda
+  **não** consome o backend. Ver `docs/analysis/` e a secção "Análise completa do
+  backend — 2026-09-05".
+- Persistência do frontend: `localStorage`, com saves versionados e validação Zod.
 - Branch principal integrada: `main`.
 - Último merge da revitalização de interfaces: `08a26b8`.
 - Branch de trabalho pausada: `fix/menu-symmetry`.
@@ -667,3 +671,96 @@ Observações:
 - PostgreSQL só retorna a temporada ativa dentro da janela válida.
 - O fallback local fornece uma temporada ativa determinística para desenvolvimento/testes.
 - Pontuação competitiva, inscrição, fechamento, snapshots e premiação permanecem bloqueados até a integração do ranking e antifraude.
+
+### Análise completa do backend — 2026-09-05
+
+Estado da branch `feature/task-06-backend-foundation`: 20 commits à frente de `main`
+(`481ab83` → `cc475e2`). Worktree limpo antes desta atualização de memória.
+
+Arquivos de suporte criados nesta etapa (documentação, sem alterar código de aplicação):
+
+- `CLAUDE.md` na raiz — convenções, comandos, estrutura, guardrails e "o que não fazer".
+- `docs/analysis/README.md` — índice e veredito.
+- `docs/analysis/backend-review.md` — auditoria módulo a módulo.
+- `docs/analysis/security-review.md` — 10 requisitos de segurança + threat model vs código.
+- `docs/analysis/quality-review.md` — testes, tipos, lint, CI, dívida técnica.
+- `docs/analysis/findings.md` — lista priorizada de ajustes (fonte para a próxima etapa).
+
+Verificações executadas: `backend:typecheck` ✅ · `npm test` ✅ (34 testes) ·
+`npm run lint` ✅ (0 erros, 12 avisos no frontend) · `npm run build` ✅.
+
+Conclusão: o backend tem boa forma (módulos isolados, contrato memória/PG, Zod em
+todas as entradas, transações e idempotência nos caminhos PG), mas **não está pronto
+para ligar ao frontend**. Bloqueadores:
+
+- **B1** — não há runner de migração funcional; `drizzle-kit migrate` aponta para
+  `backend/migrations/generated`, que não existe; os `.sql` à mão não têm journal.
+- **B2** — `backend/src/db/schema.ts` diverge das migrações SQL (uniques, checks,
+  enums, índice parcial).
+- **B3** — zero testes de integração PostgreSQL; os 14 testes de backend só exercitam
+  os repositórios em memória.
+- **B4** — o CI (`code-review.yml`) não roda `backend:typecheck` nem testes de
+  integração.
+
+Exploits/altos: **A1** recompensa diária escolhe o `day` no cliente (dia 7 sempre =
+1500 moedas); **A2** `X-Forwarded-For` derrota o rate limiting; **A3** o sorteio de
+captura no servidor ignora todo o sistema de raridade.
+
+Médios notáveis: `GET /api/v1/seasons/current` não valida o token (`void auth;`);
+oráculo de tempo no login permite enumerar contas; CORS default reflete qualquer
+origem; valores de venda/economia divergem entre servidor (`xp/2`) e cliente
+(`FISH_COIN_VALUE`); comportamento memória vs PostgreSQL diverge.
+
+Guardrail reforçado: **não iniciar a integração do frontend com o backend nem a
+autenticação no cliente** até B1–B4 e A1–A3 estarem resolvidos. Próxima etapa:
+utilizador aprova quais achados de `docs/analysis/findings.md` endereçar; cada
+ajuste com TDD, um de cada vez, diff revisto antes de commit.
+
+Nenhum código de aplicação foi alterado nesta etapa de análise.
+
+### Ajustes B1–B4 + Docker — 2026-09-05
+
+Continuação da análise. Nenhuma rota/serviço da app mudou de comportamento.
+
+**B1 — runner de migração** (decisão do utilizador: SQL à mão como fonte + runner próprio):
+- `backend/src/db/migrate.ts` — helpers puros + `runMigrations` (aplica cada `.sql`
+  pendente em transação, regista em `schema_migrations`).
+- `package.json`: `backend:db:migrate` → `tsx backend/src/db/migrate.ts`;
+  `backend:db:generate` fica só para detetar drift.
+- `backend/src/db/migrate.test.ts` — 4 testes unitários dos helpers.
+
+**B2 — `db/schema.ts` reconciliado com as 13 migrações SQL**: todos os `check()`,
+`index`/`uniqueIndex`, o índice parcial `seasons_active_unique`, `claim_date`
+corrigido de `varchar` para `date`, model `schema_migrations` adicionado.
+Confirmado com `drizzle-kit generate` (diff coerente; só nomes de FK diferem).
+
+**B3 — testes de integração PostgreSQL**:
+- `vitest.integration.config.ts` + `npm run test:integration`; `*.integration.test.ts`
+  excluído do `npm test`.
+- `backend/src/testing/pgHarness.ts` — migra uma vez, trunca entre testes.
+- **35 testes, executados e verdes contra PostgreSQL 16 real** (container efémero):
+  migração runner, auth, economia, pesca (conclusão transacional + idempotência +
+  isolamento entre jogadores), inventário (venda atómica, aquário, isolamento),
+  recompensas (uma por dia UTC + ledger), migração de save (preview sem persistir,
+  import transacional, progresso nunca desce, uma vez por utilizador).
+- O runner de migração também foi validado: aplica as 13 migrações e é no-op na 2ª
+  corrida.
+- Dois testes documentam gaps conhecidos: M9 (retry da venda falha após esvaziar o
+  armazém) e A1 (o `day` da recompensa vem do cliente).
+
+**B4 — CI cobre o backend**: `code-review.yml` — job `quality` ganhou
+`backend:typecheck`; novo job `integration` com `services: postgres:16` que corre
+migrações + `test:integration`.
+
+**Docker** (pedido do utilizador, "tudo no Docker como no ICM"):
+- `compose.yaml` — postgres + backend (target `dev`, migra no arranque) + frontend (Vite).
+- `backend/Dockerfile` e `Dockerfile` multi-stage (`deps` → `dev` / `build` → `runtime`).
+- `docker/nginx.conf`, `.dockerignore`, `.env.docker.example` (`.env.docker` git-ignored).
+- `README.md` e `CLAUDE.md` atualizados com o fluxo Docker.
+- **Não construído/executado na sessão** (sem daemon Docker); `docker compose config`
+  valida. Teste do utilizador: `cp .env.docker.example .env.docker && docker compose up`.
+
+Verificações executadas: `backend:typecheck` ✅ · `npm test` ✅ (38 testes, integração
+excluída) · `npm run lint` ✅ · `drizzle-kit generate` ✅ · `docker compose config` ✅.
+
+Próximo: completar B3 (pesca/inventário/rewards/migração) e seguir para A1–A3.
