@@ -45,7 +45,7 @@ export const userProfiles = pgTable('user_profiles', {
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 }, table => ({
-  usernameUnique: uniqueIndex('user_profiles_username_unique').on(table.username),
+  usernameUnique: uniqueIndex('user_profiles_username_unique').on(sql`lower(${table.username})`),
 }));
 
 export const sessions = pgTable('sessions', {

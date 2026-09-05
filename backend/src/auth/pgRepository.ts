@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { and, eq, isNull } from 'drizzle-orm';
 import type { Database } from '../db/client.js';
 import { playerProgress, refreshTokens, sessions, userProfiles, users } from '../db/schema.js';
+import { isUniqueViolation } from '../db/pgErrors.js';
 import type { AuthRepository, AuthSession, AuthUser, RefreshRotation } from './types.js';
 
 function toAuthUser(row: {
@@ -47,27 +48,33 @@ export function createPgAuthRepository(db: Database): AuthRepository {
     findUserById: id => findUser(eq(users.id, id)),
     async createUser(input) {
       const id = randomUUID();
-      const result = await db.transaction(async tx => {
-        await tx.insert(users).values({
-          id,
-          email: input.email,
-          passwordHash: input.passwordHash,
-          status: 'active',
+      try {
+        const result = await db.transaction(async tx => {
+          await tx.insert(users).values({
+            id,
+            email: input.email,
+            passwordHash: input.passwordHash,
+            status: 'active',
+          });
+          await tx.insert(userProfiles).values({
+            userId: id,
+            username: input.username,
+            country: input.country,
+          });
+          await tx.insert(playerProgress).values({ userId: id });
+          return tx
+            .select({ user: users, profile: userProfiles })
+            .from(users)
+            .innerJoin(userProfiles, eq(userProfiles.userId, users.id))
+            .where(eq(users.id, id))
+            .limit(1);
         });
-        await tx.insert(userProfiles).values({
-          userId: id,
-          username: input.username,
-          country: input.country,
-        });
-        await tx.insert(playerProgress).values({ userId: id });
-        return tx
-          .select({ user: users, profile: userProfiles })
-          .from(users)
-          .innerJoin(userProfiles, eq(userProfiles.userId, users.id))
-          .where(eq(users.id, id))
-          .limit(1);
-      });
-      return toAuthUser(result[0]);
+        return toAuthUser(result[0]);
+      } catch (error) {
+        if (isUniqueViolation(error, 'username')) throw new Error('USERNAME_TAKEN');
+        if (isUniqueViolation(error, 'email')) throw new Error('ACCOUNT_ALREADY_EXISTS');
+        throw error;
+      }
     },
     async createSession(input) {
       const sessionId = randomUUID();

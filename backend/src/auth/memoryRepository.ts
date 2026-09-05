@@ -30,6 +30,10 @@ export function createMemoryAuthRepository(): AuthRepository {
       return users.get(id) ?? null;
     },
     async createUser(input) {
+      if ([...users.values()].some(u => u.email === input.email)) throw new Error('ACCOUNT_ALREADY_EXISTS');
+      if ([...users.values()].some(u => u.username.toLowerCase() === input.username.toLowerCase())) {
+        throw new Error('USERNAME_TAKEN');
+      }
       const user: AuthUser = { id: randomUUID(), status: 'active', ...input };
       users.set(user.id, user);
       return user;

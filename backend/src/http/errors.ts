@@ -1,5 +1,8 @@
 import type { FastifyInstance } from 'fastify';
 import { ZodError } from 'zod';
+import { pgConstraint, pgErrorCode } from '../db/pgErrors.js';
+
+export { pgConstraint, pgErrorCode };
 
 export class AppError extends Error {
   constructor(
@@ -38,27 +41,8 @@ const DOMAIN_ERRORS: Record<string, DomainErrorSpec> = {
   INVALID_FISHING_REQUEST: { status: 422, message: 'The fishing request is not valid' },
   INVALID_FISHING_SESSION: { status: 422, message: 'The fishing session is not valid' },
   NO_FISH_AVAILABLE: { status: 422, message: 'No fish are available at that location' },
+  USERNAME_TAKEN: { status: 409, message: 'That username is already taken' },
 };
-
-export function pgErrorCode(error: unknown): string | undefined {
-  for (const candidate of [error, (error as { cause?: unknown } | undefined)?.cause]) {
-    if (candidate && typeof candidate === 'object' && 'code' in candidate) {
-      const code = (candidate as { code?: unknown }).code;
-      if (typeof code === 'string' && /^\d{5}$/.test(code)) return code;
-    }
-  }
-  return undefined;
-}
-
-export function pgConstraint(error: unknown): string | undefined {
-  for (const candidate of [error, (error as { cause?: unknown } | undefined)?.cause]) {
-    if (candidate && typeof candidate === 'object' && 'constraint' in candidate) {
-      const constraint = (candidate as { constraint?: unknown }).constraint;
-      if (typeof constraint === 'string') return constraint;
-    }
-  }
-  return undefined;
-}
 
 export function registerErrorHandling(app: FastifyInstance): void {
   app.setErrorHandler((error, request, reply) => {

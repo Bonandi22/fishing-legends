@@ -42,7 +42,12 @@ describe('pg auth repository (integration)', () => {
   it('rejects a duplicate email', async () => {
     const input = newUser();
     await repo.createUser(input);
-    await expect(repo.createUser(newUser({ email: input.email }))).rejects.toThrow();
+    await expect(repo.createUser(newUser({ email: input.email }))).rejects.toThrow('ACCOUNT_ALREADY_EXISTS');
+  });
+
+  it('rejects a username that differs only in case', async () => {
+    await repo.createUser(newUser({ username: 'Angler' }));
+    await expect(repo.createUser(newUser({ username: 'angler' }))).rejects.toThrow('USERNAME_TAKEN');
   });
 
   it('returns null for an unknown email', async () => {

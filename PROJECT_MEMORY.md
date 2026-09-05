@@ -880,3 +880,24 @@ Próximo: completar B3 (pesca/inventário/rewards/migração) e seguir para A1�
 - Verificação: `backend:typecheck` ✅ · `npm test` ✅ 72 · `test:integration` ✅ 41
   (migração 0013 aplicada) · `lint` ✅ · `drizzle-kit generate` ✅.
 - Próximo: M8 (OpenAPI dos schemas Zod).
+
+### Bloco L (dívida menor) — 2026-09-06
+
+- **L1**: `http/errors.ts` — `if`+ternários → `DOMAIN_ERRORS` map (code → {status,
+  message}); mensagens seguras e precisas. `errors.test.ts`.
+- **L2**: `23505` (unique violation, no erro ou `.cause`) com constraint `idempotency`
+  → `409 IDEMPOTENCY_CONFLICT`; outros → `409 RESOURCE_CONFLICT`. Fim do 500.
+- **L3**: access token carrega `sid`; `verifyAccessToken` → `{ userId, sessionId }`;
+  `requireAuth` popula `request.sessionId`. Nova rota `POST /api/v1/auth/logout`
+  (revoga a sessão / cadeia de refresh tokens) → 204.
+- **L4**: migração `0014` — `user_profiles_username_unique` vira índice funcional
+  `UNIQUE (lower(username))`. `createUser` (PG + memória) lança `USERNAME_TAKEN`
+  (409). Helpers pg movidos para `db/pgErrors.ts` (`isUniqueViolation`).
+- Verificação: `backend:typecheck` ✅ · `npm test` ✅ 79 · `test:integration` ✅ 42
+  (migração 0014 aplicada) · `lint` ✅ · `drizzle-kit generate` ✅.
+- Falta: L5 (Argon2id — precisa de dep + migração verify-and-upgrade), L6 (mais
+  testes de domínio — parcialmente coberto), L7 (expiração de sessão de pesca),
+  L8 (pesca insere em warehouse_fish diretamente), L9 (browserslist, example.test),
+  L10 (`bodyLimit`), L11 (`leaderboard.total`).
+- Branch enviada para `origin/feature/task-06-backend-foundation` (nunca tinha sido
+  pushada); `.gitignore`/`.dockerignore` revistos, `bun.lock`/`bun.lockb` removidos.

@@ -140,6 +140,26 @@ describe('backend foundation', () => {
     expect(afterReuse.statusCode).toBe(401);
   });
 
+  it('rejects a username that differs only in case from an existing one', async () => {
+    const app = createApp({ config: testConfig });
+    apps.add(app);
+
+    const first = await app.inject({
+      method: 'POST',
+      url: '/api/v1/auth/register',
+      payload: { email: 'a@example.com', password: 'a-strong-password-123', username: 'CaseAngler', country: 'br' },
+    });
+    expect(first.statusCode).toBe(201);
+
+    const clash = await app.inject({
+      method: 'POST',
+      url: '/api/v1/auth/register',
+      payload: { email: 'b@example.com', password: 'a-strong-password-123', username: 'caseangler', country: 'br' },
+    });
+    expect(clash.statusCode).toBe(409);
+    expect(clash.json().error.code).toBe('USERNAME_TAKEN');
+  });
+
   it('rejects invalid registration input with a safe error', async () => {
     const app = createApp({ config: testConfig });
     apps.add(app);

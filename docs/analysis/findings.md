@@ -226,9 +226,14 @@ sessão (a cadeia de refresh tokens) → 204. Teste em `app.test.ts` (após logo
 refresh do token original → 401). O access token JWT continua válido até expirar
 (sem denylist — fora do âmbito).
 
-### L4 · Normalização de username · esforço P
-`backend-review.md` auth. Unique case-sensitive → `Angler`/`angler` coexistem.
-**Ajuste**: normalizar (lowercase ou `citext`/índice funcional) e validar unicidade.
+### L4 · Normalização de username · esforço P · ✅ feito 2026-09-06
+`backend-review.md` auth.
+**Feito**: migração `0014` — `user_profiles_username_unique` recriado como índice
+funcional `UNIQUE (lower(username))` (a casing de exibição preserva-se). `createUser`
+(PG e memória) deteta a colisão e lança `USERNAME_TAKEN` (409, novo código);
+`ACCOUNT_ALREADY_EXISTS` também é derivado da violação do unique de email no PG.
+Helpers de erro pg movidos para `backend/src/db/pgErrors.ts` (`isUniqueViolation`).
+Testes: `app.test.ts` (memória) + integração (`Angler` vs `angler` → `USERNAME_TAKEN`).
 
 ### L5 · Parâmetros de hashing não versionados · esforço M
 `security-review.md` S10. `scrypt` sem N/r/p no encoded hash; `ARCHITECTURE` pede
