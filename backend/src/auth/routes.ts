@@ -43,4 +43,9 @@ export async function registerAuthRoutes(app: FastifyInstance, service: AuthServ
       refreshToken: result.refreshToken,
     };
   });
+
+  app.post('/api/v1/auth/logout', { preHandler: app.requireAuth }, async (request, reply) => {
+    if (request.sessionId) await service.logout(request.sessionId);
+    return reply.status(204).send();
+  });
 }

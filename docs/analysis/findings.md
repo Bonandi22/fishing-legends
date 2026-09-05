@@ -205,19 +205,26 @@ não está no documento.
 
 ## Baixo
 
-### L1 · `http/errors.ts` — mapa de erros frágil · esforço M
-`backend-review.md` http/errors. `if` gigante + ternários; mensagens de "auth"
-para erros de domínio.
-**Ajuste**: `Map<code, {status, message}>` ou classe `DomainError` com `statusCode`.
+### L1 · `http/errors.ts` — mapa de erros frágil · esforço M · ✅ feito 2026-09-05
+**Feito**: `if`+ternários → `DOMAIN_ERRORS` (`Record<code, {status, message}>`); cada
+erro devolve uma mensagem segura e precisa (fim do "Authentication request could not
+be completed" fora de contexto). `INVALID_WALLET_AMOUNT`/`INVALID_NET_QUANTITY`
+corrigidos para 400; `NO_FISH_AVAILABLE` adicionado (422). `errors.test.ts`.
 
-### L2 · Colisão de idempotency key → 500 · esforço P
-`security-review.md` S9. Constraint unique não mapeada.
-**Ajuste**: apanhar a violação e devolver o resultado idempotente / `409` limpo.
+### L2 · Colisão de idempotency key → 500 · esforço P · ✅ feito 2026-09-05
+`security-review.md` S9.
+**Feito**: o handler deteta `23505` (no erro ou no `.cause`); se o constraint contém
+`idempotency` → `409 IDEMPOTENCY_CONFLICT` (cliente repete e lê o resultado
+gravado); outros `23505` → `409 RESOURCE_CONFLICT`. Testado em `errors.test.ts`.
 
-### L3 · Rota `logout` em falta · esforço P
-`backend-review.md` auth. `authService.logout` é código morto; `ARCHITECTURE`
-lista `POST /api/v1/auth/logout`.
-**Ajuste**: adicionar a rota (revoga a sessão atual).
+### L3 · Rota `logout` em falta · esforço P · ✅ feito 2026-09-05
+`backend-review.md` auth.
+**Feito**: o access token passa a carregar `sid` (session id); `verifyAccessToken`
+devolve `{ userId, sessionId }`; `requireAuth` popula `request.sessionId`. Nova rota
+`POST /api/v1/auth/logout` (`preHandler: requireAuth`) → `service.logout` revoga a
+sessão (a cadeia de refresh tokens) → 204. Teste em `app.test.ts` (após logout, o
+refresh do token original → 401). O access token JWT continua válido até expirar
+(sem denylist — fora do âmbito).
 
 ### L4 · Normalização de username · esforço P
 `backend-review.md` auth. Unique case-sensitive → `Angler`/`angler` coexistem.

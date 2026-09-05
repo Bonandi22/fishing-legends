@@ -81,6 +81,31 @@ describe('backend foundation', () => {
     expect(refreshResponse.json().refreshToken).not.toBe(registered.refreshToken);
   });
 
+  it('logs out, revoking the session so its refresh token stops working', async () => {
+    const app = createApp({ config: testConfig });
+    apps.add(app);
+
+    const registered = (await app.inject({
+      method: 'POST',
+      url: '/api/v1/auth/register',
+      payload: { email: 'logout@example.com', password: 'a-strong-password-123', username: 'logout_user', country: 'br' },
+    })).json();
+
+    const loggedOut = await app.inject({
+      method: 'POST',
+      url: '/api/v1/auth/logout',
+      headers: { authorization: `Bearer ${registered.accessToken}` },
+    });
+    expect(loggedOut.statusCode).toBe(204);
+
+    const refresh = await app.inject({
+      method: 'POST',
+      url: '/api/v1/auth/refresh',
+      payload: { refreshToken: registered.refreshToken },
+    });
+    expect(refresh.statusCode).toBe(401);
+  });
+
   it('detects a reused refresh token and revokes the session family', async () => {
     const app = createApp({ config: testConfig });
     apps.add(app);

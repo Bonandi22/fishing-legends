@@ -15,8 +15,8 @@ export function createAuthService(repository: AuthRepository, config: AuthServic
   // whether an email is registered. Computed once at startup.
   const decoyPasswordHash = hashPassword('deep-blue-lure/login-timing-equalizer');
 
-  async function issueAccessToken(userId: string): Promise<string> {
-    return new SignJWT({ sub: userId, type: 'access' })
+  async function issueAccessToken(userId: string, sessionId: string): Promise<string> {
+    return new SignJWT({ sub: userId, sid: sessionId, type: 'access' })
       .setProtectedHeader({ alg: ACCESS_ALGORITHM })
       .setIssuedAt()
       .setExpirationTime(`${config.accessTokenTtlSeconds}s`)
@@ -41,7 +41,7 @@ export function createAuthService(repository: AuthRepository, config: AuthServic
         tokenHash: hashToken(refreshToken),
         expiresAt: new Date(Date.now() + config.refreshTokenTtlSeconds * 1000),
       });
-      return { accessToken: await issueAccessToken(user.id), refreshToken, session, user };
+      return { accessToken: await issueAccessToken(user.id, session.id), refreshToken, session, user };
     },
 
     async login(input: { email: string; password: string }) {
@@ -60,7 +60,7 @@ export function createAuthService(repository: AuthRepository, config: AuthServic
         tokenHash: hashToken(refreshToken),
         expiresAt: new Date(Date.now() + config.refreshTokenTtlSeconds * 1000),
       });
-      return { accessToken: await issueAccessToken(user.id), refreshToken, session, user };
+      return { accessToken: await issueAccessToken(user.id, session.id), refreshToken, session, user };
     },
 
     async refresh(refreshToken: string) {
@@ -76,14 +76,14 @@ export function createAuthService(repository: AuthRepository, config: AuthServic
       const user = await repository.findUserById(rotation.userId);
       if (!user || user.status !== 'active') throw new Error('INVALID_REFRESH_TOKEN');
 
-      return { accessToken: await issueAccessToken(user.id), refreshToken: nextRefreshToken, session: rotation.session, user };
+      return { accessToken: await issueAccessToken(user.id, rotation.session.id), refreshToken: nextRefreshToken, session: rotation.session, user };
     },
 
     async logout(sessionId: string) {
       await repository.revokeSession(sessionId);
     },
 
-    async verifyAccessToken(token: string) {
+    async verifyAccessToken(token: string): Promise<{ userId: string; sessionId?: string }> {
       let result;
       try {
         result = await jwtVerify(token, config.accessTokenSecret, { algorithms: [ACCESS_ALGORITHM] });
@@ -93,7 +93,8 @@ export function createAuthService(repository: AuthRepository, config: AuthServic
       if (result.payload.type !== 'access' || typeof result.payload.sub !== 'string') {
         throw new Error('INVALID_ACCESS_TOKEN');
       }
-      return result.payload.sub;
+      const sid = result.payload.sid;
+      return { userId: result.payload.sub, sessionId: typeof sid === 'string' ? sid : undefined };
     },
   };
 }
