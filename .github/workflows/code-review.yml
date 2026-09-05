@@ -35,11 +35,56 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: TypeScript
+      - name: TypeScript (frontend)
         run: npx tsc --noEmit -p tsconfig.app.json
 
-      - name: Tests
+      - name: TypeScript (backend)
+        run: npm run backend:typecheck
+
+      - name: Unit tests
         run: npm test -- --run
 
       - name: Production build
         run: npm run build
+
+  integration:
+    name: Backend integration (PostgreSQL)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: deepbluelure
+          POSTGRES_PASSWORD: deepbluelure
+          POSTGRES_DB: deepbluelure
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U deepbluelure -d deepbluelure"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgres://deepbluelure:deepbluelure@localhost:5432/deepbluelure
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Apply migrations
+        run: npm run backend:db:migrate
+
+      - name: Integration tests
+        run: npm run test:integration

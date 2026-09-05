@@ -16,6 +16,10 @@ dist-ssr
 .env
 .env.*
 !.env.example
+!.env.docker.example
+
+# Drizzle drift-detection output (hand-written SQL in backend/migrations/*.sql is the source)
+backend/migrations/generated
 
 # Test and coverage output
 coverage
