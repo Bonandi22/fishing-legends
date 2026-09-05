@@ -658,3 +658,12 @@ Observações:
 - Origens não permitidas recebem HTTP 403.
 - Requisições de autenticação geram auditoria estruturada sem tokens ou payloads sensíveis.
 - Os limites são locais ao processo; produção com múltiplas instâncias ainda deve usar Redis ou gateway compartilhado.
+
+### Temporadas e Campeonato — fundação
+
+- Adicionada a migração `0012_seasons.sql`.
+- Adicionado `GET /api/v1/seasons/current`, protegido por autenticação.
+- Temporadas possuem estado, janela de início/fim, versão de regras e nível mínimo de elegibilidade.
+- PostgreSQL só retorna a temporada ativa dentro da janela válida.
+- O fallback local fornece uma temporada ativa determinística para desenvolvimento/testes.
+- Pontuação competitiva, inscrição, fechamento, snapshots e premiação permanecem bloqueados até a integração do ranking e antifraude.

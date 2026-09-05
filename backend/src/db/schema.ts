@@ -56,6 +56,20 @@ export const localSaveMigrations = pgTable('local_save_migrations', {
   userUnique: uniqueIndex('local_save_migrations_user_unique').on(table.userId),
 }));
 
+export const seasons = pgTable('seasons', {
+  id: uuid('id').primaryKey(),
+  seasonKey: varchar('season_key', { length: 64 }).notNull(),
+  name: varchar('name', { length: 120 }).notNull(),
+  status: varchar('status', { length: 16 }).notNull().default('scheduled'),
+  startsAt: timestamp('starts_at', { withTimezone: true }).notNull(),
+  endsAt: timestamp('ends_at', { withTimezone: true }).notNull(),
+  rulesetVersion: varchar('ruleset_version', { length: 64 }).notNull(),
+  minimumLevel: integer('minimum_level').notNull().default(1),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+}, table => ({
+  seasonKeyUnique: uniqueIndex('seasons_key_unique').on(table.seasonKey),
+}));
+
 export const playerProgress = pgTable('player_progress', {
   userId: uuid('user_id').primaryKey().references(() => users.id, { onDelete: 'cascade' }),
   level: integer('level').notNull().default(1),
@@ -118,4 +132,4 @@ export const aquariumFish = pgTable('aquarium_fish', {
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
-export const schema = { users, userProfiles, sessions, fishingSessions, localSaveMigrations, playerProgress, wallets, walletTransactions, dailyRewardClaims, warehouseFish, aquariumFish };
+export const schema = { users, userProfiles, sessions, fishingSessions, localSaveMigrations, seasons, playerProgress, wallets, walletTransactions, dailyRewardClaims, warehouseFish, aquariumFish };

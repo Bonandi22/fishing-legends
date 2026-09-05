@@ -340,4 +340,26 @@ describe('backend foundation', () => {
     expect(second.json().claimed).toBe(false);
     expect(second.json().balance).toBe(first.json().balance);
   });
+
+  it('returns the active authenticated season', async () => {
+    const app = createApp({ config: testConfig });
+    apps.add(app);
+    const registration = await app.inject({
+      method: 'POST',
+      url: '/api/v1/auth/register',
+      payload: {
+        email: 'season@example.com',
+        password: 'a-strong-password-123',
+        username: 'season_user',
+        country: 'br',
+      },
+    });
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/v1/seasons/current',
+      headers: { authorization: `Bearer ${registration.json().accessToken}` },
+    });
+    expect(response.statusCode).toBe(200);
+    expect(response.json().season.status).toBe('active');
+  });
 });
