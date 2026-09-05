@@ -247,9 +247,16 @@ Argon2id.
 `config/env.test.ts` (A2), `economy/pricing.test.ts` (M4), `migration/service.test.ts`
 (`validateLocalSave` — 6 casos). Score do leaderboard coberto pela integração.
 
-### L7 · Fishing session sem expiração / limite de frequência · esforço M
-`backend-review.md` fishing. `status='expired'` no CHECK mas nunca usado.
-**Ajuste**: TTL na sessão + rejeição de conclusão tardia; base para antifraude.
+### L7 · Fishing session sem expiração / limite de frequência · esforço M · ✅ feito 2026-09-06
+`backend-review.md` fishing.
+**Feito**: `backend/src/fishing/session.ts` — `FISHING_SESSION_TTL_MS` (5 min),
+`isSessionExpired(createdAt, now)`, `sessionExpiresAt`. `complete` (PG e memória)
+rejeita sessões fora da janela: marca `status='expired'` e lança
+`FISHING_SESSION_EXPIRED` (410). `toSession` expõe `expiresAt`. Sem migração
+(deriva de `created_at`). Testes: `session.test.ts` (pure), `service.test.ts`
+(memória, `now` injetável), integração (backdate de `created_at` → 410 + status
+gravado + sem captura). **Limite de frequência** fica para o módulo de antifraude
+(Fase 11).
 
 ### L8 · `fishing` insere em `warehouse_fish` diretamente · esforço P
 `backend-review.md` fishing. Cruza fronteira de módulo (`ARCHITECTURE.md:42`).

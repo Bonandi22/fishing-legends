@@ -6,6 +6,7 @@ import type { createCatalogService } from '../catalog/service.js';
 import type { PlayerRepository } from '../players/types.js';
 import { applyCatchProgress } from '../players/progress.js';
 import { rollCatch } from './roll.js';
+import { isSessionExpired, sessionExpiresAt } from './session.js';
 
 export function createPgFishingService(
   db: Database,
@@ -14,7 +15,8 @@ export function createPgFishingService(
 ) {
   const toSession = (row: typeof fishingSessions.$inferSelect) => ({
     ...row,
-    status: (row.status === 'completed' ? 'completed' : 'open') as 'open' | 'completed',
+    status: (row.status === 'completed' ? 'completed' : row.status === 'expired' ? 'expired' : 'open') as 'open' | 'completed' | 'expired',
+    expiresAt: sessionExpiresAt(row.createdAt),
     ...(row.resultFishId && row.resultWeight !== null && row.resultXp !== null
       ? { result: { fishId: row.resultFishId, weight: Number(row.resultWeight), xp: row.resultXp } }
       : {}),
@@ -47,6 +49,13 @@ export function createPgFishingService(
           session: toSession(current),
           result: { fishId: current.resultFishId, weight: Number(current.resultWeight), xp: current.resultXp },
         };
+      }
+      if (current.status === 'expired' || (current.status === 'open' && isSessionExpired(current.createdAt))) {
+        if (current.status === 'open') {
+          await db.update(fishingSessions).set({ status: 'expired' })
+            .where(and(eq(fishingSessions.id, sessionId), eq(fishingSessions.status, 'open')));
+        }
+        throw new Error('FISHING_SESSION_EXPIRED');
       }
       const location = catalog.findLocation(current.locationId);
       if (!location) throw new Error('INVALID_FISHING_SESSION');
