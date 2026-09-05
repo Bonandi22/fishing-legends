@@ -764,3 +764,18 @@ Verificações executadas: `backend:typecheck` ✅ · `npm test` ✅ (38 testes,
 excluída) · `npm run lint` ✅ · `drizzle-kit generate` ✅ · `docker compose config` ✅.
 
 Próximo: completar B3 (pesca/inventário/rewards/migração) e seguir para A1–A3.
+
+### A1 — recompensa diária calculada no servidor — 2026-09-05
+
+- `resolveRewardDay(lastClaim, today)` puro em `backend/src/rewards/service.ts`:
+  sem histórico / dia perdido → 1; último claim ontem (UTC) → dia+1 com wrap 7→1.
+- `claim` (PostgreSQL e memória) deixou de aceitar `requestedDay`; deriva o dia do
+  último claim do utilizador.
+- `POST /api/v1/rewards/daily/claim` já não valida `day` no corpo (ignorado se
+  enviado). Resposta inalterada: `{ claimed, day, amount, transactionId, balance }`.
+- TDD: 6 testes unitários de `resolveRewardDay` + suíte de integração de rewards
+  passou de 4 para 8 testes (streak avança, wrap, reset após dia perdido, isolamento
+  por utilizador, dia gravado na linha). `app.test.ts` atualizado (sem `day` no payload).
+- Verificação: `backend:typecheck` ✅ · `npm test` ✅ 44 · `test:integration` ✅ 39
+  (contra PostgreSQL real).
+- Próximo: A2 (`trustProxy` no rate limit) e A3 (raridade no sorteio de pesca).

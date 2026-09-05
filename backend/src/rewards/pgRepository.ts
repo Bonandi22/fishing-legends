@@ -1,15 +1,13 @@
-import { and, eq } from 'drizzle-orm';
+import { and, desc, eq } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
 import type { Database } from '../db/client.js';
-import { dailyRewardClaims, playerProgress, walletTransactions, wallets } from '../db/schema.js';
-import { rewardForDay, todayUtc } from './service.js';
+import { dailyRewardClaims, walletTransactions, wallets } from '../db/schema.js';
+import { resolveRewardDay, rewardForDay, todayUtc } from './service.js';
 
 export function createPgRewardsService(db: Database) {
   return {
-    async claim(userId: string, requestedDay: number) {
+    async claim(userId: string) {
       const claimDate = todayUtc();
-      const day = Math.min(7, Math.max(1, requestedDay));
-      const amount = rewardForDay(day);
       return db.transaction(async tx => {
         const existing = await tx.select().from(dailyRewardClaims)
           .where(and(eq(dailyRewardClaims.userId, userId), eq(dailyRewardClaims.claimDate, claimDate))).limit(1);
@@ -17,6 +15,17 @@ export function createPgRewardsService(db: Database) {
           const balance = await tx.select().from(wallets).where(eq(wallets.userId, userId)).limit(1);
           return { claimed: false, day: existing[0].rewardDay, amount: existing[0].amount, transactionId: existing[0].id, balance: balance[0]?.balance ?? 0 };
         }
+
+        const [last] = await tx.select().from(dailyRewardClaims)
+          .where(eq(dailyRewardClaims.userId, userId))
+          .orderBy(desc(dailyRewardClaims.claimDate))
+          .limit(1);
+        const day = resolveRewardDay(
+          last ? { claimDate: last.claimDate, rewardDay: last.rewardDay } : null,
+          claimDate,
+        );
+        const amount = rewardForDay(day);
+
         await tx.insert(wallets).values({ userId, balance: 0 }).onConflictDoNothing();
         const wallet = await tx.select().from(wallets).where(eq(wallets.userId, userId)).limit(1);
         const balance = (wallet[0]?.balance ?? 0) + amount;

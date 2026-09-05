@@ -55,7 +55,8 @@ Harness `backend/src/testing/pgHarness.ts` (migra uma vez, trunca entre testes).
   transacional (armazém + aquário + merge de progresso), progresso nunca desce,
   import único por utilizador.
 
-Dois testes documentam gaps conhecidos (ver M9 e A1) em vez de os corrigir.
+Um teste documenta o gap M9 em vez de o corrigir (a venda do armazém). O gap A1
+já foi corrigido — ver A1.
 
 ### B4 · CI não cobre o backend · esforço P · ✅ feito 2026-09-05
 `quality-review.md` §3.
@@ -68,12 +69,15 @@ antigo não tem check de drift sem escrever ficheiro; reavaliar).
 
 ## Alto
 
-### A1 · Recompensa diária escolhida pelo cliente · esforço M
-`security-review.md` S6 / `backend-review.md` rewards. `day` vem do corpo →
-`day: 7` = 1500 moedas/dia.
-**Ajuste**: servidor calcula o dia da streak a partir de `daily_reward_claims`
-(consecutividade de `claim_date`); ignora o `day` do cliente. Teste: dia 1 no
-primeiro claim, incremento com dias consecutivos, reset após falha.
+### A1 · Recompensa diária escolhida pelo cliente · esforço M · ✅ feito 2026-09-05
+`security-review.md` S6 / `backend-review.md` rewards.
+**Feito**: `resolveRewardDay(lastClaim, today)` puro em `rewards/service.ts` —
+sem histórico ou dia perdido → 1; último claim ontem (UTC) → dia+1 com wrap 7→1.
+`claim` (PG + memória) deixou de aceitar `requestedDay`: lê o último claim do
+utilizador e deriva o dia. `POST /api/v1/rewards/daily/claim` já não valida `day`
+no corpo (um `day` enviado é ignorado). 6 testes unitários de `resolveRewardDay` +
+8 de integração (streak avança, wrap, reset, isolamento por utilizador, dia gravado
+na linha). Resposta mantém `{ claimed, day, amount, transactionId, balance }`.
 
 ### A2 · `X-Forwarded-For` derrota o rate limiting · esforço P
 `security-review.md` S1. Sem `trustProxy`, o header é aceite de qualquer cliente.
@@ -211,7 +215,7 @@ payload de migração de save pode ser grande — dimensionar conscientemente).
 1. ~~**B2 → B1 → B4**~~ ✅ feito 2026-09-05.
 2. ~~**B3**~~ ✅ feito 2026-09-05 (35 testes de integração; falta só expandir cobertura
    conforme novos módulos).
-3. **A1, A2, A3** (exploits) — alto valor, esforço P–M. **← próximo**
+3. ~~**A1**~~ ✅ feito 2026-09-05. **A2, A3** (exploits) — **← próximo**
 4. **M1, M2, M3, M6, M9** (segurança de rotas + CORS + idempotência da venda) —
    vários são P e M6 remove M1.
 5. **M4, M5** (consistência de economia e memória/PG).

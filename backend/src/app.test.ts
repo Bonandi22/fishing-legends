@@ -323,20 +323,11 @@ describe('backend foundation', () => {
       },
     });
     const headers = { authorization: `Bearer ${registration.json().accessToken}` };
-    const first = await app.inject({
-      method: 'POST',
-      url: '/api/v1/rewards/daily/claim',
-      headers,
-      payload: { day: 1 },
-    });
-    const second = await app.inject({
-      method: 'POST',
-      url: '/api/v1/rewards/daily/claim',
-      headers,
-      payload: { day: 1 },
-    });
+    const first = await app.inject({ method: 'POST', url: '/api/v1/rewards/daily/claim', headers });
+    const second = await app.inject({ method: 'POST', url: '/api/v1/rewards/daily/claim', headers });
     expect(first.statusCode).toBe(200);
     expect(first.json().claimed).toBe(true);
+    expect(first.json().day).toBe(1);
     expect(second.json().claimed).toBe(false);
     expect(second.json().balance).toBe(first.json().balance);
   });
