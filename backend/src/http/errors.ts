@@ -12,6 +12,54 @@ export class AppError extends Error {
   }
 }
 
+type DomainErrorSpec = { status: number; message: string };
+
+/**
+ * Domain error codes a service may `throw new Error(<CODE>)` with, mapped to a
+ * stable HTTP status and a safe, user-facing message. No internal detail leaks.
+ */
+const DOMAIN_ERRORS: Record<string, DomainErrorSpec> = {
+  ACCOUNT_ALREADY_EXISTS: { status: 409, message: 'An account with that email already exists' },
+  INVALID_CREDENTIALS: { status: 401, message: 'Invalid email or password' },
+  INVALID_REFRESH_TOKEN: { status: 401, message: 'The refresh token is invalid or has expired' },
+  REFRESH_TOKEN_REUSED: { status: 401, message: 'The refresh token was already used; the session has been revoked' },
+  INVALID_ACCESS_TOKEN: { status: 401, message: 'The access token is missing or invalid' },
+  INVALID_IDEMPOTENCY_KEY: { status: 400, message: 'A valid Idempotency-Key header is required' },
+  INVALID_WALLET_AMOUNT: { status: 400, message: 'The amount is not valid' },
+  INVALID_NET_QUANTITY: { status: 400, message: 'The net quantity is not valid' },
+  LOCATION_LOCKED: { status: 403, message: 'That location is not unlocked yet' },
+  NET_LIMIT_REACHED: { status: 409, message: 'The net limit has been reached' },
+  INSUFFICIENT_FUNDS: { status: 409, message: 'Insufficient wallet balance' },
+  LOCAL_SAVE_ALREADY_IMPORTED: { status: 409, message: 'The local save has already been imported' },
+  WAREHOUSE_FISH_NOT_FOUND: { status: 404, message: 'That warehouse fish was not found' },
+  WAREHOUSE_EMPTY: { status: 422, message: 'The warehouse is empty' },
+  INVALID_AQUARIUM_SECTOR: { status: 422, message: 'The aquarium sector is not valid' },
+  INVALID_PLAYER_PROGRESS: { status: 422, message: 'Player progress is not available' },
+  INVALID_FISHING_REQUEST: { status: 422, message: 'The fishing request is not valid' },
+  INVALID_FISHING_SESSION: { status: 422, message: 'The fishing session is not valid' },
+  NO_FISH_AVAILABLE: { status: 422, message: 'No fish are available at that location' },
+};
+
+export function pgErrorCode(error: unknown): string | undefined {
+  for (const candidate of [error, (error as { cause?: unknown } | undefined)?.cause]) {
+    if (candidate && typeof candidate === 'object' && 'code' in candidate) {
+      const code = (candidate as { code?: unknown }).code;
+      if (typeof code === 'string' && /^\d{5}$/.test(code)) return code;
+    }
+  }
+  return undefined;
+}
+
+export function pgConstraint(error: unknown): string | undefined {
+  for (const candidate of [error, (error as { cause?: unknown } | undefined)?.cause]) {
+    if (candidate && typeof candidate === 'object' && 'constraint' in candidate) {
+      const constraint = (candidate as { constraint?: unknown }).constraint;
+      if (typeof constraint === 'string') return constraint;
+    }
+  }
+  return undefined;
+}
+
 export function registerErrorHandling(app: FastifyInstance): void {
   app.setErrorHandler((error, request, reply) => {
     if (error instanceof ZodError) {
@@ -20,27 +68,33 @@ export function registerErrorHandling(app: FastifyInstance): void {
       });
     }
 
-    if (error instanceof Error && ['ACCOUNT_ALREADY_EXISTS', 'INVALID_CREDENTIALS', 'INVALID_REFRESH_TOKEN', 'REFRESH_TOKEN_REUSED', 'INVALID_ACCESS_TOKEN', 'INVALID_FISHING_REQUEST', 'LOCATION_LOCKED', 'INVALID_FISHING_SESSION', 'INVALID_IDEMPOTENCY_KEY', 'INVALID_WALLET_AMOUNT', 'INVALID_NET_QUANTITY', 'NET_LIMIT_REACHED', 'INSUFFICIENT_FUNDS', 'INVALID_PLAYER_PROGRESS', 'LOCAL_SAVE_ALREADY_IMPORTED', 'WAREHOUSE_EMPTY', 'WAREHOUSE_FISH_NOT_FOUND', 'INVALID_AQUARIUM_SECTOR'].includes(error.message)) {
-      const status = error.message === 'ACCOUNT_ALREADY_EXISTS' ? 409
-        : error.message === 'LOCATION_LOCKED' ? 403
-        : error.message === 'INVALID_IDEMPOTENCY_KEY' ? 400
-        : error.message === 'WAREHOUSE_FISH_NOT_FOUND' ? 404
-        : error.message === 'NET_LIMIT_REACHED' || error.message === 'INSUFFICIENT_FUNDS' ? 409
-        : error.message === 'INVALID_PLAYER_PROGRESS' ? 422
-        : error.message === 'LOCAL_SAVE_ALREADY_IMPORTED' ? 409
-        : error.message === 'INVALID_NET_QUANTITY' ? 400
-        : error.message === 'WAREHOUSE_EMPTY' || error.message === 'INVALID_AQUARIUM_SECTOR' ? 422
-        : error.message.startsWith('INVALID_FISHING') ? 422
-        : 401;
-      return reply.status(status).send({
-        error: { code: error.message, message: 'Authentication request could not be completed' },
-      });
+    if (error instanceof Error) {
+      const spec = DOMAIN_ERRORS[error.message];
+      if (spec) {
+        return reply.status(spec.status).send({
+          error: { code: error.message, message: spec.message },
+        });
+      }
     }
 
     if (error instanceof AppError) {
       request.log.warn({ code: error.code }, error.message);
       return reply.status(error.statusCode).send({
         error: { code: error.code, message: error.message },
+      });
+    }
+
+    // A concurrent request with the same idempotency key won the insert race.
+    // The client can retry: the second attempt reads the stored result.
+    if (pgErrorCode(error) === '23505') {
+      const idempotency = pgConstraint(error)?.includes('idempotency');
+      return reply.status(409).send({
+        error: {
+          code: idempotency ? 'IDEMPOTENCY_CONFLICT' : 'RESOURCE_CONFLICT',
+          message: idempotency
+            ? 'A concurrent request with the same idempotency key is being processed'
+            : 'The resource already exists',
+        },
       });
     }
 
