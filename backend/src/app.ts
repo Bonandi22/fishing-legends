@@ -27,6 +27,9 @@ import { createPgMigrationService } from './migration/pgRepository.js';
 import { registerLeaderboardRoutes } from './leaderboard/routes.js';
 import { createMemoryLeaderboardService } from './leaderboard/service.js';
 import { createPgLeaderboardService } from './leaderboard/pgRepository.js';
+import { registerRewardsRoutes } from './rewards/routes.js';
+import { createMemoryRewardsService } from './rewards/memoryRepository.js';
+import { createPgRewardsService } from './rewards/pgRepository.js';
 
 export type AppDependencies = {
   config: AppConfig;
@@ -57,10 +60,12 @@ export function createApp({ config }: AppDependencies): FastifyInstance {
   const leaderboardService = database
     ? createPgLeaderboardService(database)
     : createMemoryLeaderboardService(playerRepository);
+  const rewardsService = database ? createPgRewardsService(database) : createMemoryRewardsService();
   void registerAuthRoutes(app, authService);
   registerPlayerRoutes(app, authService, playerRepository);
   registerMigrationRoutes(app, authService, migrationService);
   registerLeaderboardRoutes(app, authService, leaderboardService);
+  registerRewardsRoutes(app, authService, rewardsService);
   const catalogService = createCatalogService();
   registerCatalogRoutes(app, catalogService);
   const economyService = database ? createPgEconomyService(database) : createMemoryEconomyService();

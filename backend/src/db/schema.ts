@@ -87,6 +87,17 @@ export const walletTransactions = pgTable('wallet_transactions', {
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
+export const dailyRewardClaims = pgTable('daily_reward_claims', {
+  id: uuid('id').primaryKey(),
+  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  claimDate: varchar('claim_date', { length: 10 }).notNull(),
+  rewardDay: integer('reward_day').notNull(),
+  amount: bigint('amount', { mode: 'number' }).notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+}, table => ({
+  userDateUnique: uniqueIndex('daily_reward_claims_user_date_unique').on(table.userId, table.claimDate),
+}));
+
 export const warehouseFish = pgTable('warehouse_fish', {
   id: uuid('id').primaryKey(),
   userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
@@ -107,4 +118,4 @@ export const aquariumFish = pgTable('aquarium_fish', {
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
-export const schema = { users, userProfiles, sessions, fishingSessions, localSaveMigrations, playerProgress, wallets, walletTransactions, warehouseFish, aquariumFish };
+export const schema = { users, userProfiles, sessions, fishingSessions, localSaveMigrations, playerProgress, wallets, walletTransactions, dailyRewardClaims, warehouseFish, aquariumFish };

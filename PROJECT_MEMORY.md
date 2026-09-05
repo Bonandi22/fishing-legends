@@ -641,3 +641,12 @@ Observações:
 - A pontuação é derivada exclusivamente do progresso server-side: nível, peixes capturados e XP.
 - PostgreSQL consulta todos os jogadores persistidos; o fallback em memória expõe o jogador atual para testes locais.
 - Temporadas e snapshots históricos permanecem reservados para a etapa de temporadas.
+
+### Recompensas diárias server-side
+
+- Adicionada a migração `0011_daily_rewards.sql`.
+- Adicionado `POST /api/v1/rewards/daily/claim`.
+- O dia é validado pelo servidor e a data usa UTC.
+- Cada usuário pode receber uma recompensa por dia; repetição retorna o resultado já registrado.
+- Crédito na carteira, claim e ledger são gravados na mesma transação PostgreSQL.
+- O primeiro slice server-side cobre recompensas em moedas; multiplicadores e skins permanecem para o módulo de recompensas completo.

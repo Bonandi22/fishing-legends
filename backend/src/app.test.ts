@@ -303,4 +303,36 @@ describe('backend foundation', () => {
     expect(response.json().season).toBe('all-time');
     expect(response.json().entries[0].username).toBe('ranking_user');
   });
+
+  it('claims a daily reward only once', async () => {
+    const app = createApp({ config: testConfig });
+    apps.add(app);
+    const registration = await app.inject({
+      method: 'POST',
+      url: '/api/v1/auth/register',
+      payload: {
+        email: 'rewards@example.com',
+        password: 'a-strong-password-123',
+        username: 'rewards_user',
+        country: 'br',
+      },
+    });
+    const headers = { authorization: `Bearer ${registration.json().accessToken}` };
+    const first = await app.inject({
+      method: 'POST',
+      url: '/api/v1/rewards/daily/claim',
+      headers,
+      payload: { day: 1 },
+    });
+    const second = await app.inject({
+      method: 'POST',
+      url: '/api/v1/rewards/daily/claim',
+      headers,
+      payload: { day: 1 },
+    });
+    expect(first.statusCode).toBe(200);
+    expect(first.json().claimed).toBe(true);
+    expect(second.json().claimed).toBe(false);
+    expect(second.json().balance).toBe(first.json().balance);
+  });
 });
