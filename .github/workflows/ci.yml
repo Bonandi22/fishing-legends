@@ -1,4 +1,4 @@
-name: Code Review
+name: CI
 
 on:
   pull_request:
@@ -10,7 +10,7 @@ on:
       - 'feature/**'
 
 concurrency:
-  group: code-review-${{ github.workflow }}-${{ github.ref }}
+  group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 permissions:

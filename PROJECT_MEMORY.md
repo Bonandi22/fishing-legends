@@ -901,3 +901,19 @@ Próximo: completar B3 (pesca/inventário/rewards/migração) e seguir para A1�
   L10 (`bodyLimit`), L11 (`leaderboard.total`).
 - Branch enviada para `origin/feature/task-06-backend-foundation` (nunca tinha sido
   pushada); `.gitignore`/`.dockerignore` revistos, `bun.lock`/`bun.lockb` removidos.
+- **PR aberta**: `Bonandi22/deep-blue-lure#6` (→ `main`), CI verde (`quality` +
+  `integration`), `mergeStateStatus: CLEAN`.
+
+### Workflows Claude no GitHub (paridade com o ICM) — 2026-09-06
+
+Replicados de `ICM_TESOURARIA/ICMSolution/.github/workflows/`:
+- `.github/workflows/claude-code-review.yml` — review automática do Claude em cada
+  PR (`opened`/`synchronize`/`ready_for_review`/`reopened`), usa
+  `anthropics/claude-code-action@v1` + plugin `code-review`. Salta PRs do Dependabot.
+- `.github/workflows/claude.yml` — handler de `@claude` em comentários de issue/PR,
+  reviews e issues.
+- `code-review.yml` renomeado para `ci.yml` (name: `CI`) para não confундir com a
+  review do Claude.
+- **Falta a ação do utilizador**: adicionar o secret `CLAUDE_CODE_OAUTH_TOKEN` em
+  Settings → Secrets and variables → Actions (gerar com `claude setup-token`).
+  Até lá o check "Claude Code Review" falha (não bloqueia — não é check obrigatório).
