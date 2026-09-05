@@ -1,0 +1,40 @@
+name: Claude Code Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, ready_for_review, reopened]
+    # Optional: only run when code changes
+    # paths:
+    #   - "src/**"
+    #   - "backend/**"
+
+jobs:
+  claude-review:
+    # Dependabot PRs run in a restricted context (no access to secrets, so
+    # CLAUDE_CODE_OAUTH_TOKEN is empty) and claude-code-action blocks bot actors.
+    # Skip the job on those PRs -> "skipped" (neutral) instead of "failure".
+    # The real gates (Code Review workflow) still cover them.
+    if: github.actor != 'dependabot[bot]'
+
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+      id-token: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Run Claude Code Review
+        id: claude-review
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          plugin_marketplaces: 'https://github.com/anthropics/claude-code.git'
+          plugins: 'code-review@claude-code-plugins'
+          prompt: '/code-review:code-review ${{ github.repository }}/pull/${{ github.event.pull_request.number }}'
+          # See https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md

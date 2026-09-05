@@ -1,0 +1,67 @@
+# Development stack: one command brings up Postgres + backend + frontend.
+#   docker compose up
+# Postgres is also published on localhost:5432 so `npm run test:integration`
+# can run against it from the host.
+
+name: deep-blue-lure
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: deepbluelure
+      POSTGRES_PASSWORD: deepbluelure
+      POSTGRES_DB: deepbluelure
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U deepbluelure -d deepbluelure"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+      target: dev
+    env_file:
+      - .env.docker
+    environment:
+      HOST: 0.0.0.0
+      PORT: "8090"
+      DATABASE_URL: postgres://deepbluelure:deepbluelure@postgres:5432/deepbluelure
+    ports:
+      - "8090:8090"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    # Only source is bind-mounted; node_modules stays as baked into the image.
+    volumes:
+      - ./backend:/app/backend
+      - ./src:/app/src
+      - ./tsconfig.json:/app/tsconfig.json
+      - ./tsconfig.backend.json:/app/tsconfig.backend.json
+      - ./drizzle.config.ts:/app/drizzle.config.ts
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: dev
+    environment:
+      # API base for the client to reach the backend from the browser
+      VITE_API_BASE_URL: http://localhost:8090
+    ports:
+      - "8080:8080"
+    depends_on:
+      - backend
+    volumes:
+      - ./:/app
+      - frontend_node_modules:/app/node_modules
+
+volumes:
+  pgdata:
+  frontend_node_modules:

@@ -15,9 +15,9 @@ Deep Blue Lure é um jogo de pesca 3D desenvolvido com React e TypeScript. O jog
 
 ## Arquitetura atual
 
-O projeto é uma SPA frontend-only baseada em Vite. O estado do jogador é controlado por `src/game/useGameState.ts`, as regras puras estão sendo extraídas para módulos de domínio, e a persistência usa `localStorage` por meio de uma abstração `KeyValueStorage`.
+O frontend é uma SPA baseada em Vite. O estado do jogador é controlado por `src/game/useGameState.ts`, as regras puras estão sendo extraídas para módulos de domínio, e a persistência usa `localStorage` por meio de uma abstração `KeyValueStorage`.
 
-Ainda não existe backend, autenticação real ou ranking global. Conta, ranking e progresso local não devem ser considerados confiáveis para competição online. Os requisitos de segurança e a arquitetura online estão documentados em [`PROJECT_MEMORY.md`](./PROJECT_MEMORY.md).
+Um backend (Fastify + PostgreSQL + Drizzle) está em construção em `backend/` na branch `feature/task-06-backend-foundation` — ainda não integrado em `main` e o frontend ainda **não** o consome. Enquanto isso, conta, ranking e progresso local não devem ser considerados confiáveis para competição online. Arquitetura, análise e ajustes pendentes estão em [`backend/docs/ARCHITECTURE.md`](./backend/docs/ARCHITECTURE.md), [`docs/analysis/`](./docs/analysis/) e [`PROJECT_MEMORY.md`](./PROJECT_MEMORY.md).
 
 ## Desenvolvimento local
 
@@ -30,6 +30,33 @@ npm install
 npm run dev
 ```
 
+## Desenvolvimento com Docker
+
+Requisitos: Docker e Docker Compose. Sobe PostgreSQL, backend (Fastify, com
+migrações no arranque) e frontend (Vite) de uma vez:
+
+```bash
+cp .env.docker.example .env.docker
+docker compose up
+```
+
+- Frontend: http://localhost:8080
+- Backend: http://localhost:8090 (`/health`, `/ready`, `/api/v1/...`)
+- PostgreSQL: `localhost:5432` (`deepbluelure` / `deepbluelure`)
+
+O `.env.docker` contém apenas valores de desenvolvimento e é git-ignored.
+`backend/` e `src/` são bind-mounted para hot-reload; após mudar `package.json`,
+reconstruir com `docker compose up --build` (ou `docker compose down -v` para
+recriar os volumes de `node_modules`).
+
+### Testes de integração (PostgreSQL)
+
+```bash
+docker compose up -d postgres
+DATABASE_URL=postgres://deepbluelure:deepbluelure@localhost:5432/deepbluelure npm run backend:db:migrate
+DATABASE_URL=postgres://deepbluelure:deepbluelure@localhost:5432/deepbluelure npm run test:integration
+```
+
 ## Scripts
 
 | Comando | Finalidade |
@@ -37,9 +64,13 @@ npm run dev
 | `npm run dev` | Inicia o servidor Vite |
 | `npm run build` | Gera o build de produção |
 | `npm run build:dev` | Gera o build em modo desenvolvimento |
-| `npm test` | Executa os testes Vitest |
+| `npm test` | Executa os testes unitários Vitest (frontend + backend em memória) |
 | `npm run test:watch` | Executa Vitest em modo watch |
+| `npm run test:integration` | Testes de integração do backend contra PostgreSQL (`DATABASE_URL` obrigatório) |
 | `npm run lint` | Executa o ESLint |
+| `npm run backend:dev` | Backend Fastify local (`ACCESS_TOKEN_SECRET` ≥32 chars) |
+| `npm run backend:typecheck` | Typecheck do backend |
+| `npm run backend:db:migrate` | Aplica as migrações SQL pendentes (`DATABASE_URL` obrigatório) |
 
 ## Testes e qualidade
 
@@ -49,11 +80,16 @@ Antes de abrir um pull request:
 
 ```bash
 npx tsc --noEmit -p tsconfig.app.json
+npm run backend:typecheck
 npm test
 npm run build
 ```
 
-Pull Requests para `main` executam automaticamente o workflow **Code Review**, que valida TypeScript, testes e build de produção. O merge deve ocorrer somente após os checks obrigatórios aprovarem e a revisão do código ser concluída.
+Pull Requests para `main` executam automaticamente o workflow **Code Review**: job
+`quality` (TypeScript frontend + backend, testes unitários, build de produção) e job
+`integration` (migrações + testes de integração contra um PostgreSQL efémero). O
+merge deve ocorrer somente após os checks obrigatórios aprovarem e a revisão do
+código ser concluída.
 
 ## Estratégia de branches
 

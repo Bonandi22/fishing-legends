@@ -1,0 +1,41 @@
+# Dependencies (installed inside the image)
+node_modules
+**/node_modules
+
+# Build / test output
+dist
+dist-ssr
+build
+coverage
+playwright-report
+test-results
+blob-report
+*.tsbuildinfo
+backend/migrations/generated
+
+# VCS / CI / editor
+.git
+.github
+.vscode
+.idea
+
+# Secrets and logs (env is passed at runtime via compose)
+*.log
+.env
+.env.*
+!.env.docker.example
+
+# Not a supported install path here
+bun.lockb
+bun.lock
+
+# Container/build metadata (not needed inside the image)
+Dockerfile
+backend/Dockerfile
+.dockerignore
+compose.yaml
+
+# Docs
+docs
+*.md
+!README.md

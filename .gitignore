@@ -10,12 +10,22 @@ lerna-debug.log*
 node_modules
 dist
 dist-ssr
+build
 *.local
+*.tsbuildinfo
+
+# This repo uses npm (see README / CI). Stale Lovable-template bun lockfiles removed.
+bun.lock
+bun.lockb
 
 # Environment and secrets
 .env
 .env.*
 !.env.example
+!.env.docker.example
+
+# Drizzle drift-detection output (hand-written SQL in backend/migrations/*.sql is the source)
+backend/migrations/generated
 
 # Test and coverage output
 coverage
@@ -27,9 +37,13 @@ blob-report
 .vscode/*
 !.vscode/extensions.json
 .idea
-.DS_Store
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
 *.sw?
+
+# OS files
+.DS_Store
+Thumbs.db
+Desktop.ini

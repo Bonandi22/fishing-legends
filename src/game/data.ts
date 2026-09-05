@@ -1,4 +1,4 @@
-import { Fish, FishingLocation } from './types';
+import { Fish, FishingLocation } from './types.js';
 
 export const FISH: Fish[] = [
   // === FRESHWATER COMMON ===
