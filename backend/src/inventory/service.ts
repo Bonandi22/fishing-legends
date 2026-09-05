@@ -16,6 +16,7 @@ export function createMemoryInventoryService(
   economy: EconomyService,
 ) {
   const warehouse = new Map<string, WarehouseFish[]>();
+  const settledSales = new Map<string, { sold: number; value: number; transaction: Awaited<ReturnType<EconomyService['credit']>> }>();
   return {
     addCatch(input: Omit<WarehouseFish, 'id'>) {
       const item = { ...input, id: randomUUID() };
@@ -28,6 +29,9 @@ export function createMemoryInventoryService(
       return { items: warehouse.get(userId) ?? [] };
     },
     async sell(userId: string, idempotencyKey: string) {
+      const prior = settledSales.get(`${userId}:${idempotencyKey}`);
+      if (prior) return { ...prior, replayed: true };
+
       const items = warehouse.get(userId) ?? [];
       if (items.length === 0) throw new Error('WAREHOUSE_EMPTY');
       const value = items.reduce((total, item) => {
@@ -36,7 +40,9 @@ export function createMemoryInventoryService(
       }, 0);
       const transaction = await economy.credit(userId, value, 'warehouse_sale', idempotencyKey);
       warehouse.set(userId, []);
-      return { sold: items.length, value, transaction };
+      const result = { sold: items.length, value, transaction };
+      settledSales.set(`${userId}:${idempotencyKey}`, result);
+      return { ...result, replayed: false };
     },
     aquarium(_userId: string, sector: number) {
       if (!Number.isInteger(sector) || sector < 1 || sector > 5) throw new Error('INVALID_AQUARIUM_SECTOR');

@@ -828,3 +828,20 @@ Próximo: completar B3 (pesca/inventário/rewards/migração) e seguir para A1�
   `lint` ✅ · smoke no servidor real via `docker compose` (`/me` 200/401,
   `/seasons/current` bad→401 valid→200, `/catalog` 200).
 - Próximo: M2 (oráculo de tempo no login), M3 (CORS default), M9 (idempotência da venda).
+
+### M2 + M3 + M9 — 2026-09-05
+
+- **M2**: `auth/service.ts` calcula um `decoyPasswordHash` no arranque; `login`
+  corre sempre `verifyPassword` (contra o decoy quando o email não existe) antes de
+  rejeitar. Teste de tempo em `auth/service.test.ts`.
+- **M3**: `security/http.ts` — sem `CORS_ORIGINS` configurado, nenhum
+  `Access-Control-Allow-Origin` é emitido (antes refletia qualquer `Origin`). Com
+  allowlist: eco das permitidas / `*` / 403 para as restantes. `CORS_ORIGINS`,
+  `RATE_LIMIT_MAX`, `RATE_LIMIT_WINDOW_MS` adicionados ao `.env.example`. 3 testes.
+- **M9**: `sell` (PG + memória) verifica a `idempotencyKey` antes do
+  `WAREHOUSE_EMPTY`; replay devolve `{ replayed: true }` com a transação gravada,
+  sem lançar nem re-creditar. Teste de integração reescrito.
+- **Bloco M inicial concluído**: M1, M2, M3, M6, M9. Próximo: M4/M5 (consistência
+  economia + memória/PG), depois M7 (refresh token reuse detection) e M8 (OpenAPI).
+- Verificação global: `backend:typecheck` ✅ · `npm test` ✅ 63 · `test:integration`
+  ✅ 39 · `lint` ✅ · smoke docker (auth preHandler).

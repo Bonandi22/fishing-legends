@@ -63,13 +63,19 @@ describe('pg inventory service (integration)', () => {
     await expect(inventory.sell(userId, `sell-${crypto.randomUUID()}`)).rejects.toThrow('WAREHOUSE_EMPTY');
   });
 
-  it('KNOWN GAP: a retried sale after the warehouse was emptied throws instead of replaying', async () => {
+  it('replays a settled sale on the same idempotency key instead of failing', async () => {
     const userId = await seedUser();
     await inventory.addCatch({ userId, ...tilapia() });
+    await inventory.addCatch({ userId, ...tilapia() });
     const k = `sell-${crypto.randomUUID()}`;
-    await inventory.sell(userId, k);
-    // The idempotency check runs after the empty check, so the replay fails.
-    await expect(inventory.sell(userId, k)).rejects.toThrow('WAREHOUSE_EMPTY');
+
+    const first = await inventory.sell(userId, k);
+    const replay = await inventory.sell(userId, k);
+
+    expect(replay.replayed).toBe(true);
+    expect(replay.transaction.id).toBe(first.transaction.id);
+    expect(replay.value).toBe(first.value);
+    expect(await economy.getBalance(userId)).toEqual({ balance: first.value });
   });
 
   it('moves a fish from the warehouse to an aquarium sector in one transaction', async () => {

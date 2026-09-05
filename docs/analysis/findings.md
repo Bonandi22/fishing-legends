@@ -166,15 +166,14 @@ Verificado: 58 testes unitários + 39 de integração verdes; smoke no servidor 
 **Ajuste**: tabela de refresh tokens encadeados (`replaced_by`, `revoked_at`),
 revogação em cascata ao detetar uso de token já rotacionado.
 
-### M9 · Venda do armazém: retry idempotente falha após esvaziar · esforço P
-Descoberto ao escrever os testes de integração de inventário (2026-09-05).
-`inventory/pgRepository.ts` `sell` e `inventory/service.ts` `sell` verificam
-`WAREHOUSE_EMPTY` **antes** de consultar a `idempotencyKey`. Fluxo real: cliente
-vende, resposta perde-se na rede, cliente repete com a mesma chave → o armazém já
-está vazio → recebe `WAREHOUSE_EMPTY` para uma operação que **teve sucesso** (moedas
-já creditadas).
-**Ajuste**: consultar a transação por `idempotencyKey` primeiro; se existir,
-devolver o resultado gravado antes de qualquer verificação de estado.
+### M9 · Venda do armazém: retry idempotente falha após esvaziar · esforço P · ✅ feito 2026-09-05
+Descoberto ao escrever os testes de integração de inventário.
+**Feito**: `sell` (PG e memória) consulta a idempotência **antes** de qualquer
+verificação de estado. Replay devolve `{ ..., replayed: true }` com a transação e o
+valor gravados, sem lançar e sem re-creditar; o caminho normal devolve
+`replayed: false`. PG não recupera o `sold` no replay (armazém já vazio) → devolve
+`0`; a memória guarda o resultado em `settledSales` e devolve a contagem original.
+Teste de integração de inventário reescrito (era o "KNOWN GAP").
 
 ### M8 · `openapi.json` desatualizado / sem teste de contrato · esforço M
 `quality-review.md` §2.4. Documento tem 2 rotas; API tem ~20.
@@ -250,8 +249,7 @@ payload de migração de save pode ser grande — dimensionar conscientemente).
 2. ~~**B3**~~ ✅ feito 2026-09-05 (35 testes de integração; falta só expandir cobertura
    conforme novos módulos).
 3. ~~**A1, A2, A3**~~ ✅ feito 2026-09-05.
-4. ~~**M1, M6**~~ ✅ feito 2026-09-05. **M2, M3, M9** (login timing, CORS default,
-   idempotência da venda) — todos P–M. **← próximo**
-5. **M4, M5** (consistência de economia e memória/PG).
+4. ~~**M1, M2, M3, M6, M9**~~ ✅ feito 2026-09-05.
+5. **M4, M5** (consistência de economia e memória/PG). **← próximo**
 6. **M7, M8** (refresh tokens, OpenAPI) — antes de o frontend ligar auth.
 7. **L1–L11** conforme se toca em cada módulo.

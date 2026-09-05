@@ -29,17 +29,20 @@ export function createPgInventoryService(
     },
     async sell(userId: string, idempotencyKey: string) {
       return db.transaction(async tx => {
+        const existing = await tx.select().from(walletTransactions)
+          .where(and(eq(walletTransactions.userId, userId), eq(walletTransactions.idempotencyKey, idempotencyKey))).limit(1);
+        if (existing[0]) {
+          // Replay of an already-settled sale: the warehouse is empty by now, so
+          // `sold` is not recoverable here — report the recorded value instead.
+          return { sold: 0, value: existing[0].amount, transaction: existing[0], replayed: true };
+        }
+
         const items = await tx.select().from(warehouseFish).where(eq(warehouseFish.userId, userId));
         if (items.length === 0) throw new Error('WAREHOUSE_EMPTY');
         const value = items.reduce((total, item) => {
           const fish = catalog.findFish(item.fishId);
           return total + (fish ? Math.max(1, Math.floor(fish.xp / 2)) : 0);
         }, 0);
-        const existing = await tx.select().from(walletTransactions)
-          .where(and(eq(walletTransactions.userId, userId), eq(walletTransactions.idempotencyKey, idempotencyKey))).limit(1);
-        if (existing[0]) {
-          return { sold: items.length, value, transaction: existing[0] };
-        }
         await tx.insert(wallets).values({ userId, balance: 0 }).onConflictDoNothing();
         const current = await tx.select().from(wallets).where(eq(wallets.userId, userId)).limit(1);
         const balanceAfter = (current[0]?.balance ?? 0) + value;
@@ -53,7 +56,7 @@ export function createPgInventoryService(
         }).returning();
         await tx.update(wallets).set({ balance: balanceAfter, updatedAt: new Date() }).where(eq(wallets.userId, userId));
         await tx.delete(warehouseFish).where(eq(warehouseFish.userId, userId));
-        return { sold: items.length, value, transaction };
+        return { sold: items.length, value, transaction, replayed: false };
       });
     },
     async aquarium(userId: string, sector: number) {
