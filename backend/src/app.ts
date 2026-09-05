@@ -20,6 +20,7 @@ import { createPgEconomyService } from './economy/pgRepository.js';
 import { createMemoryInventoryService } from './inventory/service.js';
 import { registerInventoryRoutes } from './inventory/routes.js';
 import { createPgInventoryService } from './inventory/pgRepository.js';
+import { createPgFishingService } from './fishing/pgService.js';
 
 export type AppDependencies = {
   config: AppConfig;
@@ -56,7 +57,9 @@ export function createApp({ config }: AppDependencies): FastifyInstance {
     ? createPgInventoryService(database, catalogService, economyService)
     : createMemoryInventoryService(catalogService, economyService);
   registerInventoryRoutes(app, authService, inventoryService);
-  const fishingService = createFishingService(catalogService, playerRepository, input => Promise.resolve(inventoryService.addCatch(input)));
+  const fishingService = database
+    ? createPgFishingService(database, catalogService, playerRepository)
+    : createFishingService(catalogService, playerRepository, input => Promise.resolve(inventoryService.addCatch(input)));
   registerFishingRoutes(app, authService, fishingService);
 
   return app;

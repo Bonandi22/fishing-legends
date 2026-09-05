@@ -31,6 +31,22 @@ export const sessions = pgTable('sessions', {
   lastUsedAt: timestamp('last_used_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
+export const fishingSessions = pgTable('fishing_sessions', {
+  id: uuid('id').primaryKey(),
+  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  locationId: varchar('location_id', { length: 120 }).notNull(),
+  rulesetVersion: varchar('ruleset_version', { length: 64 }).notNull(),
+  status: varchar('status', { length: 16 }).notNull().default('open'),
+  idempotencyKey: varchar('idempotency_key', { length: 128 }).notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  completedAt: timestamp('completed_at', { withTimezone: true }),
+  resultFishId: varchar('result_fish_id', { length: 120 }),
+  resultWeight: numeric('result_weight', { precision: 12, scale: 2 }),
+  resultXp: integer('result_xp'),
+}, table => ({
+  idempotencyUnique: uniqueIndex('fishing_sessions_idempotency_unique').on(table.userId, table.idempotencyKey),
+}));
+
 export const playerProgress = pgTable('player_progress', {
   userId: uuid('user_id').primaryKey().references(() => users.id, { onDelete: 'cascade' }),
   level: integer('level').notNull().default(1),
@@ -82,4 +98,4 @@ export const aquariumFish = pgTable('aquarium_fish', {
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
-export const schema = { users, userProfiles, sessions, playerProgress, wallets, walletTransactions, warehouseFish, aquariumFish };
+export const schema = { users, userProfiles, sessions, fishingSessions, playerProgress, wallets, walletTransactions, warehouseFish, aquariumFish };

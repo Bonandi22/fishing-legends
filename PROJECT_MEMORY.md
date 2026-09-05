@@ -616,3 +616,11 @@ Observações:
 - O backend aceita somente `luck`/`strength` e potências 2x/4x.
 - Custos e duração são server-side: 3.000/6.000 moedas e 60 segundos.
 - Débito, ledger idempotente e estado do multiplicador são persistidos em transação PostgreSQL.
+
+### Pesca PostgreSQL transacional
+
+- Adicionadas as colunas de resultado na migração `0009_fishing_results.sql`.
+- O backend PostgreSQL agora persiste sessões de pesca e aplica idempotência no banco.
+- A conclusão grava sessão, captura no armazém, XP, nível e total de peixes na mesma transação.
+- Conclusões concorrentes da mesma sessão retornam o resultado já persistido sem duplicar a captura.
+- O fallback em memória continua disponível somente para desenvolvimento/testes sem `DATABASE_URL`.
