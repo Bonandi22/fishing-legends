@@ -1,4 +1,4 @@
-import Fastify, { type FastifyInstance } from 'fastify';
+import Fastify, { type FastifyInstance, type FastifyServerOptions } from 'fastify';
 import type { AppConfig } from './config/env.js';
 import { registerErrorHandling } from './http/errors.js';
 import { registerSystemRoutes } from './http/routes/system.js';
@@ -44,7 +44,11 @@ export function createApp({ config }: AppDependencies): FastifyInstance {
     throw new Error('DATABASE_URL is required in production');
   }
 
-  const app = Fastify({ logger: { level: config.logLevel } });
+  const serverOptions: FastifyServerOptions = {
+    logger: { level: config.logLevel },
+    trustProxy: config.trustProxy,
+  };
+  const app = Fastify(serverOptions);
   registerSecurityHooks(app, {
     allowedOrigins: config.corsOrigins ?? [],
     rateLimitMax: config.rateLimitMax ?? 120,

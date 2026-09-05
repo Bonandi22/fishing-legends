@@ -12,7 +12,10 @@ const envSchema = z.object({
   CORS_ORIGINS: z.string().default(''),
   RATE_LIMIT_MAX: z.coerce.number().int().positive().default(120),
   RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(60_000),
+  TRUST_PROXY: z.string().default('false'),
 });
+
+export type TrustProxy = boolean | string[];
 
 export type AppConfig = {
   environment: 'development' | 'test' | 'production';
@@ -26,7 +29,21 @@ export type AppConfig = {
   corsOrigins: string[];
   rateLimitMax: number;
   rateLimitWindowMs: number;
+  trustProxy: TrustProxy;
 };
+
+/**
+ * How Fastify should treat `X-Forwarded-For`. Defaults to `false` — the header is
+ * ignored and `request.ip` is the socket address, so a client cannot spoof its
+ * identity to escape rate limiting. Behind a known proxy/LB set this to `true`
+ * or, better, to a comma-separated list of the proxy address(es)/CIDRs to trust.
+ */
+export function parseTrustProxy(value: string): TrustProxy {
+  const trimmed = value.trim();
+  if (trimmed === '' || trimmed.toLowerCase() === 'false') return false;
+  if (trimmed.toLowerCase() === 'true') return true;
+  return trimmed.split(',').map(entry => entry.trim()).filter(Boolean);
+}
 
 export function loadConfig(source: NodeJS.ProcessEnv = process.env): AppConfig {
   const parsed = envSchema.parse(source);
@@ -43,5 +60,6 @@ export function loadConfig(source: NodeJS.ProcessEnv = process.env): AppConfig {
     corsOrigins: parsed.CORS_ORIGINS.split(',').map(value => value.trim()).filter(Boolean),
     rateLimitMax: parsed.RATE_LIMIT_MAX,
     rateLimitWindowMs: parsed.RATE_LIMIT_WINDOW_MS,
+    trustProxy: parseTrustProxy(parsed.TRUST_PROXY),
   };
 }

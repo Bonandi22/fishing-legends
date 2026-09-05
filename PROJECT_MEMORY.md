@@ -779,3 +779,18 @@ Próximo: completar B3 (pesca/inventário/rewards/migração) e seguir para A1�
 - Verificação: `backend:typecheck` ✅ · `npm test` ✅ 44 · `test:integration` ✅ 39
   (contra PostgreSQL real).
 - Próximo: A2 (`trustProxy` no rate limit) e A3 (raridade no sorteio de pesca).
+
+### A2 — `trustProxy` explícito, rate limit à prova de spoof — 2026-09-05
+
+- `Fastify({ trustProxy: config.trustProxy })` em `backend/src/app.ts`;
+  `clientKey` (`security/http.ts`) usa `request.ip` e nunca lê `X-Forwarded-For`
+  diretamente.
+- Nova env `TRUST_PROXY` + `parseTrustProxy` em `config/env.ts`: default `false`
+  (header ignorado), `true`, ou lista de CIDRs/endereços de proxy. Fastify não
+  aceita hop count no tipo — só `boolean`/lista. Adicionada a `.env.example` e
+  `.env.docker.example` (compose usa `false`, backend acedido diretamente).
+- TDD: 3 testes de `parseTrustProxy` + `security/http.test.ts` (spoof de
+  `X-Forwarded-For` não escapa ao limite com default; buckets separam por IP
+  encaminhado quando `trustProxy: true`).
+- Verificação: `backend:typecheck` ✅ · `npm test` ✅ 49 · `test:integration` ✅ 39.
+- Próximo: A3 (portar `rollFish`/raridade para o serviço de pesca do servidor).

@@ -15,6 +15,7 @@ const testConfig: AppConfig = {
   corsOrigins: [],
   rateLimitMax: 120,
   rateLimitWindowMs: 60_000,
+  trustProxy: false,
 };
 
 const apps = new Set<Awaited<ReturnType<typeof createApp>>>();

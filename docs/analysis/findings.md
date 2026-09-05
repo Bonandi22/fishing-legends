@@ -79,10 +79,16 @@ no corpo (um `day` enviado é ignorado). 6 testes unitários de `resolveRewardDa
 8 de integração (streak avança, wrap, reset, isolamento por utilizador, dia gravado
 na linha). Resposta mantém `{ claimed, day, amount, transactionId, balance }`.
 
-### A2 · `X-Forwarded-For` derrota o rate limiting · esforço P
-`security-review.md` S1. Sem `trustProxy`, o header é aceite de qualquer cliente.
-**Ajuste**: `Fastify({ trustProxy: <IPs do proxy> | false })` e usar `request.ip`.
-Documentar a expectativa de deployment (atrás de que proxy).
+### A2 · `X-Forwarded-For` derrota o rate limiting · esforço P · ✅ feito 2026-09-05
+`security-review.md` S1.
+**Feito**: `Fastify({ trustProxy: config.trustProxy })` em `app.ts`; `clientKey`
+em `security/http.ts` usa `request.ip` e nunca lê `X-Forwarded-For` diretamente.
+Nova env `TRUST_PROXY` (`parseTrustProxy` em `config/env.ts`): default `false`
+(header ignorado, `request.ip` = endereço do socket), `true`, ou lista de
+CIDRs/endereços de proxy a confiar. Adicionada a `.env.example` e
+`.env.docker.example`. Testes: 3 unitários de `parseTrustProxy` + 2 de
+comportamento (`security/http.test.ts` — spoof de XFF não escapa ao limite com
+default; com `trustProxy: true` os buckets separam por IP encaminhado).
 
 ### A3 · Sorteio de captura ignora a raridade · esforço M
 `security-review.md` S7. Seleção uniforme; `RARITY_CONFIG` do cliente ignorado.
@@ -215,7 +221,7 @@ payload de migração de save pode ser grande — dimensionar conscientemente).
 1. ~~**B2 → B1 → B4**~~ ✅ feito 2026-09-05.
 2. ~~**B3**~~ ✅ feito 2026-09-05 (35 testes de integração; falta só expandir cobertura
    conforme novos módulos).
-3. ~~**A1**~~ ✅ feito 2026-09-05. **A2, A3** (exploits) — **← próximo**
+3. ~~**A1, A2**~~ ✅ feito 2026-09-05. **A3** (raridade no sorteio de pesca) — **← próximo**
 4. **M1, M2, M3, M6, M9** (segurança de rotas + CORS + idempotência da venda) —
    vários são P e M6 remove M1.
 5. **M4, M5** (consistência de economia e memória/PG).

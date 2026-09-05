@@ -55,7 +55,7 @@ export function registerSecurityHooks(app: FastifyInstance, options: SecurityOpt
 }
 
 function clientKey(request: FastifyRequest): string {
-  const forwarded = request.headers['x-forwarded-for'];
-  const address = typeof forwarded === 'string' ? forwarded.split(',')[0]?.trim() : request.ip;
-  return address || 'unknown';
+  // request.ip already honours the app's trustProxy setting; never read
+  // X-Forwarded-For directly or an untrusted client can spoof its bucket.
+  return request.ip || 'unknown';
 }
