@@ -255,9 +255,12 @@ Argon2id.
 `backend-review.md` fishing. Cruza fronteira de módulo (`ARCHITECTURE.md:42`).
 **Ajuste**: passar pelo serviço de inventário (dentro da mesma transação).
 
-### L9 · Higiene de repositório · esforço P
-`quality-review.md` §4. `example.test.ts` placeholder; `bun.lock`+`bun.lockb`+
-`package-lock.json` coexistem; Browserslist desatualizado.
+### L9 · Higiene de repositório · esforço P · ✅ feito 2026-09-06
+`quality-review.md` §4.
+**Feito**: `bun.lock`/`bun.lockb` removidos (commit `5784866`); `src/test/example.test.ts`
+placeholder removido; `caniuse-lite` atualizado (`update-browserslist-db` — fim do
+aviso de build, deps do `package.json` reordenados alfabeticamente pela ferramenta);
+`.gitattributes` adicionado (`text=auto eol=lf` + assets binários).
 
 ### L10 · `bodyLimit` explícito no Fastify · esforço P · ✅ feito 2026-09-06
 `security-review.md` threat model.
