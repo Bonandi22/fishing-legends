@@ -633,3 +633,11 @@ Observações:
 - A prévia retorna contagens aceitas e rejeitadas sem alterar estado.
 - A importação é única por usuário, idempotência é exigida na rota e a persistência PostgreSQL ocorre em transação.
 - O save local continua sendo responsabilidade do cliente como backup temporário.
+
+### Ranking global inicial
+
+- Adicionado `GET /api/v1/leaderboard` com autenticação e paginação (`limit`/`offset`).
+- A ordenação é estável por nível, peixes capturados, XP e identificador.
+- A pontuação é derivada exclusivamente do progresso server-side: nível, peixes capturados e XP.
+- PostgreSQL consulta todos os jogadores persistidos; o fallback em memória expõe o jogador atual para testes locais.
+- Temporadas e snapshots históricos permanecem reservados para a etapa de temporadas.

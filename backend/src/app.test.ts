@@ -280,4 +280,27 @@ describe('backend foundation', () => {
     expect(response.statusCode).toBe(409);
     expect(response.json().error.code).toBe('INSUFFICIENT_FUNDS');
   });
+
+  it('returns an authenticated paginated leaderboard', async () => {
+    const app = createApp({ config: testConfig });
+    apps.add(app);
+    const registration = await app.inject({
+      method: 'POST',
+      url: '/api/v1/auth/register',
+      payload: {
+        email: 'ranking@example.com',
+        password: 'a-strong-password-123',
+        username: 'ranking_user',
+        country: 'br',
+      },
+    });
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/v1/leaderboard?limit=10&offset=0',
+      headers: { authorization: `Bearer ${registration.json().accessToken}` },
+    });
+    expect(response.statusCode).toBe(200);
+    expect(response.json().season).toBe('all-time');
+    expect(response.json().entries[0].username).toBe('ranking_user');
+  });
 });
