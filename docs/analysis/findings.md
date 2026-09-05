@@ -109,9 +109,11 @@ peso uniforme no intervalo, não-uniforme em 4000 amostras); RNG injetável.
 
 ## Médio
 
-### M1 · `GET /api/v1/seasons/current` não valida o token · esforço P
-`security-review.md` S2. `void auth;` na rota.
-**Ajuste**: validar o access token como nas outras rotas (ou via preHandler — M6).
+### M1 · `GET /api/v1/seasons/current` não valida o token · esforço P · ✅ feito 2026-09-05
+`security-review.md` S2. Era `void auth;` na rota.
+**Feito**: a rota passou a usar `{ preHandler: app.requireAuth }` (M6). Teste em
+`app.test.ts`: sem header → 401; `Bearer <inválido>` → 401 (antes 200). Smoke no
+servidor real confirmou.
 
 ### M2 · Oráculo de tempo no login · esforço P
 `security-review.md` S3. Caminho rápido quando o email não existe.
@@ -137,10 +139,19 @@ devolve progresso fixo; leaderboard em memória só o próprio; `debit` só na m
 **Ajuste**: igualar o comportamento observável, ou marcar explicitamente a memória
 como "não fidedigna" e nunca a usar para asserções de teste (reforça B3).
 
-### M6 · Autenticação re-implementada por rota · esforço M
-`security-review.md` S8 / `quality-review.md` §4. ~9 rotas reparsando `Bearer`.
-**Ajuste**: `preHandler` Fastify partilhado que valida o token e popula
-`request.userId`; rotas passam a lê-lo. Remove a classe de erro do M1.
+### M6 · Autenticação re-implementada por rota · esforço M · ✅ feito 2026-09-05
+`security-review.md` S8 / `quality-review.md` §4.
+**Feito**: `backend/src/auth/middleware.ts` — `createRequireAuth(authService)`
+devolve um `preHandler` que valida o `Bearer` e popula `request.userId` (com
+augmentação de tipos de `FastifyRequest`/`FastifyInstance`). `app.ts` faz
+`app.decorateRequest('userId', '')` + `app.decorate('requireAuth', ...)`. As 8
+funções `register*Routes` (players, economy, inventory, fishing, leaderboard,
+rewards, migration, seasons) deixaram de receber `authService`; cada rota
+autenticada usa `{ preHandler: app.requireAuth }` e lê `request.userId`. Removidos
+os helpers `getUserId`/`userId` duplicados. Rotas públicas (`/health`, `/ready`,
+`/openapi.json`, `/api/v1/auth/*`, `/api/v1/catalog`) ficam sem preHandler.
+Verificado: 58 testes unitários + 39 de integração verdes; smoke no servidor real
+(`/me`, `/seasons/current`, `/catalog`).
 
 ### M7 · Sem reuse detection / família de refresh tokens · esforço G
 `security-review.md` S5. Necessário antes de o frontend ligar auth.
@@ -231,8 +242,8 @@ payload de migração de save pode ser grande — dimensionar conscientemente).
 2. ~~**B3**~~ ✅ feito 2026-09-05 (35 testes de integração; falta só expandir cobertura
    conforme novos módulos).
 3. ~~**A1, A2, A3**~~ ✅ feito 2026-09-05.
-4. **M1, M2, M3, M6, M9** (segurança de rotas + CORS + idempotência da venda) —
-   vários são P e M6 remove M1. **← próximo**
+4. ~~**M1, M6**~~ ✅ feito 2026-09-05. **M2, M3, M9** (login timing, CORS default,
+   idempotência da venda) — todos P–M. **← próximo**
 5. **M4, M5** (consistência de economia e memória/PG).
 6. **M7, M8** (refresh tokens, OpenAPI) — antes de o frontend ligar auth.
 7. **L1–L11** conforme se toca em cada módulo.

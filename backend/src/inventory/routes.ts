@@ -1,43 +1,34 @@
 import type { FastifyInstance } from 'fastify';
-import type { createAuthService } from '../auth/service.js';
 import type { createMemoryInventoryService } from './service.js';
 import type { createPgInventoryService } from './pgRepository.js';
 import { z } from 'zod';
 
-type AuthService = ReturnType<typeof createAuthService>;
 type InventoryService = ReturnType<typeof createMemoryInventoryService> | ReturnType<typeof createPgInventoryService>;
 
-export function registerInventoryRoutes(app: FastifyInstance, auth: AuthService, inventory: InventoryService): void {
-  app.get('/api/v1/inventory/warehouse', async request => {
-    const header = request.headers.authorization;
-    if (!header?.startsWith('Bearer ')) throw new Error('INVALID_ACCESS_TOKEN');
-    return inventory.list(await auth.verifyAccessToken(header.slice(7)));
+function idempotencyKey(value: unknown): string {
+  if (typeof value !== 'string' || value.length < 16 || value.length > 128) throw new Error('INVALID_IDEMPOTENCY_KEY');
+  return value;
+}
+
+export function registerInventoryRoutes(app: FastifyInstance, inventory: InventoryService): void {
+  app.get('/api/v1/inventory/warehouse', { preHandler: app.requireAuth }, async request => {
+    return inventory.list(request.userId);
   });
 
-  app.post('/api/v1/inventory/warehouse/sell', async request => {
-    const header = request.headers.authorization;
-    if (!header?.startsWith('Bearer ')) throw new Error('INVALID_ACCESS_TOKEN');
-    const key = request.headers['idempotency-key'];
-    if (typeof key !== 'string' || key.length < 16 || key.length > 128) throw new Error('INVALID_IDEMPOTENCY_KEY');
-    return inventory.sell(await auth.verifyAccessToken(header.slice(7)), key);
+  app.post('/api/v1/inventory/warehouse/sell', { preHandler: app.requireAuth }, async request => {
+    return inventory.sell(request.userId, idempotencyKey(request.headers['idempotency-key']));
   });
 
-  app.get('/api/v1/inventory/aquarium/:sector', async request => {
-    const header = request.headers.authorization;
-    if (!header?.startsWith('Bearer ')) throw new Error('INVALID_ACCESS_TOKEN');
-    const userId = await auth.verifyAccessToken(header.slice(7));
+  app.get('/api/v1/inventory/aquarium/:sector', { preHandler: app.requireAuth }, async request => {
     const { sector } = z.object({ sector: z.coerce.number().int() }).parse(request.params);
-    return inventory.aquarium(userId, sector);
+    return inventory.aquarium(request.userId, sector);
   });
 
-  app.post('/api/v1/inventory/aquarium', async request => {
-    const header = request.headers.authorization;
-    if (!header?.startsWith('Bearer ')) throw new Error('INVALID_ACCESS_TOKEN');
-    const userId = await auth.verifyAccessToken(header.slice(7));
+  app.post('/api/v1/inventory/aquarium', { preHandler: app.requireAuth }, async request => {
     const body = z.object({
       warehouseItemId: z.string().uuid(),
       sector: z.number().int().min(1).max(5),
     }).parse(request.body);
-    return inventory.placeInAquarium(userId, body.warehouseItemId, body.sector);
+    return inventory.placeInAquarium(request.userId, body.warehouseItemId, body.sector);
   });
 }

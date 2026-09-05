@@ -809,3 +809,22 @@ Próximo: completar B3 (pesca/inventário/rewards/migração) e seguir para A1�
 - Verificação: `backend:typecheck` ✅ · `npm test` ✅ 57 · `test:integration` ✅ 39.
 - Fora do âmbito: RNG seedado (L7), lucky mode server-side.
 - **A1, A2 e A3 concluídos.** Próximo bloco: M1/M2/M3/M6/M9.
+
+### M6 + M1 — preHandler de autenticação partilhado — 2026-09-05
+
+- `backend/src/auth/middleware.ts`: `createRequireAuth(authService)` → `preHandler`
+  que valida o `Bearer` e popula `request.userId` (augmentação de tipos Fastify).
+- `app.ts`: `decorateRequest('userId','')` + `decorate('requireAuth', ...)`. As 8
+  `register*Routes` (players, economy, inventory, fishing, leaderboard, rewards,
+  migration, seasons) deixaram de receber `authService`; cada rota autenticada usa
+  `{ preHandler: app.requireAuth }`. Helpers `getUserId`/`userId` duplicados
+  removidos.
+- **M1**: `GET /api/v1/seasons/current` tinha `void auth;` e aceitava qualquer
+  `Bearer x`. Agora valida via o preHandler. Teste novo em `app.test.ts`
+  (sem header → 401, token inválido → 401).
+- Rotas públicas sem preHandler: `/health`, `/ready`, `/openapi.json`,
+  `/api/v1/auth/*`, `/api/v1/catalog`.
+- Verificação: `backend:typecheck` ✅ · `npm test` ✅ 58 · `test:integration` ✅ 39 ·
+  `lint` ✅ · smoke no servidor real via `docker compose` (`/me` 200/401,
+  `/seasons/current` bad→401 valid→200, `/catalog` 200).
+- Próximo: M2 (oráculo de tempo no login), M3 (CORS default), M9 (idempotência da venda).

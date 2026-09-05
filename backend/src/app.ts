@@ -3,6 +3,7 @@ import type { AppConfig } from './config/env.js';
 import { registerErrorHandling } from './http/errors.js';
 import { registerSystemRoutes } from './http/routes/system.js';
 import { createAuthService } from './auth/service.js';
+import { createRequireAuth } from './auth/middleware.js';
 import { createMemoryAuthRepository } from './auth/memoryRepository.js';
 import { registerAuthRoutes } from './auth/routes.js';
 import { createDatabase } from './db/client.js';
@@ -66,6 +67,8 @@ export function createApp({ config }: AppDependencies): FastifyInstance {
     accessTokenTtlSeconds: config.accessTokenTtlSeconds,
     refreshTokenTtlSeconds: config.refreshTokenTtlSeconds,
   });
+  app.decorateRequest('userId', '');
+  app.decorate('requireAuth', createRequireAuth(authService));
   const playerRepository = database
     ? createPgPlayerRepository(database)
     : createMemoryPlayerRepository(authRepository);
@@ -76,23 +79,23 @@ export function createApp({ config }: AppDependencies): FastifyInstance {
   const rewardsService = database ? createPgRewardsService(database) : createMemoryRewardsService();
   const seasonsService = database ? createPgSeasonsService(database) : createMemorySeasonsService();
   void registerAuthRoutes(app, authService);
-  registerPlayerRoutes(app, authService, playerRepository);
-  registerMigrationRoutes(app, authService, migrationService);
-  registerLeaderboardRoutes(app, authService, leaderboardService);
-  registerRewardsRoutes(app, authService, rewardsService);
-  registerSeasonsRoutes(app, authService, seasonsService);
+  registerPlayerRoutes(app, playerRepository);
+  registerMigrationRoutes(app, migrationService);
+  registerLeaderboardRoutes(app, leaderboardService);
+  registerRewardsRoutes(app, rewardsService);
+  registerSeasonsRoutes(app, seasonsService);
   const catalogService = createCatalogService();
   registerCatalogRoutes(app, catalogService);
   const economyService = database ? createPgEconomyService(database) : createMemoryEconomyService();
-  registerEconomyRoutes(app, authService, economyService);
+  registerEconomyRoutes(app, economyService);
   const inventoryService = database
     ? createPgInventoryService(database, catalogService, economyService)
     : createMemoryInventoryService(catalogService, economyService);
-  registerInventoryRoutes(app, authService, inventoryService);
+  registerInventoryRoutes(app, inventoryService);
   const fishingService = database
     ? createPgFishingService(database, catalogService, playerRepository)
     : createFishingService(catalogService, playerRepository, input => Promise.resolve(inventoryService.addCatch(input)));
-  registerFishingRoutes(app, authService, fishingService);
+  registerFishingRoutes(app, fishingService);
 
   return app;
 }

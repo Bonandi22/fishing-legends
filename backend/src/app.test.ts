@@ -354,4 +354,19 @@ describe('backend foundation', () => {
     expect(response.statusCode).toBe(200);
     expect(response.json().season.status).toBe('active');
   });
+
+  it('rejects the season endpoint without a valid access token', async () => {
+    const app = createApp({ config: testConfig });
+    apps.add(app);
+
+    const missing = await app.inject({ method: 'GET', url: '/api/v1/seasons/current' });
+    expect(missing.statusCode).toBe(401);
+
+    const bogus = await app.inject({
+      method: 'GET',
+      url: '/api/v1/seasons/current',
+      headers: { authorization: 'Bearer not-a-real-token' },
+    });
+    expect(bogus.statusCode).toBe(401);
+  });
 });
