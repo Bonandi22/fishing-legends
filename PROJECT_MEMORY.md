@@ -845,3 +845,19 @@ Próximo: completar B3 (pesca/inventário/rewards/migração) e seguir para A1�
   economia + memória/PG), depois M7 (refresh token reuse detection) e M8 (OpenAPI).
 - Verificação global: `backend:typecheck` ✅ · `npm test` ✅ 63 · `test:integration`
   ✅ 39 · `lint` ✅ · smoke docker (auth preHandler).
+
+### M4 + M5 — 2026-09-05
+
+- **M4**: `backend/src/economy/pricing.ts` — `fishSaleValue(rarity)` (usa
+  `FISH_COIN_VALUE`), `netUnitPrice`, `multiplierPrice(power)`, tudo de
+  `src/game/types`. Venda de peixe deixou de usar `xp/2`; redes/multiplicadores
+  deixaram de ter números hard-coded. 3 testes.
+- **M5** (parcial): `players/progress.ts` `applyCatchProgress` — fonte única
+  (importa `getXpForLevel`/`MAX_LEVEL` do frontend), usada por `pgService` (cópia
+  local removida) e pelo repositório de memória (agora stateful, com `recordCatch`).
+  A conclusão de pesca em memória aplica XP/nível/`totalFishCaught` como o
+  PostgreSQL — `app.test.ts` verifica. `debit` morto removido da economia em memória.
+  Ainda diverge (só dev sem DB): leaderboard memória só o próprio, aquário memória
+  não persiste — aceitável até o frontend ligar.
+- Verificação: `backend:typecheck` ✅ · `npm test` ✅ 71 · `test:integration` ✅ 39 · `lint` ✅.
+- Próximo: M7 (reuse detection de refresh tokens) e M8 (OpenAPI dos schemas Zod).

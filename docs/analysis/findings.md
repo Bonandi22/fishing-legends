@@ -145,11 +145,18 @@ o valor por raridade.
 **Ainda em aberto** (não é M4 estrito): `WAREHOUSE_LIMIT` não aplicado no servidor,
 sem venda individual — registar como L-item se relevante ao ligar o frontend.
 
-### M5 · Comportamento memória vs PostgreSQL diverge · esforço M
-`backend-review.md` §3. Pesca em memória não aplica XP/nível; `players` em memória
-devolve progresso fixo; leaderboard em memória só o próprio; `debit` só na memória.
-**Ajuste**: igualar o comportamento observável, ou marcar explicitamente a memória
-como "não fidedigna" e nunca a usar para asserções de teste (reforça B3).
+### M5 · Comportamento memória vs PostgreSQL diverge · esforço M · 🟡 parcial 2026-09-05
+`backend-review.md` §3.
+**Feito**: `backend/src/players/progress.ts` `applyCatchProgress` (importa
+`getXpForLevel`/`MAX_LEVEL` de `src/game/types`) — fonte única, usada pelo
+`pgService` (removida a cópia local `applyProgress`/`xpForLevel`) e pelo repositório
+de memória. `createMemoryPlayerRepository` passou a ser stateful e expõe
+`recordCatch`; a conclusão de pesca em memória chama-o → XP/nível/`totalFishCaught`
+sobem como no PostgreSQL. `app.test.ts` verifica isso. `debit` morto removido do
+serviço de economia em memória.
+**Ainda diverge** (só sem `DATABASE_URL`, sem impacto em testes): leaderboard em
+memória só expõe o próprio jogador; aquário em memória não persiste entre chamadas.
+Aceitável como dev-only enquanto o frontend não liga.
 
 ### M6 · Autenticação re-implementada por rota · esforço M · ✅ feito 2026-09-05
 `security-review.md` S8 / `quality-review.md` §4.
@@ -254,6 +261,6 @@ payload de migração de save pode ser grande — dimensionar conscientemente).
    conforme novos módulos).
 3. ~~**A1, A2, A3**~~ ✅ feito 2026-09-05.
 4. ~~**M1, M2, M3, M6, M9**~~ ✅ feito 2026-09-05.
-5. **M4, M5** (consistência de economia e memória/PG). **← próximo**
-6. **M7, M8** (refresh tokens, OpenAPI) — antes de o frontend ligar auth.
+5. ~~**M4**~~ ✅ · ~~**M5**~~ 🟡 parcial (falta leaderboard/aquário em memória — dev-only) — 2026-09-05.
+6. **M7, M8** (refresh tokens, OpenAPI) — antes de o frontend ligar auth. **← próximo**
 7. **L1–L11** conforme se toca em cada módulo.

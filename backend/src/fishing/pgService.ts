@@ -4,22 +4,8 @@ import type { Database } from '../db/client.js';
 import { fishingSessions, playerProgress, warehouseFish } from '../db/schema.js';
 import type { createCatalogService } from '../catalog/service.js';
 import type { PlayerRepository } from '../players/types.js';
+import { applyCatchProgress } from '../players/progress.js';
 import { rollCatch } from './roll.js';
-
-const MAX_LEVEL = 30;
-function xpForLevel(level: number): number {
-  return Math.floor(100 * Math.pow(1.5, level - 1));
-}
-
-function applyProgress(level: number, xp: number, amount: number) {
-  let nextLevel = Math.min(Math.max(1, level), MAX_LEVEL);
-  let nextXp = Math.max(0, xp) + Math.max(0, amount);
-  while (nextLevel < MAX_LEVEL && nextXp >= xpForLevel(nextLevel)) {
-    nextXp -= xpForLevel(nextLevel);
-    nextLevel += 1;
-  }
-  return { level: nextLevel, xp: nextXp };
-}
 
 export function createPgFishingService(
   db: Database,
@@ -86,7 +72,7 @@ export function createPgFishingService(
         }
         const progress = await tx.select().from(playerProgress).where(eq(playerProgress.userId, userId)).limit(1);
         if (!progress[0]) throw new Error('INVALID_PLAYER_PROGRESS');
-        const updated = applyProgress(progress[0].level, progress[0].xp, result.xp);
+        const updated = applyCatchProgress({ level: progress[0].level, xp: progress[0].xp }, result.xp);
         await tx.insert(warehouseFish).values({
           id: randomUUID(), userId, fishId: result.fishId, locationId: current.locationId,
           weight: result.weight.toFixed(2), xp: result.xp,

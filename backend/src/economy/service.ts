@@ -48,18 +48,6 @@ export function createMemoryEconomyService() {
       idempotency.set(`${userId}:${key}`, transaction);
       return transaction;
     },
-    debit(userId: string, amount: number, reason: string, key: string) {
-      if (!Number.isSafeInteger(amount) || amount <= 0) throw new Error('INVALID_WALLET_AMOUNT');
-      const existing = idempotency.get(`${userId}:${key}`);
-      if (existing) return existing;
-      const balance = balances.get(userId) ?? 0;
-      if (balance < amount) throw new Error('INSUFFICIENT_FUNDS');
-      const transaction = { id: randomUUID(), userId, amount: -amount, balanceAfter: balance - amount, reason };
-      balances.set(userId, transaction.balanceAfter);
-      transactions.set(transaction.id, transaction);
-      idempotency.set(`${userId}:${key}`, transaction);
-      return transaction;
-    },
     purchaseNets(userId: string, quantity: number, key: string) {
       if (!Number.isSafeInteger(quantity) || quantity < 1 || quantity > 10) throw new Error('INVALID_NET_QUANTITY');
       const existing = idempotency.get(`${userId}:${key}`);

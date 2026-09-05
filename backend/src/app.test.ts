@@ -171,6 +171,15 @@ describe('backend foundation', () => {
     expect(completed.statusCode).toBe(200);
     expect(completed.json().result.fishId).toEqual(expect.any(String));
     expect(completed.json().result.weight).toBeGreaterThan(0);
+
+    // The catch is reflected in the player's progress (same as the PostgreSQL path)
+    const profile = await app.inject({
+      method: 'GET',
+      url: '/api/v1/me',
+      headers: { authorization: `Bearer ${token}` },
+    });
+    expect(profile.json().user.totalFishCaught).toBe(1);
+    expect(profile.json().user.xp > 0 || profile.json().user.level > 1).toBe(true);
   });
 
   it('exposes a server-owned wallet balance', async () => {

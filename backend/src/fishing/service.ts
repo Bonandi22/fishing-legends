@@ -64,6 +64,7 @@ export function createFishingService(
       const { fish, weight } = rollCatch(available, profile?.level ?? 1);
       const result = { fishId: fish.id, weight, xp: fish.xp };
       if (onCatch) await onCatch({ userId, fishId: fish.id, locationId: session.locationId, weight, xp: fish.xp });
+      await players.recordCatch?.(userId, result.xp);
       session.status = 'completed';
       session.result = result;
       return { session, result };
