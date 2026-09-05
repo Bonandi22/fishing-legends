@@ -115,10 +115,13 @@ peso uniforme no intervalo, não-uniforme em 4000 amostras); RNG injetável.
 `app.test.ts`: sem header → 401; `Bearer <inválido>` → 401 (antes 200). Smoke no
 servidor real confirmou.
 
-### M2 · Oráculo de tempo no login · esforço P
-`security-review.md` S3. Caminho rápido quando o email não existe.
-**Ajuste**: `verifyPassword` sempre (contra hash dummy) antes de devolver
-`INVALID_CREDENTIALS`.
+### M2 · Oráculo de tempo no login · esforço P · ✅ feito 2026-09-05
+`security-review.md` S3.
+**Feito**: `auth/service.ts` calcula um `decoyPasswordHash` uma vez no arranque
+(`hashPassword(...)`) e `login` faz sempre `verifyPassword(input.password,
+user?.passwordHash ?? decoy)` antes de rejeitar. Teste de tempo em
+`auth/service.test.ts`: login com email inexistente demora comparável ao login
+com password errada (antes era ~instantâneo).
 
 ### M3 · CORS default reflete qualquer origem · esforço P
 `security-review.md` S4. `CORS_ORIGINS` vazio → eco de `Origin`.

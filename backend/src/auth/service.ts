@@ -11,6 +11,10 @@ export type AuthServiceConfig = {
 };
 
 export function createAuthService(repository: AuthRepository, config: AuthServiceConfig) {
+  // Compared against when an account is not found, so login timing does not reveal
+  // whether an email is registered. Computed once at startup.
+  const decoyPasswordHash = hashPassword('deep-blue-lure/login-timing-equalizer');
+
   async function issueAccessToken(userId: string): Promise<string> {
     return new SignJWT({ sub: userId, type: 'access' })
       .setProtectedHeader({ alg: ACCESS_ALGORITHM })
@@ -42,7 +46,11 @@ export function createAuthService(repository: AuthRepository, config: AuthServic
 
     async login(input: { email: string; password: string }) {
       const user = await repository.findUserByEmail(input.email.trim().toLowerCase());
-      if (!user || !(await verifyPassword(input.password, user.passwordHash)) || user.status !== 'active') {
+      const passwordMatches = await verifyPassword(
+        input.password,
+        user?.passwordHash ?? (await decoyPasswordHash),
+      );
+      if (!user || !passwordMatches || user.status !== 'active') {
         throw new Error('INVALID_CREDENTIALS');
       }
 
