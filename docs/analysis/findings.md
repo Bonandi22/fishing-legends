@@ -195,11 +195,19 @@ valor gravados, sem lançar e sem re-creditar; o caminho normal devolve
 `0`; a memória guarda o resultado em `settledSales` e devolve a contagem original.
 Teste de integração de inventário reescrito (era o "KNOWN GAP").
 
-### M8 · `openapi.json` desatualizado / sem teste de contrato · esforço M
-`quality-review.md` §2.4. Documento tem 2 rotas; API tem ~20.
-**Ajuste**: gerar OpenAPI a partir dos schemas Zod (ex.: `fastify-type-provider-zod`
-+ `@fastify/swagger`) ou, no mínimo, um teste que falhe quando uma rota registada
-não está no documento.
+### M8 · `openapi.json` desatualizado / sem teste de contrato · esforço M · ✅ feito 2026-09-06
+`quality-review.md` §2.4.
+**Feito** (plano A): `fastify-type-provider-zod@4` (compatível com Zod 3) +
+`@fastify/swagger`. `app.ts` regista os compiladores de validação/serialização e o
+swagger com `jsonSchemaTransform`; `createApp` passou a ser `async` (o swagger
+carrega antes das rotas que captura). `/openapi.json` serve o documento gerado — 22
+rotas, sempre em sync. **Todas as 11 rotas foram convertidas** para declarar
+`schema: { tags, body, params, querystring, response }` em Zod, removendo os
+`z.object().parse()` inline (o handler de erros mapeia as falhas de validação do
+type-provider para `400 VALIDATION_ERROR`). `openapi.test.ts` — contrato: documento
+OpenAPI 3 válido, cobre toda a superfície da API, não expõe a própria rota do doc.
+As verificações de header `Idempotency-Key` continuam inline (para preservar o
+código de erro `INVALID_IDEMPOTENCY_KEY`).
 
 ---
 

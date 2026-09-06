@@ -1,4 +1,6 @@
+import { z } from 'zod';
 import type { FastifyInstance } from 'fastify';
+import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 import type { createMemoryMigrationService } from './memoryRepository.js';
 import type { createPgMigrationService } from './pgRepository.js';
 
@@ -7,11 +9,24 @@ type MigrationService = ReturnType<typeof createMemoryMigrationService> | Return
 // A local save (warehouse + aquarium history) can be larger than the default body.
 const LOCAL_SAVE_BODY_LIMIT = 2 * 1024 * 1024;
 
-export function registerMigrationRoutes(app: FastifyInstance, migration: MigrationService): void {
-  app.post('/api/v1/migration/local/preview', { preHandler: app.requireAuth, bodyLimit: LOCAL_SAVE_BODY_LIMIT }, async request =>
-    migration.preview(request.userId, request.body));
+// The envelope is validated in depth by the service (validateLocalSave); here it is
+// just "some object".
+const localSaveBody = z.object({}).passthrough();
 
-  app.post('/api/v1/migration/local/import', { preHandler: app.requireAuth, bodyLimit: LOCAL_SAVE_BODY_LIMIT }, async request => {
+export function registerMigrationRoutes(app: FastifyInstance, migration: MigrationService): void {
+  const r = app.withTypeProvider<ZodTypeProvider>();
+
+  r.post('/api/v1/migration/local/preview', {
+    schema: { tags: ['migration'], summary: 'Dry-run validation of a local save', body: localSaveBody },
+    preHandler: app.requireAuth,
+    bodyLimit: LOCAL_SAVE_BODY_LIMIT,
+  }, async request => migration.preview(request.userId, request.body));
+
+  r.post('/api/v1/migration/local/import', {
+    schema: { tags: ['migration'], summary: 'Import a local save (once per user, needs Idempotency-Key)', body: localSaveBody },
+    preHandler: app.requireAuth,
+    bodyLimit: LOCAL_SAVE_BODY_LIMIT,
+  }, async request => {
     const key = request.headers['idempotency-key'];
     if (typeof key !== 'string' || key.length < 16 || key.length > 128) throw new Error('INVALID_IDEMPOTENCY_KEY');
     return migration.import(request.userId, request.body, key);
