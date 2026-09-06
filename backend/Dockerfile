@@ -10,7 +10,7 @@ RUN apk add --no-cache tini
 # ---- deps: install once, cache on lockfile ----
 FROM base AS deps
 COPY package.json package-lock.json ./
-RUN npm ci
+RUN npm ci --no-audit --no-fund --fetch-retries=5 --fetch-retry-mintimeout=20000 --fetch-retry-maxtimeout=120000
 
 # ---- dev: hot-reload server (compose bind-mounts the source over this) ----
 FROM deps AS dev

@@ -235,10 +235,17 @@ funcional `UNIQUE (lower(username))` (a casing de exibição preserva-se). `crea
 Helpers de erro pg movidos para `backend/src/db/pgErrors.ts` (`isUniqueViolation`).
 Testes: `app.test.ts` (memória) + integração (`Angler` vs `angler` → `USERNAME_TAKEN`).
 
-### L5 · Parâmetros de hashing não versionados · esforço M
-`security-review.md` S10. `scrypt` sem N/r/p no encoded hash; `ARCHITECTURE` pede
-Argon2id.
-**Ajuste**: Argon2id (`@node-rs/argon2`) ou incluir custo no hash + verificação.
+### L5 · Parâmetros de hashing não versionados · esforço M · ✅ feito 2026-09-06
+`security-review.md` S10.
+**Feito**: `hashPassword` usa Argon2id via `@node-rs/argon2` (string PHC com
+`m=19456,t=2,p=1` embutido). `verifyPassword` aceita `$argon2*` **e** o formato
+`scrypt$...` legado. `needsRehash(encoded)` → `login` re-hash transparente para
+Argon2id quando o hash é legado (`updatePasswordHash` no `AuthRepository`, PG +
+memória). O decoy hash de timing (M2) passa a ser Argon2. Testes: `crypto.test.ts`
+(round-trip Argon2, verify de scrypt legado, `needsRehash`, hash malformado) +
+integração (hash scrypt semeado → login → hash atualizado para `$argon2id$`).
+Nota: `@node-rs/argon2` traz binários pré-compilados (musl para o Alpine, gnu para
+o CI) — ambos no `package-lock.json`.
 
 ### L6 · Testes unitários de domínio no backend · esforço P · ✅ feito 2026-09-06
 `quality-review.md` §2.2.

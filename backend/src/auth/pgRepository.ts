@@ -76,6 +76,9 @@ export function createPgAuthRepository(db: Database): AuthRepository {
         throw error;
       }
     },
+    async updatePasswordHash(userId, passwordHash) {
+      await db.update(users).set({ passwordHash, updatedAt: new Date() }).where(eq(users.id, userId));
+    },
     async createSession(input) {
       const sessionId = randomUUID();
       return db.transaction(async tx => {

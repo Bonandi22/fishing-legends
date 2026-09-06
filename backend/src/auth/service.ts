@@ -1,5 +1,5 @@
 import { SignJWT, jwtVerify } from 'jose';
-import { hashPassword, hashToken, verifyPassword, createOpaqueToken } from './crypto.js';
+import { hashPassword, hashToken, needsRehash, verifyPassword, createOpaqueToken } from './crypto.js';
 import type { AuthRepository } from './types.js';
 
 const ACCESS_ALGORITHM = 'HS256';
@@ -52,6 +52,11 @@ export function createAuthService(repository: AuthRepository, config: AuthServic
       );
       if (!user || !passwordMatches || user.status !== 'active') {
         throw new Error('INVALID_CREDENTIALS');
+      }
+
+      // Transparently migrate a legacy (scrypt) hash to the current scheme.
+      if (needsRehash(user.passwordHash)) {
+        await repository.updatePasswordHash(user.id, await hashPassword(input.password));
       }
 
       const refreshToken = createOpaqueToken();
