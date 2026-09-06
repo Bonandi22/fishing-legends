@@ -1,4 +1,6 @@
 import Fastify, { type FastifyInstance, type FastifyServerOptions } from 'fastify';
+import fastifySwagger from '@fastify/swagger';
+import { jsonSchemaTransform, serializerCompiler, validatorCompiler } from 'fastify-type-provider-zod';
 import type { AppConfig } from './config/env.js';
 import { registerErrorHandling } from './http/errors.js';
 import { registerSystemRoutes } from './http/routes/system.js';
@@ -40,7 +42,7 @@ export type AppDependencies = {
   config: AppConfig;
 };
 
-export function createApp({ config }: AppDependencies): FastifyInstance {
+export async function createApp({ config }: AppDependencies): Promise<FastifyInstance> {
   if (config.environment === 'production' && !config.databaseUrl) {
     throw new Error('DATABASE_URL is required in production');
   }
@@ -53,6 +55,21 @@ export function createApp({ config }: AppDependencies): FastifyInstance {
     bodyLimit: 128 * 1024,
   };
   const app = Fastify(serverOptions);
+  app.setValidatorCompiler(validatorCompiler);
+  app.setSerializerCompiler(serializerCompiler);
+  await app.register(fastifySwagger, {
+    openapi: {
+      openapi: '3.0.3',
+      info: { title: 'Deep Blue Lure API', version: '0.1.0' },
+      tags: [
+        { name: 'system' }, { name: 'auth' }, { name: 'players' }, { name: 'catalog' },
+        { name: 'fishing' }, { name: 'economy' }, { name: 'inventory' },
+        { name: 'migration' }, { name: 'leaderboard' }, { name: 'rewards' }, { name: 'seasons' },
+      ],
+    },
+    transform: jsonSchemaTransform,
+  });
+
   registerSecurityHooks(app, {
     allowedOrigins: config.corsOrigins ?? [],
     rateLimitMax: config.rateLimitMax ?? 120,

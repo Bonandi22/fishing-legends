@@ -26,7 +26,7 @@ afterEach(async () => {
 
 describe('CORS', () => {
   it('does not reflect an arbitrary Origin when no allowlist is configured', async () => {
-    const app = createApp({ config: baseConfig });
+    const app = await createApp({ config: baseConfig });
     apps.add(app);
 
     const response = await app.inject({
@@ -40,7 +40,7 @@ describe('CORS', () => {
   });
 
   it('echoes an allowed Origin and rejects a disallowed one', async () => {
-    const app = createApp({ config: { ...baseConfig, corsOrigins: ['https://app.example'] } });
+    const app = await createApp({ config: { ...baseConfig, corsOrigins: ['https://app.example'] } });
     apps.add(app);
 
     const allowed = await app.inject({ method: 'GET', url: '/health', headers: { origin: 'https://app.example' } });
@@ -52,7 +52,7 @@ describe('CORS', () => {
   });
 
   it('honours a wildcard allowlist', async () => {
-    const app = createApp({ config: { ...baseConfig, corsOrigins: ['*'] } });
+    const app = await createApp({ config: { ...baseConfig, corsOrigins: ['*'] } });
     apps.add(app);
 
     const response = await app.inject({ method: 'GET', url: '/health', headers: { origin: 'https://anything.example' } });
@@ -62,7 +62,7 @@ describe('CORS', () => {
 
 describe('rate limiting', () => {
   it('cannot be bypassed by spoofing X-Forwarded-For when no proxy is trusted', async () => {
-    const app = createApp({ config: baseConfig });
+    const app = await createApp({ config: baseConfig });
     apps.add(app);
 
     const first = await app.inject({ method: 'GET', url: '/health', headers: { 'x-forwarded-for': '1.1.1.1' } });
@@ -76,7 +76,7 @@ describe('rate limiting', () => {
   });
 
   it('separates buckets by forwarded client IP when a proxy is trusted', async () => {
-    const app = createApp({ config: { ...baseConfig, trustProxy: true } });
+    const app = await createApp({ config: { ...baseConfig, trustProxy: true } });
     apps.add(app);
 
     const a1 = await app.inject({ method: 'GET', url: '/health', headers: { 'x-forwarded-for': '1.1.1.1' } });

@@ -27,7 +27,7 @@ afterEach(async () => {
 
 describe('backend foundation', () => {
   it('reports liveness without requiring a database', async () => {
-    const app = createApp({ config: testConfig });
+    const app = await createApp({ config: testConfig });
     apps.add(app);
 
     const response = await app.inject({ method: 'GET', url: '/health' });
@@ -42,7 +42,7 @@ describe('backend foundation', () => {
   });
 
   it('reports readiness failure when the database is not configured', async () => {
-    const app = createApp({ config: testConfig });
+    const app = await createApp({ config: testConfig });
     apps.add(app);
 
     const response = await app.inject({ method: 'GET', url: '/ready' });
@@ -52,7 +52,7 @@ describe('backend foundation', () => {
   });
 
   it('registers and refreshes an account without exposing the password hash', async () => {
-    const app = createApp({ config: testConfig });
+    const app = await createApp({ config: testConfig });
     apps.add(app);
 
     const registerResponse = await app.inject({
@@ -82,7 +82,7 @@ describe('backend foundation', () => {
   });
 
   it('logs out, revoking the session so its refresh token stops working', async () => {
-    const app = createApp({ config: testConfig });
+    const app = await createApp({ config: testConfig });
     apps.add(app);
 
     const registered = (await app.inject({
@@ -107,7 +107,7 @@ describe('backend foundation', () => {
   });
 
   it('detects a reused refresh token and revokes the session family', async () => {
-    const app = createApp({ config: testConfig });
+    const app = await createApp({ config: testConfig });
     apps.add(app);
 
     const registered = (await app.inject({
@@ -141,7 +141,7 @@ describe('backend foundation', () => {
   });
 
   it('rejects a username that differs only in case from an existing one', async () => {
-    const app = createApp({ config: testConfig });
+    const app = await createApp({ config: testConfig });
     apps.add(app);
 
     const first = await app.inject({
@@ -161,7 +161,7 @@ describe('backend foundation', () => {
   });
 
   it('rejects invalid registration input with a safe error', async () => {
-    const app = createApp({ config: testConfig });
+    const app = await createApp({ config: testConfig });
     apps.add(app);
 
     const response = await app.inject({
@@ -177,7 +177,7 @@ describe('backend foundation', () => {
   });
 
   it('returns the authenticated player profile and rejects missing credentials', async () => {
-      const app = createApp({ config: testConfig });
+      const app = await createApp({ config: testConfig });
       apps.add(app);
       const registration = await app.inject({
         method: 'POST',
@@ -203,7 +203,7 @@ describe('backend foundation', () => {
   });
 
   it('serves a validated public catalog', async () => {
-    const app = createApp({ config: testConfig });
+    const app = await createApp({ config: testConfig });
     apps.add(app);
     const response = await app.inject({ method: 'GET', url: '/api/v1/catalog' });
     expect(response.statusCode).toBe(200);
@@ -213,7 +213,7 @@ describe('backend foundation', () => {
   });
 
   it('creates an idempotent fishing session and completes it server-side', async () => {
-    const app = createApp({ config: testConfig });
+    const app = await createApp({ config: testConfig });
     apps.add(app);
     const registration = await app.inject({
       method: 'POST',
@@ -262,7 +262,7 @@ describe('backend foundation', () => {
   });
 
   it('exposes a server-owned wallet balance', async () => {
-    const app = createApp({ config: testConfig });
+    const app = await createApp({ config: testConfig });
     apps.add(app);
     const registration = await app.inject({
       method: 'POST',
@@ -284,7 +284,7 @@ describe('backend foundation', () => {
   });
 
   it('exposes an authenticated warehouse and rejects an empty sale', async () => {
-    const app = createApp({ config: testConfig });
+    const app = await createApp({ config: testConfig });
     apps.add(app);
     const registration = await app.inject({
       method: 'POST',
@@ -324,7 +324,7 @@ describe('backend foundation', () => {
   });
 
   it('rejects a net purchase when the net limit is already reached', async () => {
-    const app = createApp({ config: testConfig });
+    const app = await createApp({ config: testConfig });
     apps.add(app);
     const registration = await app.inject({
       method: 'POST',
@@ -350,7 +350,7 @@ describe('backend foundation', () => {
   });
 
   it('rejects a multiplier purchase without wallet funds', async () => {
-    const app = createApp({ config: testConfig });
+    const app = await createApp({ config: testConfig });
     apps.add(app);
     const registration = await app.inject({
       method: 'POST',
@@ -376,7 +376,7 @@ describe('backend foundation', () => {
   });
 
   it('returns an authenticated paginated leaderboard', async () => {
-    const app = createApp({ config: testConfig });
+    const app = await createApp({ config: testConfig });
     apps.add(app);
     const registration = await app.inject({
       method: 'POST',
@@ -399,7 +399,7 @@ describe('backend foundation', () => {
   });
 
   it('claims a daily reward only once', async () => {
-    const app = createApp({ config: testConfig });
+    const app = await createApp({ config: testConfig });
     apps.add(app);
     const registration = await app.inject({
       method: 'POST',
@@ -422,7 +422,7 @@ describe('backend foundation', () => {
   });
 
   it('returns the active authenticated season', async () => {
-    const app = createApp({ config: testConfig });
+    const app = await createApp({ config: testConfig });
     apps.add(app);
     const registration = await app.inject({
       method: 'POST',
@@ -444,7 +444,7 @@ describe('backend foundation', () => {
   });
 
   it('rejects the season endpoint without a valid access token', async () => {
-    const app = createApp({ config: testConfig });
+    const app = await createApp({ config: testConfig });
     apps.add(app);
 
     const missing = await app.inject({ method: 'GET', url: '/api/v1/seasons/current' });
