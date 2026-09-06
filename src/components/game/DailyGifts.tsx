@@ -1,8 +1,13 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
-import { PlayerState, DailyGiftReward, ROD_SKINS, BOAT_SKINS, getDailyGiftsForWeek } from '@/game/types';
-import { Gift, Coins, Zap, Sparkles, Ship, Anchor, Lock, Check } from 'lucide-react';
+import { PlayerState, DailyGiftReward, getDailyGiftsForWeek } from '@/game/types';
+import { useI18n } from '@/game/i18n';
+import GameScreen from './shell/GameScreen';
+import { screenItem } from './shell/motion';
+import DayTile from './dailygifts/DayTile';
+import RewardIcon from './dailygifts/RewardIcon';
+import { rewardLabel } from './dailygifts/rewards';
 
 interface Props {
   player: PlayerState;
@@ -10,28 +15,8 @@ interface Props {
   onBack: () => void;
 }
 
-function rewardLabel(r: DailyGiftReward): string {
-  if (r.type === 'coins') return `${r.amount} moedas`;
-  if (r.type === 'multiplier') return r.kind === 'luck' ? '2x Sorte (1min)' : '2x Força (1min)';
-  if (r.type === 'boatSkin') {
-    const b = BOAT_SKINS.find(s => s.id === r.skinId);
-    return `Skin de Barco: ${b?.name || r.skinId}`;
-  }
-  const s = ROD_SKINS.find(s => s.id === r.skinId);
-  return `Skin de Vara: ${s?.name || r.skinId}`;
-}
-
-function RewardIcon({ r }: { r: DailyGiftReward }) {
-  const cls = 'w-7 h-7';
-  if (r.type === 'coins') return <Coins className={`${cls} text-yellow-400`} />;
-  if (r.type === 'multiplier') return r.kind === 'luck'
-    ? <Sparkles className={`${cls} text-pink-400`} />
-    : <Zap className={`${cls} text-amber-400`} />;
-  if (r.type === 'boatSkin') return <Ship className={`${cls} text-cyan-300`} />;
-  return <Anchor className={`${cls} text-emerald-300`} />;
-}
-
 export default function DailyGifts({ player, onClaim, onBack }: Props) {
+  const { t } = useI18n();
   const today = new Date().toISOString().slice(0, 10);
   const claimedToday = player.dailyGiftsLastClaim === today;
   const currentDay = player.dailyGiftsDay || 1;
@@ -45,87 +30,43 @@ export default function DailyGifts({ player, onClaim, onBack }: Props) {
     setPopup({ reward: gifts[currentDay - 1], day: currentDay });
   };
 
+  const subtitle =
+    currentWeek <= 1
+      ? t('daily.subtitleFirst')
+      : t('daily.subtitleRotation').replace('{n}', String(currentWeek));
+
+  const action = (
+    <Button
+      size="lg"
+      onClick={handleClaim}
+      disabled={claimedToday}
+      className="h-14 w-full bg-lure text-base font-black uppercase tracking-wide text-lure-foreground shadow-[0_0_30px_hsl(var(--lure)/0.4)] hover:bg-lure/90 disabled:bg-menu-raised disabled:text-muted-foreground disabled:shadow-none"
+    >
+      {claimedToday ? t('daily.comeBack') : `${t('daily.claimDay')} ${currentDay}`}
+    </Button>
+  );
+
   return (
-    <div className="min-h-screen bg-gradient-to-b from-indigo-950 via-purple-950 to-slate-950 p-6 flex flex-col items-center">
-      <div className="w-full max-w-5xl">
-        <div className="flex items-center justify-between mb-6">
-          <Button variant="outline" size="sm" onClick={onBack}>← Voltar</Button>
-          <h1 className="text-3xl font-black text-white flex items-center gap-2">
-            <Gift className="w-7 h-7 text-pink-400" /> Presentes Diários
-          </h1>
-          <div className="text-sm text-white/70">💰 {player.coins}</div>
-        </div>
-
-        <p className="text-center text-white/70 mb-6">
-          {currentWeek <= 1
-            ? 'Resgate uma recompensa todos os dias. Os dois últimos dias dão skins exclusivas!'
-            : `Semana ${currentWeek} — recompensas em moedas e multiplicadores. Volte todo dia!`}
-        </p>
-
-        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3 mb-8">
-          {gifts.map((reward, i) => {
-            const day = i + 1;
-            const claimedDay = claimedToday ? (currentDay === 1 ? 7 : currentDay - 1) : 0;
-            const isCurrent = day === currentDay && !claimedToday;
-            const isClaimed = claimedToday ? day <= claimedDay : day < currentDay;
-            const isLocked = !isCurrent && !isClaimed;
-            const isExclusive = reward.type === 'boatSkin' || reward.type === 'rodSkin';
-
-            return (
-              <motion.div
-                key={day}
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.05 }}
-                className={`relative rounded-xl border-2 p-3 text-center flex flex-col items-center gap-2 ${
-                  isCurrent
-                    ? 'border-pink-400 bg-pink-500/10 shadow-lg shadow-pink-500/30 ring-2 ring-pink-400/40'
-                    : isClaimed
-                      ? 'border-emerald-500/40 bg-emerald-500/5 opacity-70'
-                      : isExclusive
-                        ? 'border-amber-400/60 bg-gradient-to-b from-amber-500/15 to-purple-500/10'
-                        : 'border-white/15 bg-white/5'
-                }`}
-              >
-                <div className="text-xs font-bold text-white/90 uppercase tracking-wider">
-                  Dia {day}
-                </div>
-                <div className="flex items-center justify-center h-12">
-                  {isLocked ? <Lock className="w-6 h-6 text-white/40" />
-                    : isClaimed ? <Check className="w-6 h-6 text-emerald-400" />
-                    : <RewardIcon r={reward} />}
-                </div>
-                <div className="text-[11px] text-white/80 leading-tight min-h-[28px]">
-                  {rewardLabel(reward)}
-                </div>
-                {isExclusive && (
-                  <div className="text-[10px] font-bold text-amber-300 uppercase">Exclusivo</div>
-                )}
-                {isCurrent && (
-                  <motion.div
-                    animate={{ scale: [1, 1.05, 1] }}
-                    transition={{ duration: 1.4, repeat: Infinity }}
-                    className="absolute -top-2 -right-2 bg-pink-500 text-white text-[10px] font-bold rounded-full px-2 py-0.5"
-                  >
-                    HOJE
-                  </motion.div>
-                )}
-              </motion.div>
-            );
-          })}
-        </div>
-
-        <div className="flex justify-center">
-          <Button
-            size="lg"
-            onClick={handleClaim}
-            disabled={claimedToday}
-            className="w-72 h-14 text-lg font-bold bg-pink-500 hover:bg-pink-400 text-white disabled:bg-white/10 disabled:text-white/40"
-          >
-            {claimedToday ? 'Volte amanhã!' : `Resgatar Dia ${currentDay}`}
-          </Button>
-        </div>
-      </div>
+    <GameScreen title={t('daily.name')} onBack={onBack} coins={player.coins} subtitle={subtitle} action={action}>
+      <motion.div
+        variants={screenItem}
+        className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-7"
+      >
+        {gifts.map((reward, i) => {
+          const day = i + 1;
+          const claimedDay = claimedToday ? (currentDay === 1 ? 7 : currentDay - 1) : 0;
+          const isCurrent = day === currentDay && !claimedToday;
+          const isClaimed = claimedToday ? day <= claimedDay : day < currentDay;
+          return (
+            <DayTile
+              key={day}
+              day={day}
+              reward={reward}
+              state={isCurrent ? 'today' : isClaimed ? 'claimed' : 'locked'}
+            />
+          );
+        })}
+      </motion.div>
 
       <AnimatePresence>
         {popup && (
@@ -133,28 +74,36 @@ export default function DailyGifts({ player, onClaim, onBack }: Props) {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
             onClick={() => setPopup(null)}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
           >
             <motion.div
-              initial={{ scale: 0.7, rotate: -8 }}
-              animate={{ scale: 1, rotate: 0 }}
-              exit={{ scale: 0.7 }}
+              initial={{ scale: 0.85, y: 16 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.85 }}
               onClick={e => e.stopPropagation()}
-              className="bg-gradient-to-br from-pink-600 to-purple-700 border-2 border-pink-300 rounded-2xl p-8 max-w-sm text-center shadow-2xl"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="daily-claimed-title"
+              className="menu-panel w-full max-w-sm rounded-2xl border border-lure/40 p-8 text-center"
             >
               <div className="mb-3 flex justify-center">
-                <RewardIcon r={popup.reward} />
+                <RewardIcon r={popup.reward} className="h-9 w-9" />
               </div>
-              <h2 className="text-2xl font-black text-white mb-1">Dia {popup.day} resgatado!</h2>
-              <p className="text-white/90 mb-5">{rewardLabel(popup.reward)}</p>
-              <Button onClick={() => setPopup(null)} className="bg-white text-purple-700 hover:bg-white/90 font-bold w-full">
-                Continuar
+              <h2 id="daily-claimed-title" className="font-display text-2xl font-black text-foreground">
+                {t('daily.day')} {popup.day} {t('daily.claimedSuffix')}
+              </h2>
+              <p className="mb-5 mt-1 text-sm text-muted-foreground">{rewardLabel(popup.reward, t)}</p>
+              <Button
+                onClick={() => setPopup(null)}
+                className="w-full bg-lure font-semibold text-lure-foreground hover:bg-lure/90"
+              >
+                {t('daily.continue')}
               </Button>
             </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
-    </div>
+    </GameScreen>
   );
 }

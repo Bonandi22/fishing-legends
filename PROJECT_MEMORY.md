@@ -1135,3 +1135,31 @@ Lojas ("o armador"). Todas passam a usar `GameScreen` + `coins`.
 - **Verificação**: `tsc app` ✅ · `backend:typecheck` ✅ · `npm test` ✅ 153 ·
   `lint` ✅ (0 erros, 12 avisos) · `build` ✅ · revisão visual Playwright (Skins,
   BoatSkins, Multipliers, 390px + 1440px).
+- CI falhou 1x (`CosmeticCard` dependia de `toLocaleString()` — `1000`→`1,000` no
+  ICU completo do CI; corrigido para `999`). **PR #11 mergeada** (`f2fbd8d`).
+
+#### Fatia 3 — dividida em 3a (Ranking + DailyGifts) e 3b (Aquarium) a pedido do utilizador
+
+##### Fatia 3a — branch `feature/task-09-frontend-screens-slice-3a`
+
+- **`Ranking.tsx`** — `GameScreen` (`width="default"`) + tabela `menu-panel` (grid de
+  4 colunas, linhas `<button>`, medalhas top-3, linha do jogador em `bg-lure/10`,
+  seleção em `menu-raised`). `ranking/ProfileModal.tsx` — modal extraído com
+  `role="dialog"`/`aria-modal`, swatches de skin/barco inline, tiles `menu-row`.
+  Cartão "sua posição" (fora do top 100) → `menu-panel` fixo. `rank.*` i18n já
+  completo.
+- **`DailyGifts.tsx`** — **reconstrução total**: mata a paleta rosa/roxo/índigo,
+  passa a `GameScreen` + `coins` + slot de ação. Tira de 7 dias → `dailygifts/
+  DayTile.tsx` (resgatado = check `--biolume` esbatido · hoje = `--lure` + tag
+  "HOJE" a pulsar · bloqueado = cadeado · dias exclusivos = `--biolume`). Popup de
+  resgate → `menu-panel` `role="dialog"`. Lógica de estado dos dias preservada à
+  letra (`claimedDay`/`isCurrent`/`isClaimed`). `dailygifts/rewards.ts`
+  (`rewardLabel(r, t)` + `isExclusive`, puros) + `dailygifts/RewardIcon.tsx`
+  (separados por causa do `react-refresh/only-export-components`).
+- **i18n**: **+16 chaves `daily.*` nos 6 idiomas** (as strings PT hard-coded do
+  DailyGifts saíram todas). `daily.subtitleRotation` usa `{n}` via `.replace`.
+- **Testes novos (TDD)**: `Ranking` (4 — ordem, abre perfil, "sua posição", voltar),
+  `DailyGifts` (4 — resgatar + popup, resgatado desativado, dias exclusivos, voltar).
+- **Verificação**: `tsc app` ✅ · `backend:typecheck` ✅ · `npm test` ✅ 161 ·
+  `lint` ✅ (0 erros, 12 avisos) · `build` ✅ · revisão visual Playwright (Ranking +
+  perfil, DailyGifts + popup, 390px + 1440px).
