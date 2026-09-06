@@ -1,7 +1,9 @@
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import { motion } from 'framer-motion';
+import { Button } from '@/components/ui/button';
 import { PlayerState, NET_LIMIT, NET_PRICE } from '@/game/types';
+import { useI18n } from '@/game/i18n';
+import GameScreen from './shell/GameScreen';
+import { screenItem } from './shell/motion';
 
 interface Props {
   player: PlayerState;
@@ -10,49 +12,48 @@ interface Props {
 }
 
 export default function NetShop({ player, onBuy, onBack }: Props) {
+  const { t } = useI18n();
   const nets = player.nets ?? 0;
   const full = nets >= NET_LIMIT;
   const canAfford = player.coins >= NET_PRICE;
+  const level = Math.round((nets / NET_LIMIT) * 100);
+
+  const label = full
+    ? t('net.full')
+    : canAfford
+      ? `${t('net.buyOne')} · 💰 ${NET_PRICE.toLocaleString()}`
+      : t('mult.noCoins');
 
   return (
-    <div className="screen-shell bg-background">
-      <div className="max-w-xl mx-auto">
-        <div className="screen-header">
-          <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-foreground">Loja de Redes</h1>
-            <p className="text-muted-foreground text-sm">Cada rede custa {NET_PRICE.toLocaleString()} moedas</p>
-          </div>
-          <Button variant="outline" onClick={onBack}>Voltar</Button>
+    <GameScreen
+      title={t('net.name')}
+      onBack={onBack}
+      coins={player.coins}
+      subtitle={t('net.subtitle').replace('{n}', NET_PRICE.toLocaleString())}
+      width="narrow"
+    >
+      <motion.div variants={screenItem} className="menu-panel flex flex-col gap-5 rounded-2xl p-6 text-center">
+        <div>
+          <p className="font-display text-5xl font-black tabular-nums text-lure">
+            {nets}
+            <span className="text-2xl text-muted-foreground">/{NET_LIMIT}</span>
+          </p>
+          <p className="mt-1 text-sm text-muted-foreground">{t('net.available')}</p>
         </div>
 
-        <Card className="border-2 border-border mb-4">
-          <CardContent className="p-4 flex items-center justify-between">
-            <span className="text-sm text-muted-foreground">Moedas</span>
-            <span className="font-bold text-foreground">{player.coins.toLocaleString()}</span>
-          </CardContent>
-        </Card>
+        <div className="h-2 overflow-hidden rounded-full bg-menu-raised">
+          <div className="h-full rounded-full bg-lure transition-[width]" style={{ width: `${level}%` }} />
+        </div>
 
-        <Card className="border-2 border-primary/40">
-          <CardContent className="p-6 text-center">
-            <motion.div
-              animate={{ y: [0, -6, 0] }}
-              transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut' }}
-              className="text-5xl font-black text-primary mb-2"
-            >
-              {nets}/{NET_LIMIT}
-            </motion.div>
-            <p className="text-sm text-muted-foreground mb-6">Redes disponíveis</p>
-            <Button
-              size="lg"
-              className="w-full font-bold"
-              disabled={full || !canAfford}
-              onClick={() => onBuy()}
-            >
-              {full ? 'Limite máximo atingido' : canAfford ? `Comprar 1 rede — ${NET_PRICE.toLocaleString()}` : 'Moedas insuficientes'}
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    </div>
+        <Button
+          size="lg"
+          onClick={onBuy}
+          disabled={full || !canAfford}
+          className="w-full bg-lure font-semibold text-lure-foreground hover:bg-lure/90"
+        >
+          {label}
+        </Button>
+      </motion.div>
+    </GameScreen>
   );
 }

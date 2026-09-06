@@ -157,7 +157,16 @@ const translations = {
   'skins.equip': { pt: 'Equipar', en: 'Equip', es: 'Equipar', fr: 'Équiper', de: 'Ausrüsten', ja: '装備' },
   'skins.equipped': { pt: 'Equipado', en: 'Equipped', es: 'Equipado', fr: 'Équipé', de: 'Ausgerüstet', ja: '装備中' },
   'skins.visual': { pt: '🛶 Visual do Barco', en: '🛶 Boat Visual', es: '🛶 Visual del Barco', fr: '🛶 Visuel du Bateau', de: '🛶 Boot-Design', ja: '🛶 ボートビジュアル' },
+  'skins.name': { pt: 'Skins de vara', en: 'Rod skins', es: 'Skins de caña', fr: 'Skins de canne', de: 'Ruten-Skins', ja: 'ロッドスキン' },
+  'skins.boatLink': { pt: 'Visuais do barco', en: 'Boat visuals', es: 'Visuales del barco', fr: 'Visuels du bateau', de: 'Boot-Designs', ja: 'ボートビジュアル' },
   'boat.title': { pt: '🛶 Visuais do Barco', en: '🛶 Boat Visuals', es: '🛶 Visuales del Barco', fr: '🛶 Visuels du Bateau', de: '🛶 Boot-Designs', ja: '🛶 ボートビジュアル' },
+  'boat.name': { pt: 'Visuais do barco', en: 'Boat visuals', es: 'Visuales del barco', fr: 'Visuels du bateau', de: 'Boot-Designs', ja: 'ボートビジュアル' },
+  'mult.name': { pt: 'Multiplicadores', en: 'Multipliers', es: 'Multiplicadores', fr: 'Multiplicateurs', de: 'Multiplikatoren', ja: 'マルチプライヤー' },
+  'net.name': { pt: 'Paiol de redes', en: 'Net locker', es: 'Pañol de redes', fr: 'Casier à filets', de: 'Netzspind', ja: '網ロッカー' },
+  'net.subtitle': { pt: 'Cada rede custa {n} moedas', en: 'Each net costs {n} coins', es: 'Cada red cuesta {n} monedas', fr: 'Chaque filet coûte {n} pièces', de: 'Jedes Netz kostet {n} Münzen', ja: '網1つ {n} コイン' },
+  'net.available': { pt: 'Redes disponíveis', en: 'Nets available', es: 'Redes disponibles', fr: 'Filets disponibles', de: 'Verfügbare Netze', ja: '利用可能な網' },
+  'net.buyOne': { pt: 'Comprar 1 rede', en: 'Buy 1 net', es: 'Comprar 1 red', fr: 'Acheter 1 filet', de: '1 Netz kaufen', ja: '網を1つ購入' },
+  'net.full': { pt: 'Limite máximo atingido', en: 'At maximum', es: 'Límite máximo alcanzado', fr: 'Limite atteinte', de: 'Maximum erreicht', ja: '上限に達しました' },
   'rank.boatsOwned': { pt: 'Visuais de barco', en: 'Boat visuals', es: 'Visuales de barco', fr: 'Visuels de bateau', de: 'Boot-Designs', ja: 'ボートビジュアル' },
 
   // Roulette

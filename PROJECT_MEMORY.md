@@ -1107,3 +1107,31 @@ Frontend-only, sem mudança de contrato em nenhuma fatia.
 - **Verificação**: `tsc app` ✅ · `backend:typecheck` ✅ · `npm test` ✅ 136 ·
   `lint` ✅ (0 erros, 12 avisos pré-existentes) · `build` ✅ · revisão visual
   Playwright (cheios + vazios, 390px + 1440px). Teste manual do utilizador ✅.
+- Commitada em `4ab049e`, **PR #10** aberta. Branch `feature/task-09-...-slice-2`
+  encadeada a partir daqui.
+
+#### Fatia 2 — branch `feature/task-09-frontend-screens-slice-2`
+
+Lojas ("o armador"). Todas passam a usar `GameScreen` + `coins`.
+
+- **`src/components/game/shops/`**: `CosmeticCard.tsx` (tile `menu-panel` `h-full`,
+  slot de preview + nome + estado; equipado → anel `--lure`, possuído → `--biolume`,
+  à venda → `PriceTag` + botão comprar desativado sem moedas; ação alinhada em baixo
+  com `min-h`), `RodPreview.tsx` / `BoatPreview.tsx` (a arte CSS existente, extraída),
+  `PriceTag.tsx` (`💰 N`, nada se grátis).
+- **`SkinsShop.tsx`** / **`BoatSkinsShop.tsx`** — `GameScreen` + grelha de
+  `CosmeticCard`. SkinsShop: "Visuais do barco" como `menu-row` de navegação (não
+  botão gigante).
+- **`MultiplierShop.tsx`** — `GameScreen` (`width="narrow"`) + 4 tiles de buff
+  (efeito + duração + `PriceTag` + estado "ativo" com opacidade a pulsar).
+- **`NetShop.tsx`** — `GameScreen` + painel "paiol": `nets/NET_LIMIT` grande +
+  medidor de nível + botão. **i18n extraída** (as strings PT hard-coded saíram).
+- **i18n**: +11 chaves nos 6 idiomas — `net.*` (6), nomes limpos sem emoji
+  (`mult.name`, `skins.name`, `boat.name`), `skins.boatLink`. `net.subtitle` usa
+  `{n}` resolvido com `.replace` no call site (o `t()` não interpola).
+- Sem `index.css` novo (reuso `.deep-shell`, `menu-panel`, `--lure`/`--biolume`).
+- **Testes novos (TDD)**: `CosmeticCard` (5), `SkinsShop`+`BoatSkinsShop` (5),
+  `MultiplierShop` (3), `NetShop` (4).
+- **Verificação**: `tsc app` ✅ · `backend:typecheck` ✅ · `npm test` ✅ 153 ·
+  `lint` ✅ (0 erros, 12 avisos) · `build` ✅ · revisão visual Playwright (Skins,
+  BoatSkins, Multipliers, 390px + 1440px).
