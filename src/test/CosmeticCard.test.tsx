@@ -10,7 +10,7 @@ function renderCard(props: Partial<Parameters<typeof CosmeticCard>[0]> = {}) {
     <I18nProvider>
       <CosmeticCard
         name="Tubarão"
-        price={1000}
+        price={999}
         owned={false}
         equipped={false}
         canAfford
@@ -29,7 +29,7 @@ beforeEach(() => cleanup());
 describe('CosmeticCard', () => {
   it('shows the price and buys an unowned item', () => {
     const { onBuy } = renderCard();
-    expect(screen.getByText(/1000/)).toBeInTheDocument();
+    expect(screen.getByText(/999/)).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /comprar/i }));
     expect(onBuy).toHaveBeenCalledTimes(1);
