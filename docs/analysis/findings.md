@@ -258,8 +258,13 @@ rejeita sessões fora da janela: marca `status='expired'` e lança
 gravado + sem captura). **Limite de frequência** fica para o módulo de antifraude
 (Fase 11).
 
-### L8 · `fishing` insere em `warehouse_fish` diretamente · esforço P
-`backend-review.md` fishing. Cruza fronteira de módulo (`ARCHITECTURE.md:42`).
+### L8 · `fishing` insere em `warehouse_fish` diretamente · esforço P · ✅ feito 2026-09-06
+`backend-review.md` fishing. Cruzava a fronteira de módulo (`ARCHITECTURE.md:42`).
+**Feito**: `backend/src/inventory/warehouse.ts` — `addWarehouseFish(executor, input)`
+onde `executor` é a `Database` **ou** uma transação aberta. `fishing/pgService`
+chama-o passando o seu `tx` (mantém a atomicidade); `inventory/pgRepository.addCatch`
+também passa a usá-lo. O `fishing/pgService` deixou de importar a tabela
+`warehouseFish`. Coberto pelos testes de integração de pesca/inventário existentes.
 **Ajuste**: passar pelo serviço de inventário (dentro da mesma transação).
 
 ### L9 · Higiene de repositório · esforço P · ✅ feito 2026-09-06
