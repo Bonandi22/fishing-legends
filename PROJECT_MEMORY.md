@@ -1011,5 +1011,54 @@ mesmas props. Frontend-only.
   revisão visual do agente com Playwright em 390px e 1440px (desktop + mobile).
 - **Pendente**: teste manual do utilizador (`npm run dev`, exercitar cada botão,
   troca de mundo/idioma/faixa, modal de conta, presentes) e revisão do diff antes de
-  commit. Nada foi commitado. Fora de âmbito: relocar o banner de tutorial (hoje
-  dentro do modal de conta, comportamento preservado); ligar o menu ao backend.
+  commit. Menu commitado em `977eb9d`. Fora de âmbito: relocar o banner de tutorial
+  (hoje dentro do modal de conta, comportamento preservado); ligar o menu ao backend.
+
+### Task 8 (cont.) — repaginação do ecrã de locais de pesca — mesma branch — 2026-09-06
+
+Segunda tela do redesenho frontend. Direção aprovada pelo utilizador: **"carta
+náutica / levantamento"** — o ecrã é uma carta batimétrica e cada local é um sítio
+de amostragem sobre ela. Frontend-only, sem mudança de contrato (`Index.tsx` passa
+as mesmas props).
+
+- **`LocationSelect.tsx`** (~106 → ~66 linhas) decomposto em
+  `src/components/game/locations/`:
+  - `rarity.ts` — `fishRarityComposition(fishIds)` (puro): agrega `location.fishIds`
+    por raridade via `getFishById`, ordenado common→cosmic. `RARITY_ORDER`,
+    `rarityColor`.
+  - `SpeciesSpectrum.tsx` — barra tipo eco-sonda: uma banda por raridade presente,
+    largura = `count · √(RARITY_CONFIG.chance)` (amortecida para o topo raro ficar
+    visível), com separadores; número à direita = tamanho do roster. `role="img"` +
+    `aria-label` com o detalhe.
+  - `LocationArt.tsx` — placa da carta: foto tratada (`saturate .9`, keyline,
+    gradiente de legibilidade); sem foto (Mundos 2/3) → anéis de sonda em tinta
+    `--lure` + brilho radial na `waterColor` do local + emoji-selo. Bloqueado →
+    mesma placa + haze `bg-abyss/35 backdrop-blur`.
+  - `LocationCard.tsx` — desbloqueado = `<button>` (`data-location`, foco visível);
+    bloqueado = `<div data-location>` com objetivo `Alcança o nível N (+shortfall)`
+    e `aria-label`. Sem opacidade-esbatida, sem rótulo de tipo com emoji (removido —
+    era clutter).
+  - `SurveyHeader.tsx` — título `loc.title` em Big Shoulders + medidor de progresso
+    (`X/Y cartografados` + linha isóbata `--lure`); empilha no mobile.
+  - `ChartField.tsx` — substrato SVG `position: fixed` de curvas de nível + sondas
+    em `--lure` a baixo contraste, atrás dos cartões.
+- **Tema**: nova classe `.chart-surface` em `index.css` (gradiente radial
+  azul-abismo). **`world-bg-2/3` (vermelho/verde) já não são usados aqui** — a "sala
+  de cartas" é monocromática azul em todos os mundos (a cor do mundo aparece na cena
+  de pesca); coerente com os acentos cyan. As classes `world-bg-*` continuam usadas
+  no `MainMenu`.
+- **Movimento**: mesma sequência "afundar" escalonada do menu; `useReducedMotion`
+  respeitado. Sem hover-lift por cartão (só a foto "emerge" — scale 1.04, desligado
+  em reduced-motion).
+- **i18n**: 3 chaves novas nos 6 idiomas — `loc.charted`, `loc.reachLevel`,
+  `loc.world`.
+- **Prop removida**: `onCastNet` do `LocationSelect` (nunca era passado nem usado).
+- **Testes novos**: `src/test/locationRarity.test.ts` (4) — composição por raridade,
+  ordenação, ids inválidos. `src/test/LocationSelect.test.tsx` (7) — filtro por
+  mundo, contagem cartografada, seleção só de água desbloqueada, botão vs região,
+  nível exigido no bloqueado, voltar.
+- **Verificação**: `tsc app` ✅ · `backend:typecheck` ✅ · `npm test` ✅ 120 ·
+  `lint` ✅ (0 erros, 12 avisos pré-existentes) · `build` ✅ · revisão visual do
+  agente com Playwright (Mundo 1 e Mundo 2, 390px + 1440px).
+- **Pendente**: teste manual do utilizador e revisão do diff. Nada commitado ainda
+  nesta parte.

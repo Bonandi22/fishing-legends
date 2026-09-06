@@ -72,6 +72,9 @@ const translations = {
   'loc.river': { pt: '🏞️ Rio', en: '🏞️ River', es: '🏞️ Río', fr: '🏞️ Rivière', de: '🏞️ Fluss', ja: '🏞️ 川' },
   'loc.lake': { pt: '🏔️ Lago', en: '🏔️ Lake', es: '🏔️ Lago', fr: '🏔️ Lac', de: '🏔️ See', ja: '🏔️ 湖' },
   'loc.fishCount': { pt: 'peixes', en: 'fish', es: 'peces', fr: 'poissons', de: 'Fische', ja: '魚' },
+  'loc.charted': { pt: 'cartografados', en: 'charted', es: 'cartografiados', fr: 'cartographiés', de: 'kartiert', ja: '踏破' },
+  'loc.reachLevel': { pt: 'Alcança o nível', en: 'Reach level', es: 'Alcanza el nivel', fr: 'Atteignez le niveau', de: 'Erreiche Level', ja: 'レベル' },
+  'loc.world': { pt: 'Mundo', en: 'World', es: 'Mundo', fr: 'Monde', de: 'Welt', ja: 'ワールド' },
 
   // Fishing Screen
   'fish.castPrompt': { pt: 'Clique na água para lançar a linha! 🎣', en: 'Click on the water to cast! 🎣', es: '¡Haz clic en el agua para lanzar! 🎣', fr: 'Cliquez sur l\'eau pour lancer ! 🎣', de: 'Klicke aufs Wasser zum Auswerfen! 🎣', ja: '水をクリックして投げよう！🎣' },
