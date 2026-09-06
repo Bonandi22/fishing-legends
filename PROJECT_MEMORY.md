@@ -1231,3 +1231,29 @@ Cromo dos 2 minijogos 3D. **A cena 3D, os overlays de barco/vara e a física do 
   puxar, capturar → modal) é do utilizador.**
 - **Falta 5b**: `NetFishing` — reconstrução do cromo + i18n completa; nomes das
   redes derivados da raridade (`t()` + `getRarityLabel`), não do campo `name`.
+- **PR #15** aberta.
+
+##### Fatia 5b — branch `feature/task-09-frontend-screens-slice-5b`
+
+`NetFishing` — **reconstrução completa do cromo + extração i18n total**. O minijogo
+de barra (loop do `linePos`, `handlePull` com verificação da zona verde, sorteio da
+rede) fica intacto.
+
+- **`netfishing/netTypes.ts`** (novo) — `NetType`, `NET_TYPES` (9 grelhas, uma por
+  raridade; sem o campo `name`), `randomNet`. Tirado do componente (arruma o aviso
+  `react-refresh` — lint 12 → 11).
+- **`NetFishing.tsx`** — passa a `GameScreen` (`width="narrow"`, subtítulo = local).
+  As 5 fases (pull/pulled/opened/empty/lost) reestilizadas: barra vermelho/verde →
+  `bg-destructive/40` + `bg-biolume/70` + marcador com glow `--lure`; botões PUXAR /
+  ABRIR / "lançar outra" → `bg-lure`; grelha de resultado `Card border-2` → tiles
+  `menu-panel` com fio da cor da raridade. **Nome da rede derivado da raridade**
+  (`t('net.type')` — `getRarityLabel`), não do campo `name`.
+- **i18n**: **+19 chaves `net.*` nos 6 idiomas** — todas as strings PT hard-coded do
+  NetFishing (era zero i18n) saíram. `net.received` usa `{n}` via `.replace`.
+- **Testes novos**: `NetFishing` (3 — fase inicial + controlo de puxar, nome da rede
+  por raridade, voltar).
+- **Verificação**: `tsc app` ✅ · `backend:typecheck` ✅ · `npm test` ✅ 179 ·
+  `lint` ✅ (0 erros, **11** avisos) · `build` ✅ · revisão visual Playwright (fluxo
+  completo: puxar → abrir → haul, 1440px).
+
+**Task 9 completa** — todas as telas do jogo repaginadas na linguagem "deep blue".

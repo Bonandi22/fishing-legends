@@ -1,33 +1,15 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { Fish, FishingLocation, PlayerState, Rarity } from '@/game/types';
+import { Fish, FishingLocation, PlayerState } from '@/game/types';
 import { getFishForLocation } from '@/game/data';
 import { rollWeight } from '@/game/fishingLogic';
 import { FISH_IMAGES } from '@/game/fishImages';
 import { getRarityLabel, useI18n } from '@/game/i18n';
-
-export interface NetType {
-  id: string;
-  name: string;
-  rarity: Rarity;
-  fishCount: number;
-  greenZoneSize: number;
-  speed: number;
-}
-
-export const NET_TYPES: NetType[] = [
-  { id: 'net_common', name: 'Rede Comum', rarity: 'common', fishCount: 20, greenZoneSize: 0.55, speed: 1.0 },
-  { id: 'net_uncommon', name: 'Rede Incomum', rarity: 'uncommon', fishCount: 15, greenZoneSize: 0.45, speed: 1.3 },
-  { id: 'net_mythic', name: 'Rede Mítica', rarity: 'mythic', fishCount: 10, greenZoneSize: 0.36, speed: 1.6 },
-  { id: 'net_legendary', name: 'Rede Lendária', rarity: 'legendary', fishCount: 8, greenZoneSize: 0.35, speed: 1.5 },
-  { id: 'net_abyssal', name: 'Rede Abissal', rarity: 'abyssal', fishCount: 5, greenZoneSize: 0.30, speed: 1.7 },
-  { id: 'net_volcanic', name: 'Rede Vulcânica', rarity: 'volcanic', fishCount: 4, greenZoneSize: 0.18, speed: 1.9 },
-  { id: 'net_platinum', name: 'Rede Platina', rarity: 'platinum', fishCount: 2, greenZoneSize: 0.14, speed: 2.0 },
-  { id: 'net_legends', name: 'Rede das Lendas', rarity: 'legends', fishCount: 1, greenZoneSize: 0.20, speed: 2.4 },
-  { id: 'net_cosmic', name: 'Rede Cósmica', rarity: 'cosmic', fishCount: 1, greenZoneSize: 0.18, speed: 2.2 },
-];
+import GameScreen from './shell/GameScreen';
+import { screenItem } from './shell/motion';
+import { rarityColor } from './locations/rarity';
+import { NetType, randomNet } from './netfishing/netTypes';
 
 interface Props {
   location: FishingLocation;
@@ -41,10 +23,8 @@ interface Props {
 
 type Phase = 'pull' | 'pulled' | 'opened' | 'lost' | 'empty';
 
-const randomNet = () => NET_TYPES[Math.floor(Math.random() * NET_TYPES.length)];
-
 export default function NetFishing({ location, player, onCatch, onCatchBatch, onBack, onUseNet, onOpenShop }: Props) {
-  const { lang } = useI18n();
+  const { lang, t } = useI18n();
   const strengthActive = !!player.strengthMultiplierEnd && player.strengthMultiplierEnd > Date.now();
   const strengthFactor = strengthActive ? (player.strengthMultiplierPower === 4 ? 0.25 : 0.5) : 1;
 
@@ -62,6 +42,8 @@ export default function NetFishing({ location, player, onCatch, onCatchBatch, on
   const greenSize = net?.greenZoneSize ?? 0.5;
   const greenStart = (1 - greenSize) / 2;
   const speed = (net?.speed ?? 1) * strengthFactor;
+
+  const netName = (n: NetType) => `${t('net.type')} — ${getRarityLabel(n.rarity, lang)}`;
 
   const startNet = (selected: NetType) => {
     setNet(selected);
@@ -119,100 +101,124 @@ export default function NetFishing({ location, player, onCatch, onCatchBatch, on
   };
 
   return (
-    <div className="min-h-screen bg-background p-4 md:p-8">
-      <div className="max-w-3xl mx-auto">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-foreground">Lançar a Rede</h1>
-            <p className="text-muted-foreground text-sm">{location.name}</p>
-          </div>
-          <Button variant="outline" onClick={onBack}>Voltar</Button>
-        </div>
+    <GameScreen title={t('net.castTitle')} onBack={onBack} subtitle={location.name} width="narrow">
+      <AnimatePresence mode="wait">
+        {phase === 'pull' && net && (
+          <motion.div key="pull" variants={screenItem} initial="hidden" animate="show">
+            <div className="mb-6 text-center">
+              <h2 className="font-display text-xl font-bold tracking-wide text-foreground">{netName(net)}</h2>
+              <p className="text-xs font-semibold" style={{ color: rarityColor(net.rarity) }}>
+                {net.fishCount} {t('net.pieces')}
+              </p>
+              <p className="text-xs text-muted-foreground">{t('net.random')}</p>
+              <p className="mt-1 text-sm text-muted-foreground">{t('net.pullHint')}</p>
+              {strengthActive && <p className="mt-1 text-xs font-bold text-biolume">{t('net.strengthActive')}</p>}
+            </div>
 
-        <AnimatePresence mode="wait">
-          {phase === 'pull' && net && (
-            <motion.div key="pull" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mt-4">
-              <div className="text-center mb-6">
-                <h2 className="text-xl font-bold text-foreground">{net.name}</h2>
-                <p className={`text-xs font-semibold text-rarity-${net.rarity}`}>{getRarityLabel(net.rarity, lang)} — {net.fishCount} {net.fishCount === 1 ? 'peixe' : 'peixes'}</p>
-                <p className="text-xs text-muted-foreground">Rede sorteada aleatoriamente</p>
-                <p className="text-muted-foreground text-sm">Aperte PUXAR quando a barra branca estiver na zona verde</p>
-                {strengthActive && <p className="text-xs text-primary font-bold mt-1">Força ativa</p>}
-              </div>
+            <div className="relative mb-6 h-14 overflow-hidden rounded-xl border border-lure/20 bg-menu-raised">
+              <div className="absolute inset-0 bg-destructive/40" />
+              <div
+                className="absolute bottom-0 top-0 bg-biolume/70"
+                style={{ left: `${greenStart * 100}%`, width: `${greenSize * 100}%` }}
+              />
+              <div
+                className="absolute bottom-0 top-0 w-1 bg-foreground shadow-[0_0_8px_hsl(var(--lure))]"
+                style={{ left: `${linePos * 100}%` }}
+              />
+            </div>
 
-              <div className="relative h-14 rounded-xl overflow-hidden border-2 border-border bg-secondary mb-6">
-                <div className="absolute inset-0 bg-destructive/80" />
-                <div className="absolute top-0 bottom-0 bg-accent" style={{ left: `${greenStart * 100}%`, width: `${greenSize * 100}%` }} />
-                <div className="absolute top-0 bottom-0 w-1 bg-foreground shadow-lg shadow-foreground/50" style={{ left: `${linePos * 100}%` }} />
-              </div>
+            <div className="text-center">
+              <Button
+                onClick={handlePull}
+                size="lg"
+                className="animate-pulse bg-lure px-10 py-6 text-xl font-black uppercase tracking-wide text-lure-foreground hover:bg-lure/90"
+              >
+                {t('net.pull')}
+              </Button>
+            </div>
+          </motion.div>
+        )}
 
-              <div className="text-center">
-                <Button onClick={handlePull} size="lg" className="bg-accent text-accent-foreground hover:bg-accent/90 font-bold text-xl px-10 py-6 animate-pulse">
-                  Puxar
+        {phase === 'pulled' && net && (
+          <motion.div key="pulled" variants={screenItem} initial="hidden" animate="show" className="mt-8 text-center">
+            <h2 className="mb-2 font-display text-2xl font-black text-foreground">{t('net.pulled')}</h2>
+            <p className="mb-6 text-muted-foreground">{netName(net)} — {t('net.pulledMsg')}</p>
+            <Button
+              onClick={handleOpenNet}
+              size="lg"
+              className="bg-lure px-10 py-6 text-xl font-black uppercase tracking-wide text-lure-foreground hover:bg-lure/90"
+            >
+              {t('net.open')}
+            </Button>
+          </motion.div>
+        )}
+
+        {phase === 'opened' && (
+          <motion.div key="opened" variants={screenItem} initial="hidden" animate="show" className="mt-2">
+            <h2 className="mb-1 font-display text-xl font-bold text-foreground">
+              {t('net.received').replace('{n}', String(haul.length))}
+            </h2>
+            <p className="mb-4 text-sm text-muted-foreground">{t('net.receivedMsg')}</p>
+            <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3">
+              {haul.map((h, i) => (
+                <div
+                  key={i}
+                  className="menu-panel flex flex-col items-center gap-1 rounded-xl p-3 text-center"
+                  style={{ borderColor: rarityColor(h.fish.rarity) }}
+                >
+                  {FISH_IMAGES[h.fish.id] ? (
+                    <img src={FISH_IMAGES[h.fish.id]} alt={h.fish.name} className="h-14 w-full object-contain" loading="lazy" />
+                  ) : (
+                    <div className="flex h-14 items-center justify-center text-3xl">{h.fish.emoji}</div>
+                  )}
+                  <p className="w-full truncate text-sm font-semibold text-foreground">{h.fish.name}</p>
+                  <p className="text-xs tabular-nums text-muted-foreground">{h.weight} kg</p>
+                </div>
+              ))}
+            </div>
+            <div className="flex gap-3">
+              <Button onClick={reset} className="flex-1 bg-lure font-semibold text-lure-foreground hover:bg-lure/90">
+                {t('net.castAnother')} ({player.nets ?? 0})
+              </Button>
+              <Button variant="outline" onClick={onBack} className="flex-1 border-lure/25 bg-menu-panel/60">
+                {t('loc.back')}
+              </Button>
+            </div>
+          </motion.div>
+        )}
+
+        {phase === 'empty' && (
+          <motion.div key="empty" variants={screenItem} initial="hidden" animate="show" className="mt-8 text-center">
+            <h2 className="mb-2 font-display text-2xl font-black text-foreground">{t('net.noNets')}</h2>
+            <p className="mb-6 text-muted-foreground">{t('net.noNetsMsg')}</p>
+            <div className="flex justify-center gap-3">
+              {onOpenShop && (
+                <Button onClick={onOpenShop} className="bg-lure font-semibold text-lure-foreground hover:bg-lure/90">
+                  {t('net.name')}
                 </Button>
-              </div>
-            </motion.div>
-          )}
+              )}
+              <Button variant="outline" onClick={onBack} className="border-lure/25 bg-menu-panel/60">
+                {t('loc.back')}
+              </Button>
+            </div>
+          </motion.div>
+        )}
 
-          {phase === 'pulled' && net && (
-            <motion.div key="pulled" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="text-center mt-8">
-              <h2 className="text-2xl font-bold text-foreground mb-2">Rede puxada!</h2>
-              <p className="text-muted-foreground mb-6">{net.name} — algo se move lá dentro...</p>
-              <Button onClick={handleOpenNet} size="lg" className="font-bold text-xl px-10 py-6">Abrir Rede</Button>
-            </motion.div>
-          )}
-
-          {phase === 'opened' && (
-            <motion.div key="opened" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mt-4">
-              <h2 className="text-xl font-bold text-foreground mb-1">Você recebeu {haul.length} {haul.length === 1 ? 'peixe' : 'peixes'}</h2>
-              <p className="text-muted-foreground text-sm mb-4">Os peixes foram enviados para o armazém.</p>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-6">
-                {haul.map((h, i) => (
-                  <motion.div key={i} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}>
-                    <Card className="border-2 border-border">
-                      <CardContent className="p-3 text-center">
-                        {FISH_IMAGES[h.fish.id] ? (
-                          <img src={FISH_IMAGES[h.fish.id]} alt={h.fish.name} className="w-full h-16 object-contain" loading="lazy" />
-                        ) : (
-                          <div className="h-16 flex items-center justify-center text-3xl">{h.fish.emoji}</div>
-                        )}
-                        <p className="text-sm font-semibold text-foreground truncate">{h.fish.name}</p>
-                        <p className="text-xs text-muted-foreground">{h.weight} kg</p>
-                      </CardContent>
-                    </Card>
-                  </motion.div>
-                ))}
-              </div>
-              <div className="flex gap-3">
-                <Button onClick={reset} className="flex-1">Lançar outra rede ({player.nets ?? 0})</Button>
-                <Button variant="outline" onClick={onBack} className="flex-1">Voltar</Button>
-              </div>
-            </motion.div>
-          )}
-
-          {phase === 'empty' && (
-            <motion.div key="empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center mt-8">
-              <h2 className="text-2xl font-bold text-foreground mb-2">Sem redes</h2>
-              <p className="text-muted-foreground mb-6">Compre mais redes na loja para continuar.</p>
-              <div className="flex gap-3 justify-center">
-                {onOpenShop && <Button onClick={onOpenShop}>Loja de Redes</Button>}
-                <Button variant="outline" onClick={onBack}>Voltar</Button>
-              </div>
-            </motion.div>
-          )}
-
-          {phase === 'lost' && (
-            <motion.div key="lost" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center mt-8">
-              <h2 className="text-2xl font-bold text-destructive mb-2">A rede escapou!</h2>
-              <p className="text-muted-foreground mb-6">Você puxou fora da zona verde.</p>
-              <div className="flex gap-3 justify-center">
-                <Button onClick={reset}>Tentar novamente</Button>
-                <Button variant="outline" onClick={onBack}>Voltar</Button>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
-    </div>
+        {phase === 'lost' && (
+          <motion.div key="lost" variants={screenItem} initial="hidden" animate="show" className="mt-8 text-center">
+            <h2 className="mb-2 font-display text-2xl font-black text-destructive">{t('net.escaped')}</h2>
+            <p className="mb-6 text-muted-foreground">{t('net.escapedMsg')}</p>
+            <div className="flex justify-center gap-3">
+              <Button onClick={reset} className="bg-lure font-semibold text-lure-foreground hover:bg-lure/90">
+                {t('net.retry')}
+              </Button>
+              <Button variant="outline" onClick={onBack} className="border-lure/25 bg-menu-panel/60">
+                {t('loc.back')}
+              </Button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </GameScreen>
   );
 }
