@@ -47,3 +47,4 @@ blob-report
 .DS_Store
 Thumbs.db
 Desktop.ini
+.playwright-mcp/

@@ -1,73 +1,100 @@
+import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PlayerState, Rarity } from '@/game/types';
 import { FISH } from '@/game/data';
 import { useI18n, getRarityLabel } from '@/game/i18n';
+import GameScreen from './shell/GameScreen';
+import { screenItem } from './shell/motion';
+import SpecimenTile from './collection/SpecimenTile';
 
 interface Props {
   player: PlayerState;
   onBack: () => void;
 }
 
+const RARITIES: Rarity[] = ['common', 'uncommon', 'mythic', 'legendary', 'abyssal', 'volcanic', 'platinum', 'legends', 'cosmic'];
+
 export default function Collection({ player, onBack }: Props) {
   const { lang, t } = useI18n();
+  const [filter, setFilter] = useState<Rarity | 'all'>('all');
+
   const caughtIds = new Set(player.collection.map(c => c.fish.id));
-  const rarities: Rarity[] = ['common', 'uncommon', 'mythic', 'legendary', 'abyssal', 'volcanic', 'platinum', 'legends', 'cosmic'];
+  const recordByFish = new Map<string, number>();
+  for (const c of player.collection) {
+    recordByFish.set(c.fish.id, Math.max(recordByFish.get(c.fish.id) ?? 0, c.weight));
+  }
+
+  // Recorded specimens sit at the top so the screen reads as a collection
+  // you're building, not a checklist of gaps.
+  const shown = FISH
+    .filter(f => filter === 'all' || f.rarity === filter)
+    .sort((a, b) => Number(caughtIds.has(b.id)) - Number(caughtIds.has(a.id)));
+
+  const readouts = [
+    { label: t('col.level'), value: player.level },
+    { label: t('col.totalCaught'), value: player.totalFishCaught },
+    { label: t('col.heaviest'), value: player.heaviestFish ? `${player.heaviestFish.weight} kg` : '—' },
+  ];
 
   return (
-    <div className="screen-shell bg-background">
-      <div className="max-w-4xl mx-auto">
-        <div className="screen-header">
-          <div>
-            <h1 className="text-3xl font-bold text-foreground">{t('col.title')}</h1>
-            <p className="text-muted-foreground">
-              {caughtIds.size}/{FISH.length} {t('col.species')} • {player.totalFishCaught} {t('col.caught')}
-            </p>
+    <GameScreen
+      title={t('col.title')}
+      onBack={onBack}
+      subtitle={`${caughtIds.size}/${FISH.length} ${t('col.species')} · ${player.totalFishCaught} ${t('col.caught')}`}
+    >
+      <motion.dl
+        variants={screenItem}
+        className="menu-panel mb-5 flex flex-wrap gap-x-10 gap-y-3 rounded-2xl p-4 sm:w-fit"
+      >
+        {readouts.map(r => (
+          <div key={r.label}>
+            <dt className="text-[0.7rem] uppercase leading-tight tracking-wide text-muted-foreground">{r.label}</dt>
+            <dd className="text-lg font-bold tabular-nums text-foreground">{r.value}</dd>
           </div>
-          <Button variant="outline" onClick={onBack} className="touch-target shrink-0">{t('loc.back')}</Button>
-        </div>
+        ))}
+      </motion.dl>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-          <Card><CardContent className="p-4 text-center"><p className="text-2xl font-bold text-primary">{player.level}</p><p className="text-xs text-muted-foreground">{t('col.level')}</p></CardContent></Card>
-          <Card><CardContent className="p-4 text-center"><p className="text-2xl font-bold text-foreground">{player.totalFishCaught}</p><p className="text-xs text-muted-foreground">{t('col.totalCaught')}</p></CardContent></Card>
-          <Card><CardContent className="p-4 text-center"><p className="text-2xl font-bold text-foreground">{caughtIds.size}</p><p className="text-xs text-muted-foreground">{t('col.speciesCount')}</p></CardContent></Card>
-          <Card><CardContent className="p-4 text-center"><p className="text-2xl font-bold text-foreground">{player.heaviestFish ? `${player.heaviestFish.weight}kg` : '—'}</p><p className="text-xs text-muted-foreground">{t('col.heaviest')}</p></CardContent></Card>
-        </div>
+      <motion.div variants={screenItem} className="mb-4 flex flex-wrap gap-1.5">
+        <FilterChip active={filter === 'all'} onClick={() => setFilter('all')}>
+          {t('col.all')}
+        </FilterChip>
+        {RARITIES.map(r => (
+          <FilterChip key={r} active={filter === r} onClick={() => setFilter(r)}>
+            {getRarityLabel(r, lang)}
+          </FilterChip>
+        ))}
+      </motion.div>
 
-        <Tabs defaultValue="all">
-          <TabsList className="mb-4 max-w-full overflow-x-auto justify-start">
-            <TabsTrigger value="all">{t('col.all')}</TabsTrigger>
-            {rarities.map(r => (
-              <TabsTrigger key={r} value={r}>{getRarityLabel(r, lang)}</TabsTrigger>
-            ))}
-          </TabsList>
+      <motion.div
+        variants={screenItem}
+        className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4"
+      >
+        {shown.map(fish => (
+          <SpecimenTile
+            key={fish.id}
+            fish={fish}
+            caught={caughtIds.has(fish.id)}
+            record={recordByFish.get(fish.id)}
+          />
+        ))}
+      </motion.div>
+    </GameScreen>
+  );
+}
 
-          {['all', ...rarities].map(tab => (
-            <TabsContent key={tab} value={tab}>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                {FISH.filter(f => tab === 'all' || f.rarity === tab).map((fish, i) => {
-                  const caught = caughtIds.has(fish.id);
-                  const bestCatch = player.collection.filter(c => c.fish.id === fish.id).sort((a, b) => b.weight - a.weight)[0];
-                  return (
-                    <motion.div key={fish.id} initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: i * 0.03 }}>
-                      <Card className={`border-2 ${caught ? `border-rarity-${fish.rarity}` : 'border-border opacity-40'}`}>
-                        <CardContent className="p-3 text-center">
-                          <div className="text-3xl mb-1">{caught ? fish.emoji : '❓'}</div>
-                          <p className="text-sm font-bold text-foreground truncate">{caught ? fish.name : '???'}</p>
-                          <p className={`text-xs font-semibold text-rarity-${fish.rarity}`}>{getRarityLabel(fish.rarity, lang)}</p>
-                          {bestCatch && <p className="text-xs text-muted-foreground mt-1">{t('col.record')}: {bestCatch.weight}kg</p>}
-                        </CardContent>
-                      </Card>
-                    </motion.div>
-                  );
-                })}
-              </div>
-            </TabsContent>
-          ))}
-        </Tabs>
-      </div>
-    </div>
+function FilterChip({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button
+      type="button"
+      aria-pressed={active}
+      onClick={onClick}
+      className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+        active
+          ? 'bg-lure text-lure-foreground'
+          : 'menu-row text-muted-foreground hover:text-foreground'
+      }`}
+    >
+      {children}
+    </button>
   );
 }
