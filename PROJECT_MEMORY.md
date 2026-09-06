@@ -1182,4 +1182,24 @@ peixes a nadar, silhuetas de público; era uma feature, não "gráfico amador").
   vazio, voltar).
 - **Verificação**: `tsc app` ✅ · `backend:typecheck` ✅ · `npm test` ✅ 165 ·
   `lint` ✅ (0 erros, 12 avisos) · `build` ✅ · revisão visual Playwright (tank +
-  storage, 1440px).
+  storage, 1440px). **PR #13 mergeada** (`8a0b8d2`).
+
+#### Fatia 4 — branch `feature/task-09-frontend-screens-slice-4`
+
+Roletas ("a roleta") — toque leve, a mecânica de giro fica intacta.
+
+- **`Roulette.tsx`** (roda em `<canvas>`) e **`SkinRoulette.tsx`** (roda em SVG +
+  rotação CSS) passam a `GameScreen` (`width="narrow"` + `coins`). Toda a matemática
+  de spin/alinhamento preservada à letra.
+- **Paleta**: `Roulette` — as 8 cores das fatias re-afinadas para o registo
+  deep-sea (dourados suaves para moedas, teal/cyan para multiplicadores/fillers; as
+  fatias de skin mantêm a cor real do item). `SkinRoulette` mantém as cores reais das
+  skins (identidade do prémio). Ambas: separadores `#0a141b`, hub `#12212b` com anel
+  `--lure`, ponteiro `--lure` (era vermelho).
+- Botão girar → `bg-lure`. Cartão de resultado → `menu-panel` `border-lure/40`.
+- **i18n**: +2 chaves (`roulette.name`, `skinRoulette.name`, sem emoji).
+- **Testes novos (TDD)**: `Roulette` (3 — giro disponível, giro diário usado, voltar),
+  `SkinRoulette` (3 — custo no botão, bloqueio sem moedas, voltar).
+- **Verificação**: `tsc app` ✅ · `backend:typecheck` ✅ · `npm test` ✅ 171 ·
+  `lint` ✅ (0 erros, 12 avisos) · `build` ✅ · revisão visual Playwright (as duas
+  roletas, 1440px).
