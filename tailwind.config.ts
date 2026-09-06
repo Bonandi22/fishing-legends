@@ -48,6 +48,14 @@ export default {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        abyss: "hsl(var(--abyss))",
+        lure: {
+          DEFAULT: "hsl(var(--lure))",
+          foreground: "hsl(var(--lure-foreground))",
+        },
+        biolume: "hsl(var(--biolume))",
+        "menu-panel": "hsl(var(--menu-panel))",
+        "menu-raised": "hsl(var(--menu-raised))",
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
           foreground: "hsl(var(--sidebar-foreground))",
@@ -63,6 +71,9 @@ export default {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
+      },
+      fontFamily: {
+        display: ['"Big Shoulders Display"', "Cinzel", "serif"],
       },
       keyframes: {
         "accordion-down": {

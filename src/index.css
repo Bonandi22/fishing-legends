@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@400;600;700;900&family=Cinzel:wght@400;700;900&family=Inter:wght@300;400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -57,6 +57,14 @@
     --sidebar-accent-foreground: 200 20% 85%;
     --sidebar-border: 220 15% 20%;
     --sidebar-ring: 199 89% 48%;
+
+    /* Main menu — deep-blue descent palette (menu-scoped, does not affect other screens) */
+    --abyss: 205 55% 4%;
+    --menu-panel: 205 40% 8%;
+    --menu-raised: 202 34% 13%;
+    --lure: 194 90% 52%;
+    --lure-foreground: 205 55% 6%;
+    --biolume: 168 74% 46%;
   }
 }
 
@@ -138,5 +146,61 @@
 
   .world-bg-3 {
     background: radial-gradient(circle at 50% 30%, hsl(140 60% 35%), hsl(140 70% 15%) 60%, hsl(140 80% 8%));
+  }
+
+  /* Main menu descent */
+  .font-body {
+    font-family: 'Inter', sans-serif;
+  }
+  .menu-surface {
+    background:
+      linear-gradient(
+        180deg,
+        hsl(198 70% 16%) 0%,
+        hsl(202 62% 11%) 22%,
+        hsl(205 55% 7%) 55%,
+        hsl(var(--abyss)) 100%
+      );
+  }
+  .menu-caustic {
+    background:
+      radial-gradient(60% 40% at 22% 0%, hsl(var(--lure) / 0.28), transparent 70%),
+      radial-gradient(50% 45% at 82% 6%, hsl(var(--biolume) / 0.18), transparent 72%);
+    filter: blur(6px);
+    animation: menu-caustic-drift 22s ease-in-out infinite alternate;
+  }
+  .menu-panel {
+    background: hsl(var(--menu-panel) / 0.85);
+    border: 1px solid hsl(var(--lure) / 0.16);
+    box-shadow: 0 24px 60px hsl(205 60% 2% / 0.5), inset 0 1px 0 hsl(var(--lure) / 0.06);
+    backdrop-filter: blur(12px);
+  }
+  .menu-row {
+    background: hsl(var(--menu-raised) / 0.5);
+    border: 1px solid hsl(var(--border) / 0.6);
+  }
+  .menu-row:hover {
+    background: hsl(var(--menu-raised) / 0.8);
+    border-color: hsl(var(--lure) / 0.35);
+  }
+
+  @keyframes menu-caustic-drift {
+    from { transform: translate3d(-3%, 0, 0) scale(1.05); opacity: 0.7; }
+    to   { transform: translate3d(4%, 2%, 0) scale(1.15); opacity: 1; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .menu-caustic { animation: none; }
+  }
+
+  /* Location survey — bathymetric chart the spot cards sit on */
+  .chart-surface {
+    background:
+      radial-gradient(
+        130% 90% at 50% -12%,
+        hsl(198 58% 15%) 0%,
+        hsl(204 54% 8%) 44%,
+        hsl(var(--abyss)) 100%
+      );
   }
 }

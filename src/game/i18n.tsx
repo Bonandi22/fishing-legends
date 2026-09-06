@@ -23,6 +23,7 @@ const translations = {
   },
   'menu.level': { pt: 'Nível', en: 'Level', es: 'Nivel', fr: 'Niveau', de: 'Level', ja: 'レベル' },
   'menu.fish': { pt: 'peixes', en: 'fish', es: 'peces', fr: 'poissons', de: 'Fische', ja: '匹' },
+  'menu.storage': { pt: 'Armazém', en: 'Storage', es: 'Almacén', fr: 'Entrepôt', de: 'Lager', ja: '倉庫' },
   'menu.play': { pt: '🐟 Pescar', en: '🐟 Fish', es: '🐟 Pescar', fr: '🐟 Pêcher', de: '🐟 Angeln', ja: '🐟 釣り' },
   'menu.collection': { pt: '📦 Coleção', en: '📦 Collection', es: '📦 Colección', fr: '📦 Collection', de: '📦 Sammlung', ja: '📦 コレクション' },
   'menu.warehouse': { pt: '🏠 Armazém', en: '🏠 Warehouse', es: '🏠 Almacén', fr: '🏠 Entrepôt', de: '🏠 Lager', ja: '🏠 倉庫' },
@@ -36,6 +37,16 @@ const translations = {
   'menu.tutorialTitle': { pt: 'Como jogar', en: 'How to play', es: 'Cómo jugar', fr: 'Comment jouer', de: 'So wird gespielt', ja: '遊び方' },
   'menu.tutorialBody': { pt: 'Escolha um local, clique na água para lançar e toque em PUXAR quando a linha entrar na área verde.', en: 'Choose a location, click the water to cast, then tap PULL when the line enters the green zone.', es: 'Elige un lugar, haz clic en el agua y pulsa TIRAR cuando la línea entre en la zona verde.', fr: 'Choisissez un lieu, cliquez sur l’eau puis appuyez sur TIRER quand la ligne entre dans la zone verte.', de: 'Wähle einen Ort, wirf aus und tippe ZIEHEN, sobald die Linie im grünen Bereich ist.', ja: '場所を選び、水をクリックして投げ、線が緑の範囲に入ったら「引く」をタップ。' },
   'menu.tutorialDismiss': { pt: 'Entendi', en: 'Got it', es: 'Entendido', fr: 'Compris', de: 'Verstanden', ja: 'わかりました' },
+  'menu.tagline': { pt: 'A pesca começa aqui', en: 'The catch starts here', es: 'La pesca empieza aquí', fr: 'La pêche commence ici', de: 'Hier beginnt der Fang', ja: '釣りはここから' },
+  'menu.sectionBoat': { pt: 'O barco', en: 'The boat', es: 'El barco', fr: 'Le bateau', de: 'Das Boot', ja: '船' },
+  'menu.sectionLuck': { pt: 'Sorte & economia', en: 'Luck & economy', es: 'Suerte y economía', fr: 'Chance & économie', de: 'Glück & Wirtschaft', ja: '運と経済' },
+  'menu.worldLabel': { pt: 'Mundo', en: 'World', es: 'Mundo', fr: 'Monde', de: 'Welt', ja: 'ワールド' },
+  'menu.unlockAt': { pt: 'Desbloqueia no nível', en: 'Unlocks at level', es: 'Se desbloquea en el nivel', fr: 'Débloqué au niveau', de: 'Freigeschaltet ab Level', ja: '解放レベル' },
+  'menu.settingsTitle': { pt: 'Definições', en: 'Settings', es: 'Ajustes', fr: 'Réglages', de: 'Einstellungen', ja: '設定' },
+  'menu.musicTrack': { pt: 'Faixa', en: 'Track', es: 'Pista', fr: 'Piste', de: 'Titel', ja: 'トラック' },
+  'menu.species': { pt: 'espécies', en: 'species', es: 'especies', fr: 'espèces', de: 'Arten', ja: '種' },
+  'menu.close': { pt: 'Fechar', en: 'Close', es: 'Cerrar', fr: 'Fermer', de: 'Schließen', ja: '閉じる' },
+  'menu.dailyGifts': { pt: 'Presentes', en: 'Gifts', es: 'Regalos', fr: 'Cadeaux', de: 'Geschenke', ja: 'プレゼント' },
 
   // Ranking
   'rank.title': { pt: 'Ranking Global', en: 'Global Ranking', es: 'Clasificación Global', fr: 'Classement Global', de: 'Globale Rangliste', ja: 'グローバルランキング' },
@@ -61,6 +72,9 @@ const translations = {
   'loc.river': { pt: '🏞️ Rio', en: '🏞️ River', es: '🏞️ Río', fr: '🏞️ Rivière', de: '🏞️ Fluss', ja: '🏞️ 川' },
   'loc.lake': { pt: '🏔️ Lago', en: '🏔️ Lake', es: '🏔️ Lago', fr: '🏔️ Lac', de: '🏔️ See', ja: '🏔️ 湖' },
   'loc.fishCount': { pt: 'peixes', en: 'fish', es: 'peces', fr: 'poissons', de: 'Fische', ja: '魚' },
+  'loc.charted': { pt: 'cartografados', en: 'charted', es: 'cartografiados', fr: 'cartographiés', de: 'kartiert', ja: '踏破' },
+  'loc.reachLevel': { pt: 'Alcança o nível', en: 'Reach level', es: 'Alcanza el nivel', fr: 'Atteignez le niveau', de: 'Erreiche Level', ja: 'レベル' },
+  'loc.world': { pt: 'Mundo', en: 'World', es: 'Mundo', fr: 'Monde', de: 'Welt', ja: 'ワールド' },
 
   // Fishing Screen
   'fish.castPrompt': { pt: 'Clique na água para lançar a linha! 🎣', en: 'Click on the water to cast! 🎣', es: '¡Haz clic en el agua para lanzar! 🎣', fr: 'Cliquez sur l\'eau pour lancer ! 🎣', de: 'Klicke aufs Wasser zum Auswerfen! 🎣', ja: '水をクリックして投げよう！🎣' },
