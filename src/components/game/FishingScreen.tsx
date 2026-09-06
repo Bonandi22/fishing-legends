@@ -485,7 +485,7 @@ export default function FishingScreen({ location, player, onCatch, onBack, onCas
   }, [clearFishingTimer, t]);
 
   return (
-    <div className="relative h-[100dvh] min-h-screen w-full overflow-hidden bg-background">
+    <div className="relative h-[100dvh] min-h-screen w-full overflow-hidden bg-abyss">
       {/* 3D Scene */}
       <FishingScene3D
         location={location}
@@ -513,11 +513,11 @@ export default function FishingScreen({ location, player, onCatch, onBack, onCas
             exit={{ opacity: 0, y: -30 }}
           >
             <motion.div
-              className="bg-gradient-to-r from-yellow-500/90 via-amber-400/90 to-yellow-500/90 backdrop-blur px-6 py-2 rounded-full border-2 border-yellow-300 shadow-lg shadow-yellow-500/30"
+              className="rounded-full border border-lure/40 bg-abyss/80 px-6 py-2 shadow-[0_0_24px_hsl(var(--lure)/0.35)] backdrop-blur"
               animate={{ scale: [1, 1.05, 1] }}
               transition={{ duration: 1.5, repeat: Infinity }}
             >
-              <span className="text-lg font-extrabold text-yellow-950 tracking-wide">
+              <span className="text-lg font-extrabold tracking-wide text-lure">
                 {t('fish.lucky')}
               </span>
             </motion.div>
@@ -528,30 +528,35 @@ export default function FishingScreen({ location, player, onCatch, onBack, onCas
       {/* HUD overlay */}
       <div className="absolute left-0 right-0 top-0 z-10 flex items-start justify-between gap-2 p-2 pointer-events-none sm:p-4">
         <div className="pointer-events-auto">
-          <Button variant="outline" size="sm" onClick={handleBack} className="touch-target bg-background/80 backdrop-blur">
+          <Button variant="outline" size="sm" onClick={handleBack} className="touch-target hud-panel">
             {t('fish.back')}
           </Button>
           {location.type === 'lake' && onCastNet && (
             <div className="mt-2 flex items-center gap-2">
-              <Button variant="secondary" size="sm" onClick={onCastNet} disabled={(player.nets ?? 0) <= 0} className="touch-target font-semibold shadow-lg">
-                Lançar a Rede
+              <Button
+                size="sm"
+                onClick={onCastNet}
+                disabled={(player.nets ?? 0) <= 0}
+                className="touch-target bg-lure font-semibold text-lure-foreground hover:bg-lure/90"
+              >
+                {t('fish.castNet')}
               </Button>
-              <div className="bg-background/80 backdrop-blur rounded-lg px-2 py-1 text-xs font-bold text-foreground">
-                Redes: {player.nets ?? 0}/10
+              <div className="hud-panel rounded-lg px-2 py-1 text-xs font-bold text-foreground">
+                {t('fish.nets')}: {player.nets ?? 0}/10
               </div>
               {onOpenNetShop && (
-                <Button variant="outline" size="sm" onClick={onOpenNetShop} className="touch-target bg-background/80 backdrop-blur font-semibold">
-                  Loja
+                <Button variant="outline" size="sm" onClick={onOpenNetShop} className="touch-target hud-panel font-semibold">
+                  {t('fish.netShop')}
                 </Button>
               )}
             </div>
           )}
         </div>
-        <div className="max-w-[55%] rounded-lg bg-background/80 px-2 py-1.5 text-right backdrop-blur sm:max-w-none sm:px-4 sm:py-2">
+        <div className="hud-panel max-w-[55%] rounded-lg px-2 py-1.5 text-right sm:max-w-none sm:px-4 sm:py-2">
           <div className="text-sm font-bold text-foreground">{location.emoji} {location.name}</div>
           <div className="text-xs text-muted-foreground">Nv. {player.level} • XP: {player.xp}/{player.xpToNextLevel}</div>
-          <div className="mt-1 h-1.5 w-24 overflow-hidden rounded-full bg-secondary sm:w-32" aria-label={`XP ${player.xp}/${player.xpToNextLevel}`}>
-            <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${Math.min(100, (player.xp / Math.max(1, player.xpToNextLevel)) * 100)}%` }} />
+          <div className="mt-1 h-1.5 w-24 overflow-hidden rounded-full bg-menu-raised sm:w-32" aria-label={`XP ${player.xp}/${player.xpToNextLevel}`}>
+            <div className="h-full rounded-full bg-lure transition-all" style={{ width: `${Math.min(100, (player.xp / Math.max(1, player.xpToNextLevel)) * 100)}%` }} />
           </div>
         </div>
       </div>
@@ -566,14 +571,14 @@ export default function FishingScreen({ location, player, onCatch, onBack, onCas
             exit={{ opacity: 0, y: -20 }}
             className="text-center"
           >
-            <div className="inline-block max-w-full rounded-xl bg-background/90 px-4 py-3 backdrop-blur pointer-events-auto sm:px-6">
+            <div className="hud-panel pointer-events-auto inline-block max-w-full rounded-xl px-4 py-3 sm:px-6">
               <p className="text-foreground font-medium mb-2">{message}</p>
 
               {phase === 'hooked' && (
                 <Button
                   onClick={handlePull}
                   size="lg"
-                  className="bg-accent text-accent-foreground hover:bg-accent/90 font-bold text-lg animate-pulse"
+                  className="animate-pulse bg-lure text-lg font-bold text-lure-foreground hover:bg-lure/90"
                 >
                   {t('fish.pull')}
                 </Button>
@@ -584,7 +589,7 @@ export default function FishingScreen({ location, player, onCatch, onBack, onCas
                   {[0, 1, 2].map(i => (
                     <motion.div
                       key={i}
-                      className="w-2 h-2 rounded-full bg-primary"
+                      className="w-2 h-2 rounded-full bg-lure"
                       animate={{ y: [0, -8, 0] }}
                       transition={{ duration: 0.6, repeat: Infinity, delay: i * 0.2 }}
                     />
@@ -605,13 +610,15 @@ export default function FishingScreen({ location, player, onCatch, onBack, onCas
       <AnimatePresence>
         {phase === 'caught' && currentFish && (
           <motion.div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-background/90 backdrop-blur-sm"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-abyss/90 backdrop-blur-sm"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
           >
             <motion.div
-              className="text-center bg-card border-2 border-border rounded-2xl p-8 max-w-sm mx-4"
+              role="dialog"
+              aria-modal="true"
+              className="menu-panel mx-4 max-w-sm rounded-2xl border border-lure/40 p-8 text-center"
               initial={{ scale: 0.5, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               transition={{ type: 'spring', damping: 15 }}
@@ -637,18 +644,18 @@ export default function FishingScreen({ location, player, onCatch, onBack, onCas
                 {getRarityLabel(currentFish.rarity, lang)}
               </p>
               <p className="text-muted-foreground text-sm mb-1">{currentWeight} kg</p>
-              <p className="mb-2 text-sm font-semibold text-primary">+{currentFish.xp} XP</p>
+              <p className="mb-2 text-sm font-semibold text-biolume">+{currentFish.xp} XP</p>
               <div className="mx-auto mb-4 w-full max-w-xs text-left">
                 <div className="mb-1 flex justify-between text-xs text-muted-foreground">
                   <span>{t('col.level')} {player.level}</span>
                   <span>{player.xp}/{player.xpToNextLevel} XP</span>
                 </div>
-                <div className="h-2 overflow-hidden rounded-full bg-secondary">
-                  <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${Math.min(100, (player.xp / Math.max(1, player.xpToNextLevel)) * 100)}%` }} />
+                <div className="h-2 overflow-hidden rounded-full bg-menu-raised">
+                  <div className="h-full rounded-full bg-lure transition-all" style={{ width: `${Math.min(100, (player.xp / Math.max(1, player.xpToNextLevel)) * 100)}%` }} />
                 </div>
               </div>
               <p className="text-muted-foreground text-xs mb-6">{currentFish.description}</p>
-              <Button onClick={handleReset} size="lg" className="w-full">
+              <Button onClick={handleReset} size="lg" className="w-full bg-lure font-semibold text-lure-foreground hover:bg-lure/90">
                 {t('fish.fishAgain')}
               </Button>
             </motion.div>
@@ -657,13 +664,15 @@ export default function FishingScreen({ location, player, onCatch, onBack, onCas
 
         {phase === 'lost' && currentFish && (
           <motion.div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-background/90 backdrop-blur-sm"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-abyss/90 backdrop-blur-sm"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
           >
             <motion.div
-              className="text-center bg-card border-2 border-border rounded-2xl p-8 max-w-sm mx-4"
+              role="dialog"
+              aria-modal="true"
+              className="menu-panel mx-4 max-w-sm rounded-2xl border border-lure/40 p-8 text-center"
               initial={{ scale: 0.5 }}
               animate={{ scale: 1 }}
             >
@@ -673,7 +682,7 @@ export default function FishingScreen({ location, player, onCatch, onBack, onCas
                 <span className={`font-bold text-rarity-${currentFish.rarity}`}>{currentFish.name}</span> {t('fish.escapedMsg')}
               </h3>
               <p className="text-muted-foreground text-sm mb-6">{t('fish.tryAgain')}</p>
-              <Button onClick={handleReset} size="lg" className="w-full">
+              <Button onClick={handleReset} size="lg" className="w-full bg-lure font-semibold text-lure-foreground hover:bg-lure/90">
                 {t('fish.tryAgainBtn')}
               </Button>
             </motion.div>

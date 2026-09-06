@@ -90,6 +90,9 @@ const translations = {
   'fish.tryAgainBtn': { pt: 'Tentar Novamente 🎣', en: 'Try Again 🎣', es: 'Intentar de Nuevo 🎣', fr: 'Réessayer 🎣', de: 'Erneut versuchen 🎣', ja: 'リトライ 🎣' },
   'fish.back': { pt: '← Voltar', en: '← Back', es: '← Volver', fr: '← Retour', de: '← Zurück', ja: '← 戻る' },
   'fish.lucky': { pt: '✨ 2x SORTE ✨', en: '✨ 2x LUCK ✨', es: '✨ 2x SUERTE ✨', fr: '✨ 2x CHANCE ✨', de: '✨ 2x GLÜCK ✨', ja: '✨ 2倍ラッキー ✨' },
+  'fish.castNet': { pt: 'Lançar a rede', en: 'Cast the net', es: 'Lanzar la red', fr: 'Lancer le filet', de: 'Netz auswerfen', ja: '網を投げる' },
+  'fish.nets': { pt: 'Redes', en: 'Nets', es: 'Redes', fr: 'Filets', de: 'Netze', ja: '網' },
+  'fish.netShop': { pt: 'Loja', en: 'Shop', es: 'Tienda', fr: 'Boutique', de: 'Laden', ja: 'ショップ' },
 
   // Pull Minigame
   'pull.instruction': { pt: 'Clique em PUXAR quando a linha estiver no verde!', en: 'Click PULL when the line is in the green!', es: '¡Haz clic en TIRAR cuando la línea esté en verde!', fr: 'Cliquez TIRER quand la ligne est dans le vert !', de: 'Klicke ZIEHEN wenn die Linie im Grünen ist!', ja: '緑のゾーンで「引け」をクリック！' },

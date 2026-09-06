@@ -476,7 +476,7 @@ export default function SubmarineFishing({ player, onCatch, onBack }: Props) {
           <div className="drop-shadow-2xl" style={{ transform: 'rotate(180deg)' }}>
             <HarpoonSVG size={140} />
           </div>
-          <span className="text-xs font-bold text-cyan-200 bg-black/40 backdrop-blur px-2 py-0.5 rounded">
+          <span className="hud-panel rounded px-2 py-0.5 text-xs font-bold text-lure">
             {t('sub.hint').split('!')[0]}
           </span>
         </div>
@@ -485,11 +485,11 @@ export default function SubmarineFishing({ player, onCatch, onBack }: Props) {
       {/* HUD */}
       <div className="absolute top-0 left-0 right-0 p-4 flex items-start justify-between z-20 pointer-events-none">
         <div className="pointer-events-auto">
-          <Button variant="outline" size="sm" onClick={onBack} className="bg-background/80 backdrop-blur">
+          <Button variant="outline" size="sm" onClick={onBack} className="hud-panel">
             {t('sub.back')}
           </Button>
         </div>
-        <div className="bg-background/80 backdrop-blur rounded-lg px-4 py-2 text-right">
+        <div className="hud-panel rounded-lg px-4 py-2 text-right">
           <div className="text-sm font-bold text-foreground">🤿 {t('sub.title')}</div>
           <div className="text-xs text-muted-foreground">Nv. {player.level} • XP: {player.xp}/{player.xpToNextLevel}</div>
         </div>
@@ -497,7 +497,7 @@ export default function SubmarineFishing({ player, onCatch, onBack }: Props) {
 
       {/* Bottom hint */}
       <div className="absolute bottom-4 left-0 right-0 z-20 flex justify-center pointer-events-none">
-        <div className="bg-black/50 backdrop-blur rounded-xl px-5 py-2 text-sm text-cyan-100 font-medium">
+        <div className="hud-panel rounded-xl px-5 py-2 text-sm font-medium text-foreground">
           {t('sub.hint')}
         </div>
       </div>
@@ -506,13 +506,15 @@ export default function SubmarineFishing({ player, onCatch, onBack }: Props) {
       <AnimatePresence>
         {caughtFish && (
           <motion.div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-background/90 backdrop-blur-sm"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-abyss/90 backdrop-blur-sm"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
           >
             <motion.div
-              className="text-center bg-card border-2 border-border rounded-2xl p-8 max-w-sm mx-4"
+              role="dialog"
+              aria-modal="true"
+              className="menu-panel mx-4 max-w-sm rounded-2xl border border-lure/40 p-8 text-center"
               initial={{ scale: 0.5, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               transition={{ type: 'spring', damping: 15 }}
@@ -538,8 +540,8 @@ export default function SubmarineFishing({ player, onCatch, onBack }: Props) {
                 {getRarityLabel(caughtFish.fish.rarity, lang)}
               </p>
               <p className="text-muted-foreground text-sm mb-1">{caughtFish.weight} kg</p>
-              <p className="text-primary text-sm font-semibold mb-4">+{caughtFish.fish.xp} XP</p>
-              <Button onClick={handleDismissCatch} size="lg" className="w-full">
+              <p className="mb-4 text-sm font-semibold text-biolume">+{caughtFish.fish.xp} XP</p>
+              <Button onClick={handleDismissCatch} size="lg" className="w-full bg-lure font-semibold text-lure-foreground hover:bg-lure/90">
                 {t('fish.fishAgain')}
               </Button>
             </motion.div>
