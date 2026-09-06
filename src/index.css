@@ -152,6 +152,12 @@
   .font-body {
     font-family: 'Inter', sans-serif;
   }
+  /* Glass panel for HUD overlays that sit on a live fishing scene */
+  .hud-panel {
+    background: hsl(var(--abyss) / 0.75);
+    border: 1px solid hsl(var(--lure) / 0.15);
+    backdrop-filter: blur(8px);
+  }
   .menu-surface {
     background:
       linear-gradient(

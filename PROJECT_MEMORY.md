@@ -1203,3 +1203,31 @@ Roletas ("a roleta") — toque leve, a mecânica de giro fica intacta.
 - **Verificação**: `tsc app` ✅ · `backend:typecheck` ✅ · `npm test` ✅ 171 ·
   `lint` ✅ (0 erros, 12 avisos) · `build` ✅ · revisão visual Playwright (as duas
   roletas, 1440px).
+  **PR #14 mergeada** (`8f33ecf`).
+
+#### Fatia 5 — dividida em 5a (FishingScreen + SubmarineFishing) e 5b (NetFishing)
+
+##### Fatia 5a — branch `feature/task-09-frontend-screens-slice-5a`
+
+Cromo dos 2 minijogos 3D. **A cena 3D, os overlays de barco/vara e a física do reel
+(`PullMinigame`) NÃO são tocados** — só os painéis de HUD que flutuam por cima.
+
+- **`.hud-panel`** (novo, `index.css`) — vidro para overlays sobre cena viva
+  (`bg-abyss/75 + border-lure/15 + backdrop-blur`).
+- **`FishingScreen.tsx`**: back / contadores / card de local / mensagem de fundo →
+  `.hud-panel` (era `bg-background/80`); banner de sorte amarelo → `--lure`
+  (`bg-abyss/80 border-lure/40`); barra XP → `bg-lure`/`bg-menu-raised`; botão PUXAR
+  + "pescar/tentar novamente" → `bg-lure`; 2 modais de resultado
+  `bg-card border-2` → `menu-panel border-lure/40` + `role="dialog"`.
+- **`SubmarineFishing.tsx`**: mesmo tratamento — HUD, label do arpão, hint de fundo
+  → `.hud-panel`; modal de captura → `menu-panel` `role="dialog"`; `+XP` → `biolume`.
+- **i18n**: +3 chaves `fish.*` (`castNet`, `nets`, `netShop`) — as 3 strings PT
+  hard-coded do FishingScreen (controlo de rede em lagos) saíram.
+- **Testes novos**: `FishingScreen` (3 — HUD, voltar, controlo de rede só em lago;
+  cena mockada) + `SubmarineFishing` (2 — título, voltar).
+- **Verificação**: `tsc app` ✅ · `backend:typecheck` ✅ · `npm test` ✅ 176 ·
+  `lint` ✅ (0 erros, 12 avisos) · `build` ✅ · revisão visual Playwright (HUD dos
+  dois minijogos na cena real, 1440px). **Teste manual de gameplay (lançar, fisgar,
+  puxar, capturar → modal) é do utilizador.**
+- **Falta 5b**: `NetFishing` — reconstrução do cromo + i18n completa; nomes das
+  redes derivados da raridade (`t()` + `getRarityLabel`), não do campo `name`.
