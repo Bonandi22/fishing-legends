@@ -114,6 +114,10 @@ const translations = {
   'wh.empty': { pt: 'Armazém vazio', en: 'Warehouse empty', es: 'Almacén vacío', fr: 'Entrepôt vide', de: 'Lager leer', ja: '倉庫は空です' },
   'wh.emptyMsg': { pt: 'Pesque peixes para armazená-los aqui!', en: 'Catch fish to store them here!', es: '¡Pesca peces para almacenarlos aquí!', fr: 'Pêchez des poissons pour les stocker ici !', de: 'Fange Fische um sie hier zu lagern!', ja: '魚を釣って保管しよう！' },
   'wh.sell': { pt: '💰 Vender', en: '💰 Sell', es: '💰 Vender', fr: '💰 Vendre', de: '💰 Verkaufen', ja: '💰 売る' },
+  'wh.name': { pt: 'Armazém', en: 'Warehouse', es: 'Almacén', fr: 'Entrepôt', de: 'Lager', ja: '倉庫' },
+  'wh.sellAll': { pt: 'Vender tudo', en: 'Sell everything', es: 'Vender todo', fr: 'Tout vendre', de: 'Alles verkaufen', ja: 'すべて売る' },
+  'wh.totalWeight': { pt: 'Peso total', en: 'Total weight', es: 'Peso total', fr: 'Poids total', de: 'Gesamtgewicht', ja: '総重量' },
+  'wh.yield': { pt: 'Rendimento', en: 'Yield', es: 'Rendimiento', fr: 'Rendement', de: 'Ertrag', ja: '収益' },
 
   // Rarity
   'rarity.common': { pt: 'Comum', en: 'Common', es: 'Común', fr: 'Commun', de: 'Gewöhnlich', ja: 'コモン' },

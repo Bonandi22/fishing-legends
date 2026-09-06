@@ -1,9 +1,11 @@
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { PlayerState, WAREHOUSE_LIMIT, FISH_COIN_VALUE } from '@/game/types';
-import { FISH_IMAGES } from '@/game/fishImages';
-import { useI18n, getRarityLabel } from '@/game/i18n';
+import { PlayerState, WAREHOUSE_LIMIT } from '@/game/types';
+import { useI18n } from '@/game/i18n';
+import GameScreen from './shell/GameScreen';
+import { screenItem } from './shell/motion';
+import HaulTile from './warehouse/HaulTile';
+import { haulXp, haulCoins } from './warehouse/haul';
 
 interface Props {
   player: PlayerState;
@@ -12,59 +14,70 @@ interface Props {
 }
 
 export default function Warehouse({ player, onSell, onBack }: Props) {
-  const { lang, t } = useI18n();
+  const { t } = useI18n();
   const warehouse = player.warehouse;
-  const totalXp = warehouse.reduce((sum, c) => sum + Math.floor(c.fish.xp * 0.5), 0);
-  const totalCoins = warehouse.reduce((sum, c) => sum + FISH_COIN_VALUE[c.fish.rarity], 0);
+
+  const totalWeight = warehouse.reduce((sum, c) => sum + c.weight, 0);
+  const totalXp = warehouse.reduce((sum, c) => sum + haulXp(c), 0);
+  const totalCoins = warehouse.reduce((sum, c) => sum + haulCoins(c), 0);
+
+  const action =
+    warehouse.length > 0 ? (
+      <Button
+        onClick={onSell}
+        size="lg"
+        className="h-14 w-full bg-lure text-base font-black uppercase tracking-wide text-lure-foreground shadow-[0_0_30px_hsl(var(--lure)/0.4)] hover:bg-lure/90"
+      >
+        {t('wh.sellAll')} · +{totalXp} XP · 💰 +{totalCoins}
+      </Button>
+    ) : undefined;
 
   return (
-    <div className="screen-shell bg-background">
-      <div className="max-w-4xl mx-auto">
-        <div className="screen-header">
-          <div>
-            <h1 className="text-3xl font-bold text-foreground">{t('wh.title')}</h1>
-            <p className="text-muted-foreground">{warehouse.length}/{WAREHOUSE_LIMIT} {t('wh.stored')}</p>
-          </div>
-          <Button variant="outline" onClick={onBack} className="touch-target shrink-0">{t('loc.back')}</Button>
-        </div>
+    <GameScreen
+      title={t('wh.name')}
+      onBack={onBack}
+      coins={player.coins}
+      subtitle={`${warehouse.length}/${WAREHOUSE_LIMIT} ${t('wh.stored')}`}
+      action={action}
+    >
+      {warehouse.length === 0 ? (
+        <motion.div
+          variants={screenItem}
+          className="menu-panel mt-4 flex flex-col items-center gap-2 rounded-2xl px-6 py-16 text-center"
+        >
+          <span className="text-4xl opacity-60" aria-hidden="true">🪣</span>
+          <p className="text-lg font-semibold text-foreground">{t('wh.empty')}</p>
+          <p className="max-w-xs text-sm text-muted-foreground">{t('wh.emptyMsg')}</p>
+        </motion.div>
+      ) : (
+        <>
+          <motion.dl
+            variants={screenItem}
+            className="menu-panel mb-5 flex flex-wrap gap-x-10 gap-y-3 rounded-2xl p-4 sm:w-fit"
+          >
+            <div>
+              <dt className="text-[0.7rem] uppercase tracking-wide text-muted-foreground">{t('wh.totalWeight')}</dt>
+              <dd className="text-lg font-bold tabular-nums text-foreground">{totalWeight.toFixed(1)} kg</dd>
+            </div>
+            <div>
+              <dt className="text-[0.7rem] uppercase tracking-wide text-muted-foreground">{t('wh.yield')}</dt>
+              <dd className="whitespace-nowrap text-lg font-bold tabular-nums text-foreground">
+                <span className="text-biolume">+{totalXp} XP</span>{' '}
+                <span className="text-lure">💰 +{totalCoins}</span>
+              </dd>
+            </div>
+          </motion.dl>
 
-        {warehouse.length === 0 ? (
-          <div className="text-center py-20">
-            <div className="text-6xl mb-4">📦</div>
-            <p className="text-xl text-muted-foreground">{t('wh.empty')}</p>
-            <p className="text-sm text-muted-foreground mt-2">{t('wh.emptyMsg')}</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 mb-24">
+          <motion.div
+            variants={screenItem}
+            className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-5"
+          >
             {warehouse.map((caught, i) => (
-              <motion.div key={caught.timestamp + '-' + i} initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: i * 0.04 }}>
-                <Card className={`border-2 border-rarity-${caught.fish.rarity}`}>
-                  <CardContent className="p-3 text-center">
-                    {FISH_IMAGES[caught.fish.id] ? (
-                      <img src={FISH_IMAGES[caught.fish.id]} alt={caught.fish.name} className="w-16 h-16 object-contain mx-auto mb-1" />
-                    ) : (
-                      <div className="text-3xl mb-1">{caught.fish.emoji}</div>
-                    )}
-                    <p className="text-sm font-bold text-foreground truncate">{caught.fish.name}</p>
-                    <p className={`text-xs font-semibold text-rarity-${caught.fish.rarity}`}>{getRarityLabel(caught.fish.rarity, lang)}</p>
-                    <p className="text-xs text-muted-foreground">{caught.weight} kg</p>
-                    <p className="text-xs text-primary">+{Math.floor(caught.fish.xp * 0.5)} XP</p>
-                    <p className="text-xs text-accent-foreground">💰 +{FISH_COIN_VALUE[caught.fish.rarity]}</p>
-                  </CardContent>
-                </Card>
-              </motion.div>
+              <HaulTile key={`${caught.timestamp}-${i}`} caught={caught} />
             ))}
-          </div>
-        )}
-
-        {warehouse.length > 0 && (
-          <div className="fixed bottom-6 right-6 z-50">
-            <Button onClick={onSell} size="lg" className="bg-accent text-accent-foreground hover:bg-accent/90 font-bold text-lg shadow-lg">
-              {t('wh.sell')} (+{totalXp} XP | 💰 +{totalCoins})
-            </Button>
-          </div>
-        )}
-      </div>
-    </div>
+          </motion.div>
+        </>
+      )}
+    </GameScreen>
   );
 }

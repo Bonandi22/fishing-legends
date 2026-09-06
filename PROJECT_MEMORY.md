@@ -1062,3 +1062,48 @@ as mesmas props).
   agente com Playwright (Mundo 1 e Mundo 2, 390px + 1440px).
 - **Pendente**: teste manual do utilizador e revisão do diff. Nada commitado ainda
   nesta parte.
+- **PR #9 mergeada em `main`** (merge commit `0ffe92d`), CI verde (incl. claude-review).
+  Branch `feature/task-08-main-menu-redesign` apagada (remoto + local).
+
+### Task 9 — repaginação frontend das telas restantes — 2026-09-06
+
+Continuação da linguagem "deep blue" para as ~13 telas fora do menu/locais. Aprovado
+fatiar em 5 PRs encadeados, revisão + merge antes de cada seguinte:
+
+1. Fundação (shell partilhado) + `Collection` + `Warehouse`
+2. Lojas: `MultiplierShop`, `SkinsShop`, `BoatSkinsShop`, `NetShop`
+3. `Ranking`, `DailyGifts` (precisa i18n completa + repaleta), `Aquarium`
+4. Roletas: `Roulette`, `SkinRoulette`
+5. Cromo dos minijogos (HUD/botões/pop-ups de `FishingScreen`/`SubmarineFishing`/
+   `NetFishing`) — **sem tocar na cena 3D nem na física do reel**; por último, task
+   própria, teste manual pesado.
+
+Frontend-only, sem mudança de contrato em nenhuma fatia.
+
+#### Fatia 1 — branch `feature/task-09-frontend-screens-slice-1`
+
+- **Shell partilhado `src/components/game/shell/`**: `GameScreen.tsx` (fundo
+  `.deep-shell`, `ScreenHeader`, container `narrow`/`default`/`wide`, slot de ação
+  fixo com `pb-32` de folga e safe-area, entrada "afundar" uma vez via
+  `useReducedMotion`), `ScreenHeader.tsx` (título Big Shoulders + subtítulo + voltar
+  `loc.back` + `CoinChip` opcional), `CoinChip.tsx`, `motion.ts` (`screenStagger`/
+  `screenItem` — as variantes partilhadas). É a interface que as Fatias 2-5 usam
+  para substituir `screen-shell`/`screen-header` (8 telas).
+- **`Collection.tsx`**: `GameScreen` + tira de instrumentos compacta (nível/total/
+  mais pesado) + **chips de raridade** (`aria-pressed`, substituem as Tabs shadcn) +
+  grelha de `SpecimenTile` (`collection/`). Capturado = placa com fio da cor da
+  raridade + imagem `FISH_IMAGES` + recorde; não-capturado = placa esbatida com
+  ponto de raridade. **Espécimes capturados ordenados primeiro.**
+- **`Warehouse.tsx`**: `GameScreen` (com `coins`) + manifesto (peso total +
+  rendimento) + grelha de `HaulTile` (`warehouse/`, com `haul.ts` = `haulXp`/
+  `haulCoins` puros) + "Vender tudo · +X XP · 💰 +Y" no slot de ação. Estado vazio
+  decente.
+- **`index.css`**: `.deep-shell` (gradiente azul-abismo calmo). **`.gitignore`**:
+  `.playwright-mcp/`.
+- **i18n**: +5 chaves nos 6 idiomas (`wh.name` sem emoji, `wh.sellAll`,
+  `wh.totalWeight`, `wh.yield`; `col.speciesCount` deixou de ser usado).
+- **Testes novos (TDD)**: `GameScreen.test.tsx` (7), `Collection.test.tsx` (5),
+  `Warehouse.test.tsx` (4).
+- **Verificação**: `tsc app` ✅ · `backend:typecheck` ✅ · `npm test` ✅ 136 ·
+  `lint` ✅ (0 erros, 12 avisos pré-existentes) · `build` ✅ · revisão visual
+  Playwright (cheios + vazios, 390px + 1440px). Teste manual do utilizador ✅.
