@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { PlayerState, ROD_SKINS, BOAT_SKINS } from '@/game/types';
 import { useI18n } from '@/game/i18n';
+import GameScreen from './shell/GameScreen';
 
 interface Props {
   player: PlayerState;
@@ -20,6 +21,11 @@ interface Prize {
   color: string;
   action: () => void;
 }
+
+// Canvas can't read CSS custom properties — these track the deep-blue tokens.
+const INK = '#0a141b';       // --abyss
+const HUB = '#12212b';       // --menu-panel
+const POINTER = '#2bd4ee';   // --lure
 
 export default function Roulette({ player, onAddCoins, onAddSkin, onAddBoatSkin, onAddMultiplier, onSetLastRouletteDate, onBack }: Props) {
   const { t } = useI18n();
@@ -39,18 +45,18 @@ export default function Roulette({ player, onAddCoins, onAddSkin, onAddBoatSkin,
     const unownedBoats = BOAT_SKINS.filter(s => !player.ownedBoatSkins.includes(s.id) && s.price > 0);
     const randomBoat = unownedBoats.length > 0 ? unownedBoats[Math.floor(Math.random() * unownedBoats.length)] : null;
     return [
-      { label: '100 💰', emoji: '💰', color: '#FFD700', action: () => onAddCoins(100) },
-      { label: '🍀 ' + t('mult.luck'), emoji: '🍀', color: '#4CAF50', action: () => onAddMultiplier('luck') },
-      { label: '250 💰', emoji: '💰', color: '#FFA000', action: () => onAddCoins(250) },
-      { label: '💪 ' + t('mult.strength'), emoji: '💪', color: '#F44336', action: () => onAddMultiplier('strength') },
+      { label: '100 💰', emoji: '💰', color: '#d9a441', action: () => onAddCoins(100) },
+      { label: '🍀 ' + t('mult.luck'), emoji: '🍀', color: '#2dd4bf', action: () => onAddMultiplier('luck') },
+      { label: '250 💰', emoji: '💰', color: '#c08a35', action: () => onAddCoins(250) },
+      { label: '💪 ' + t('mult.strength'), emoji: '💪', color: '#f59e0b', action: () => onAddMultiplier('strength') },
       randomBoat
         ? { label: `${randomBoat.emoji} ${randomBoat.name}`, emoji: randomBoat.emoji, color: randomBoat.rail[1], action: () => onAddBoatSkin(randomBoat.id) }
-        : { label: '500 💰', emoji: '💰', color: '#FF9800', action: () => onAddCoins(500) },
+        : { label: '500 💰', emoji: '💰', color: '#0e7490', action: () => onAddCoins(500) },
       randomRod
         ? { label: `${randomRod.emoji} ${randomRod.name}`, emoji: randomRod.emoji, color: randomRod.color, action: () => onAddSkin(randomRod.id) }
-        : { label: '1000 💰', emoji: '💰', color: '#E91E63', action: () => onAddCoins(1000) },
-      { label: '1000 💰', emoji: '💰', color: '#9C27B0', action: () => onAddCoins(1000) },
-      { label: '150 💰', emoji: '💰', color: '#00BCD4', action: () => onAddCoins(150) },
+        : { label: '1000 💰', emoji: '💰', color: '#155e75', action: () => onAddCoins(1000) },
+      { label: '1000 💰', emoji: '💰', color: '#0891b2', action: () => onAddCoins(1000) },
+      { label: '150 💰', emoji: '💰', color: '#164e63', action: () => onAddCoins(150) },
     ];
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -79,11 +85,10 @@ export default function Roulette({ player, onAddCoins, onAddSkin, onAddBoatSkin,
       ctx.closePath();
       ctx.fillStyle = prize.color;
       ctx.fill();
-      ctx.strokeStyle = '#fff';
+      ctx.strokeStyle = INK;
       ctx.lineWidth = 2;
       ctx.stroke();
 
-      // Text
       ctx.save();
       ctx.translate(cx, cy);
       ctx.rotate(start + sliceAngle / 2);
@@ -96,24 +101,22 @@ export default function Roulette({ player, onAddCoins, onAddSkin, onAddBoatSkin,
       ctx.restore();
     });
 
-    // Center circle
     ctx.beginPath();
     ctx.arc(cx, cy, 20, 0, Math.PI * 2);
-    ctx.fillStyle = '#333';
+    ctx.fillStyle = HUB;
     ctx.fill();
-    ctx.strokeStyle = '#fff';
+    ctx.strokeStyle = POINTER;
     ctx.lineWidth = 3;
     ctx.stroke();
 
-    // Arrow pointer (top)
     ctx.beginPath();
     ctx.moveTo(cx - 12, 5);
     ctx.lineTo(cx + 12, 5);
     ctx.lineTo(cx, 30);
     ctx.closePath();
-    ctx.fillStyle = '#ff0000';
+    ctx.fillStyle = POINTER;
     ctx.fill();
-    ctx.strokeStyle = '#fff';
+    ctx.strokeStyle = INK;
     ctx.lineWidth = 2;
     ctx.stroke();
   }, [prizes]);
@@ -129,8 +132,6 @@ export default function Roulette({ player, onAddCoins, onAddSkin, onAddBoatSkin,
 
     const sliceAngle = (2 * Math.PI) / prizes.length;
     const winIndex = Math.floor(Math.random() * prizes.length);
-    // Place the middle of the winning slice exactly at the arrow (top = -π/2).
-    // Use only INTEGER full extra rotations so the angle is exact.
     const baseTarget = -winIndex * sliceAngle - sliceAngle / 2 - Math.PI / 2;
     const extraTurns = 5 + Math.floor(Math.random() * 4);
     const totalRotation = baseTarget + Math.PI * 2 * extraTurns;
@@ -152,8 +153,6 @@ export default function Roulette({ player, onAddCoins, onAddSkin, onAddBoatSkin,
       } else {
         setSpinning(false);
         onSetLastRouletteDate(today);
-        // Determine the actual winner from the angle the arrow points at,
-        // ensuring the prize matches what the user sees.
         const TWO_PI = Math.PI * 2;
         const finalAngle = ((angleRef.current % TWO_PI) + TWO_PI) % TWO_PI;
         const arrowAngle = ((-Math.PI / 2 - finalAngle) % TWO_PI + TWO_PI) % TWO_PI;
@@ -172,50 +171,43 @@ export default function Roulette({ player, onAddCoins, onAddSkin, onAddBoatSkin,
   }, []);
 
   return (
-    <div className="min-h-screen bg-background p-4 md:p-8 flex flex-col items-center">
-      <div className="w-full max-w-lg">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-3xl font-bold text-foreground">{t('roulette.title')}</h1>
-            <p className="text-muted-foreground">💰 {player.coins} {t('mult.coins')}</p>
-          </div>
-          <Button variant="outline" onClick={onBack}>{t('loc.back')}</Button>
-        </div>
+    <GameScreen title={t('roulette.name')} onBack={onBack} coins={player.coins} width="narrow">
+      <div className="flex flex-col items-center gap-5">
+        <canvas
+          ref={canvasRef}
+          width={300}
+          height={300}
+          className="rounded-full ring-1 ring-lure/25"
+        />
 
-        <div className="flex justify-center mb-6">
-          <canvas ref={canvasRef} width={300} height={300} className="rounded-full shadow-xl" />
-        </div>
-
-        <div className="text-center mb-4">
-          {alreadySpun && !result ? (
-            <p className="text-muted-foreground font-medium">{t('roulette.used')}</p>
-          ) : (
-            <Button
-              onClick={spin}
-              disabled={spinning || alreadySpun}
-              size="lg"
-              className="text-lg font-bold px-10"
-            >
-              {spinning ? t('roulette.spinning') : t('roulette.spin')}
-            </Button>
-          )}
-        </div>
+        {alreadySpun && !result ? (
+          <p className="text-center font-medium text-muted-foreground">{t('roulette.used')}</p>
+        ) : (
+          <Button
+            onClick={spin}
+            disabled={spinning || alreadySpun}
+            size="lg"
+            className="bg-lure px-10 text-base font-black uppercase tracking-wide text-lure-foreground hover:bg-lure/90"
+          >
+            {spinning ? t('roulette.spinning') : t('roulette.spin')}
+          </Button>
+        )}
 
         {result && (
           <motion.div
-            className="text-center bg-card border-2 border-primary rounded-xl p-6 shadow-lg"
-            initial={{ scale: 0.5, opacity: 0 }}
+            className="menu-panel w-full max-w-xs rounded-2xl border border-lure/40 p-6 text-center"
+            initial={{ scale: 0.6, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ type: 'spring', damping: 15 }}
           >
-            <div className="text-4xl mb-2">{result.emoji}</div>
-            <p className="text-xl font-bold text-foreground">{t('roulette.won')}</p>
-            <p className="text-lg text-primary font-semibold">{result.label}</p>
+            <div className="mb-2 text-4xl">{result.emoji}</div>
+            <p className="text-lg font-bold text-foreground">{t('roulette.won')}</p>
+            <p className="font-semibold text-lure">{result.label}</p>
           </motion.div>
         )}
 
-        <p className="text-center text-xs text-muted-foreground mt-4">{t('roulette.daily')}</p>
+        <p className="text-center text-xs text-muted-foreground">{t('roulette.daily')}</p>
       </div>
-    </div>
+    </GameScreen>
   );
 }

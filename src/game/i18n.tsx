@@ -171,6 +171,8 @@ const translations = {
 
   // Roulette
   'roulette.title': { pt: '🎰 Roleta Diária', en: '🎰 Daily Roulette', es: '🎰 Ruleta Diaria', fr: '🎰 Roulette Quotidienne', de: '🎰 Tägliches Roulette', ja: '🎰 デイリールーレット' },
+  'roulette.name': { pt: 'Roleta diária', en: 'Daily roulette', es: 'Ruleta diaria', fr: 'Roulette quotidienne', de: 'Tägliches Roulette', ja: 'デイリールーレット' },
+  'skinRoulette.name': { pt: 'Roleta de skins', en: 'Skin roulette', es: 'Ruleta de skins', fr: 'Roulette de skins', de: 'Skin-Roulette', ja: 'スキンルーレット' },
   'roulette.spin': { pt: '🎰 Girar!', en: '🎰 Spin!', es: '🎰 ¡Girar!', fr: '🎰 Tourner !', de: '🎰 Drehen!', ja: '🎰 回す！' },
   'roulette.spinning': { pt: 'Girando...', en: 'Spinning...', es: 'Girando...', fr: 'En cours...', de: 'Dreht sich...', ja: '回転中...' },
   'roulette.won': { pt: 'Você ganhou!', en: 'You won!', es: '¡Ganaste!', fr: 'Vous avez gagné !', de: 'Du hast gewonnen!', ja: '当たり！' },
