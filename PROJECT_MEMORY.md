@@ -950,3 +950,66 @@ Replicados de `ICM_TESOURARIA/ICMSolution/.github/workflows/`:
 - **Falta a ação do utilizador**: adicionar o secret `CLAUDE_CODE_OAUTH_TOKEN` em
   Settings → Secrets and variables → Actions (gerar com `claude setup-token`).
   Até lá o check "Claude Code Review" falha (não bloqueia — não é check obrigatório).
+
+### Task 8 — repaginação da página principal (menu) — branch `feature/task-08-main-menu-redesign` — 2026-09-06
+
+Redesenho visual profundo do `MainMenu`, direção "deep blue / submerso" aprovada pelo
+utilizador. Sem backend, sem mudança de contrato: `Index.tsx` continua a passar as
+mesmas props. Frontend-only.
+
+- **Branch renomeada** de `feature/task-08-frontend-auth` para
+  `feature/task-08-main-menu-redesign` (a auth do cliente continua bloqueada pela
+  análise do backend; esta task é só UI).
+- **Conceito**: o menu como uma descida — barra de superfície fina no topo, fundo em
+  gradiente que escurece até ao abismo, ações em estratos com peso visual diferente
+  em vez de uma grelha de botões iguais. Elemento memorável: o **mostrador de
+  profundidade** (`DepthGauge`) — anel de progresso de XP + nível grande + leituras
+  (peixes/espécies/moedas/armazém).
+- **`MainMenu.tsx`** passou de ~480 para ~230 linhas; decomposto em
+  `src/components/game/menu/`:
+  - `account.ts` — `Account`, `loadAccount`/`saveAccount`, `COUNTRIES`, chaves.
+  - `AccountModal.tsx` — modal de credenciais/username/login extraído **com lógica
+    verbatim** (+ `role="dialog"`, `aria-modal`, `aria-labelledby`).
+  - `SurfaceBar.tsx` — moedas + chip de Presentes (com ponto de notificação) +
+    trigger de definições.
+  - `SettingsSheet.tsx` — idioma + música + faixa consolidados numa `Sheet` (saíram
+    dos quatro cantos).
+  - `DepthGauge.tsx` — instrumento do jogador (SVG, anima o anel no load).
+  - `WorldDial.tsx` — controlo segmentado de 3 estados (Mundo 1/2/3) com
+    `aria-pressed` e locks por nível (12 / 20).
+  - `HubList.tsx` — linhas de navegação compactas agrupadas ("O barco", "Sorte &
+    economia").
+- **Tema (menu-scoped, não afeta outras telas)**: novos tokens HSL em `index.css`
+  (`--abyss`, `--menu-panel`, `--menu-raised`, `--lure`, `--lure-foreground`,
+  `--biolume`) + cores/`fontFamily.display` em `tailwind.config.ts`. Fonte display
+  **Big Shoulders Display** (via Google Fonts) aplicada só no menu; o Cinzel global
+  de `h1/h2/h3` fica intacto. Utilitário `.font-body` para os `<h2>` do menu não
+  herdarem Cinzel. Classes `.menu-surface` / `.menu-caustic` / `.menu-panel` /
+  `.menu-row` + `@keyframes menu-caustic-drift` (desligado em
+  `prefers-reduced-motion`).
+- **Movimento**: uma sequência de load (stagger sink dos blocos + varredura do anel);
+  `useReducedMotion` respeitado. Sem hover-wobble por card. Removida a rotação
+  infinita do emoji do título.
+- **i18n**: novas chaves `menu.tagline`, `menu.sectionBoat`, `menu.sectionLuck`,
+  `menu.worldLabel`, `menu.unlockAt`, `menu.settingsTitle`, `menu.musicTrack`,
+  `menu.species`, `menu.close`, `menu.dailyGifts` — nos 6 idiomas. "Presentes"
+  deixou de ser hard-coded.
+- **Testes (novos, RTL)**: `src/test/MainMenu.test.tsx` (11) — caracterização do
+  comportamento preservado (callbacks de navegação, locks de mundo, ponto de
+  presentes, reset por nível, modal de conta) + 2 do novo `WorldDial`
+  (`aria-pressed`, seleção direta do Mundo 3). `src/test/AccountModal.test.tsx` (2)
+  — login por username guardado e erro de conta não encontrada.
+- **Ajustes pós-revisão do diff (2026-09-06)**:
+  - Removido o prop morto `onSwitchWorld` (interface de `MainMenu`, `Index.tsx` e
+    o handler de teste) — o `WorldDial` chama `onSetWorld` diretamente para os 3
+    mundos, o toggle antigo `w === 2 ? 1 : 2` deixou de existir.
+  - `DepthGauge` deixou de derivar o rótulo do armazém por regex sobre
+    `t('menu.warehouse')` (`.replace(/^\S+\s/, '')`); nova chave `menu.storage`
+    (sem emoji) nos 6 idiomas.
+- **Verificação**: `tsc -p tsconfig.app.json` ✅ · `backend:typecheck` ✅ ·
+  `npm test` ✅ 109 · `lint` ✅ (0 erros, 12 avisos pré-existentes) · `build` ✅ ·
+  revisão visual do agente com Playwright em 390px e 1440px (desktop + mobile).
+- **Pendente**: teste manual do utilizador (`npm run dev`, exercitar cada botão,
+  troca de mundo/idioma/faixa, modal de conta, presentes) e revisão do diff antes de
+  commit. Nada foi commitado. Fora de âmbito: relocar o banner de tutorial (hoje
+  dentro do modal de conta, comportamento preservado); ligar o menu ao backend.

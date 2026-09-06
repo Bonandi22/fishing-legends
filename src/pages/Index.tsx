@@ -129,7 +129,6 @@ const IndexInner = () => {
       musicTrack={musicTrack}
       onSetMusicTrack={setMusicTrack}
       world={world}
-      onSwitchWorld={() => setWorld(w => (w === 2 ? 1 : 2))}
       onSetWorld={setWorld}
     />
   );
