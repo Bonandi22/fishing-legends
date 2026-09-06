@@ -1,8 +1,10 @@
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import { PlayerState, MULTIPLIER_COST, MULTIPLIER_COST_4X } from '@/game/types';
 import { useI18n } from '@/game/i18n';
+import GameScreen from './shell/GameScreen';
+import { screenItem } from './shell/motion';
+import PriceTag from './shops/PriceTag';
 
 interface Props {
   player: PlayerState;
@@ -13,10 +15,10 @@ interface Props {
 export default function MultiplierShop({ player, onBuy, onBack }: Props) {
   const { t } = useI18n();
   const now = Date.now();
-  const luckActive = player.luckMultiplierEnd && player.luckMultiplierEnd > now;
-  const strengthActive = player.strengthMultiplierEnd && player.strengthMultiplierEnd > now;
+  const luckActive = !!player.luckMultiplierEnd && player.luckMultiplierEnd > now;
+  const strengthActive = !!player.strengthMultiplierEnd && player.strengthMultiplierEnd > now;
 
-  const multipliers = [
+  const buffs = [
     { type: 'luck' as const, power: 2, emoji: '🍀', name: `2x ${t('mult.luck')}`, desc: t('mult.luckDesc'), active: luckActive, cost: MULTIPLIER_COST },
     { type: 'strength' as const, power: 2, emoji: '💪', name: `2x ${t('mult.strength')}`, desc: t('mult.strengthDesc'), active: strengthActive, cost: MULTIPLIER_COST },
     { type: 'luck' as const, power: 4, emoji: '🍀', name: `4x ${t('mult.luck')}`, desc: t('mult.luckDesc'), active: luckActive && player.luckMultiplierPower === 4, cost: MULTIPLIER_COST_4X },
@@ -24,49 +26,42 @@ export default function MultiplierShop({ player, onBuy, onBack }: Props) {
   ];
 
   return (
-    <div className="screen-shell bg-background">
-      <div className="max-w-2xl mx-auto">
-        <div className="screen-header">
-          <div>
-            <h1 className="text-3xl font-bold text-foreground">{t('mult.title')}</h1>
-            <p className="text-muted-foreground">💰 {player.coins} {t('mult.coins')}</p>
+    <GameScreen title={t('mult.name')} onBack={onBack} coins={player.coins} width="narrow">
+      <motion.div variants={screenItem} className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        {buffs.map(b => (
+          <div
+            key={b.type + b.power}
+            className={`menu-panel flex flex-col gap-2 rounded-2xl p-5 ${b.active ? 'ring-2 ring-lure' : ''}`}
+          >
+            <div className="flex items-center gap-2">
+              <span className="text-2xl" aria-hidden="true">{b.emoji}</span>
+              <h2 className="font-display text-lg font-bold tracking-wide text-foreground">{b.name}</h2>
+            </div>
+            <p className="text-xs leading-snug text-muted-foreground">{b.desc}</p>
+            <div className="mt-1 flex items-center justify-between gap-2">
+              <span className="text-xs text-muted-foreground">⏱️ 1 {t('mult.minute')}</span>
+              <PriceTag price={b.cost} />
+            </div>
+            {b.active ? (
+              <motion.span
+                className="rounded-lg bg-lure/15 py-2 text-center text-sm font-semibold text-lure"
+                animate={{ opacity: [1, 0.6, 1] }}
+                transition={{ duration: 1.6, repeat: Infinity }}
+              >
+                {t('mult.active')}
+              </motion.span>
+            ) : (
+              <Button
+                onClick={() => onBuy(b.type, b.power)}
+                disabled={player.coins < b.cost}
+                className="w-full bg-lure font-semibold text-lure-foreground hover:bg-lure/90"
+              >
+                {player.coins < b.cost ? t('mult.noCoins') : t('mult.buy')}
+              </Button>
+            )}
           </div>
-          <Button variant="outline" onClick={onBack}>{t('loc.back')}</Button>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {multipliers.map((m, i) => (
-            <motion.div key={m.type + m.power} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }}>
-              <Card className={`border-2 ${m.active ? 'border-primary shadow-lg shadow-primary/20' : 'border-border'}`}>
-                <CardContent className="p-6 text-center">
-                  <div className="text-5xl mb-3">{m.emoji}</div>
-                  <h2 className="text-xl font-bold text-foreground mb-1">{m.name}</h2>
-                  <p className="text-sm text-muted-foreground mb-4">{m.desc}</p>
-                  <p className="text-lg font-bold text-primary mb-3">💰 {m.cost}</p>
-                  <p className="text-xs text-muted-foreground mb-3">⏱️ 1 {t('mult.minute')}</p>
-                  {m.active ? (
-                    <motion.div
-                      className="bg-primary/20 text-primary font-bold py-2 px-4 rounded-lg"
-                      animate={{ scale: [1, 1.05, 1] }}
-                      transition={{ duration: 1.5, repeat: Infinity }}
-                    >
-                      ✅ {t('mult.active')}
-                    </motion.div>
-                  ) : (
-                    <Button
-                      onClick={() => onBuy(m.type, m.power)}
-                      disabled={player.coins < m.cost}
-                      className="w-full"
-                    >
-                      {player.coins < m.cost ? t('mult.noCoins') : t('mult.buy')}
-                    </Button>
-                  )}
-                </CardContent>
-              </Card>
-            </motion.div>
-          ))}
-        </div>
-      </div>
-    </div>
+        ))}
+      </motion.div>
+    </GameScreen>
   );
 }
