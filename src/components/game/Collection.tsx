@@ -4,6 +4,7 @@ import { PlayerState, Rarity } from '@/game/types';
 import { FISH } from '@/game/data';
 import { useI18n, getRarityLabel } from '@/game/i18n';
 import GameScreen from './shell/GameScreen';
+import FilterChip from './shell/FilterChip';
 import { screenItem } from './shell/motion';
 import SpecimenTile from './collection/SpecimenTile';
 
@@ -79,22 +80,5 @@ export default function Collection({ player, onBack }: Props) {
         ))}
       </motion.div>
     </GameScreen>
-  );
-}
-
-function FilterChip({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
-  return (
-    <button
-      type="button"
-      aria-pressed={active}
-      onClick={onClick}
-      className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
-        active
-          ? 'bg-lure text-lure-foreground'
-          : 'menu-row text-muted-foreground hover:text-foreground'
-      }`}
-    >
-      {children}
-    </button>
   );
 }

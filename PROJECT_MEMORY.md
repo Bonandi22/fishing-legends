@@ -1162,4 +1162,24 @@ Lojas ("o armador"). Todas passam a usar `GameScreen` + `coins`.
   `DailyGifts` (4 — resgatar + popup, resgatado desativado, dias exclusivos, voltar).
 - **Verificação**: `tsc app` ✅ · `backend:typecheck` ✅ · `npm test` ✅ 161 ·
   `lint` ✅ (0 erros, 12 avisos) · `build` ✅ · revisão visual Playwright (Ranking +
-  perfil, DailyGifts + popup, 390px + 1440px).
+  perfil, DailyGifts + popup, 390px + 1440px). **PR #12.**
+
+##### Fatia 3b — branch `feature/task-09-frontend-screens-slice-3b`
+
+Toque leve no `Aquarium` — **a cena do tanque fica** (gradiente aquário, cáusticas,
+peixes a nadar, silhuetas de público; era uma feature, não "gráfico amador").
+
+- **`shell/FilterChip.tsx`** — o chip de filtro extraído do `Collection` (raridade /
+  setor), agora partilhado. `Collection.tsx` passou a importá-lo.
+- **`Aquarium.tsx`** — cena preservada; chrome alinhado: header com voltar
+  `border-lure/25 bg-menu-panel/70` + título `font-display` + toggle `bg-lure`; tabs
+  de setor → `FilterChip`; grelha de armazém → tiles `menu-panel` com fio da cor da
+  raridade + `💰`/`⭐`. Removido estado morto (`selected`). Comportamento (troca
+  tank/storage, mover peixe exige setor, um de cada vez) preservado.
+- **i18n**: +4 chaves `aquarium.*` (`pickSectorFirst`, `sectorSelected` com `{n}`,
+  `reward`) — as 2 strings PT hard-coded saíram.
+- **Testes novos (TDD)**: `Aquarium` (4 — troca de vista, mover exige setor, setor
+  vazio, voltar).
+- **Verificação**: `tsc app` ✅ · `backend:typecheck` ✅ · `npm test` ✅ 165 ·
+  `lint` ✅ (0 erros, 12 avisos) · `build` ✅ · revisão visual Playwright (tank +
+  storage, 1440px).
