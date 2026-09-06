@@ -1,5 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { ZodError } from 'zod';
+import { hasZodFastifySchemaValidationErrors } from 'fastify-type-provider-zod';
 import { pgConstraint, pgErrorCode } from '../db/pgErrors.js';
 
 export { pgConstraint, pgErrorCode };
@@ -47,7 +48,7 @@ const DOMAIN_ERRORS: Record<string, DomainErrorSpec> = {
 
 export function registerErrorHandling(app: FastifyInstance): void {
   app.setErrorHandler((error, request, reply) => {
-    if (error instanceof ZodError) {
+    if (error instanceof ZodError || hasZodFastifySchemaValidationErrors(error)) {
       return reply.status(400).send({
         error: { code: 'VALIDATION_ERROR', message: 'Request validation failed' },
       });

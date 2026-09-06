@@ -916,6 +916,23 @@ Próximo: completar B3 (pesca/inventário/rewards/migração) e seguir para A1�
 - **L5** — Argon2id (`@node-rs/argon2`) com verify-and-upgrade dos hashes scrypt
   legados no login. `AuthRepository.updatePasswordHash` (PG + memória).
 - Pendente na Task 7: **M8** (OpenAPI dos schemas Zod).
+
+### M8 — OpenAPI gerado dos schemas Zod — branch `feature/openapi-from-zod` — 2026-09-06
+
+- Plano A: `fastify-type-provider-zod@4` (Zod 3) + `@fastify/swagger@9`.
+- `app.ts` regista os compiladores + swagger (`jsonSchemaTransform`); **`createApp`
+  passou a ser `async`** — todos os call sites (`server.ts`, testes) ganharam `await`.
+- `/openapi.json` serve o documento gerado (22 rotas, sempre em sync). As 11 rotas
+  declaram `schema` em Zod (tags, body, params, querystring, response); os
+  `z.object().parse()` inline foram removidos. Verificações de `Idempotency-Key`
+  ficam inline (preservam `INVALID_IDEMPOTENCY_KEY`).
+- `http/errors.ts` mapeia `hasZodFastifySchemaValidationErrors` → `400 VALIDATION_ERROR`.
+- `http/openapi.test.ts` — teste de contrato.
+- Verificação: `backend:typecheck` ✅ · `npm test` ✅ 96 · `test:integration` ✅ 45 ·
+  `lint` ✅ · `build` ✅ · smoke no container (register 201, body inválido → 400,
+  `/openapi.json` com 22 rotas).
+- **Todos os itens da análise (`docs/analysis/findings.md`) concluídos** exceto M5
+  (parcial — memória/PG só em dev sem DB).
 - Nota: builds Docker locais a falhar intermitentemente com `ECONNRESET` no
   `npm ci` (rede, não código); Dockerfiles endurecidos com `--fetch-retries`.
   O CI do GitHub valida o `npm ci` (linux/gnu) na PR.

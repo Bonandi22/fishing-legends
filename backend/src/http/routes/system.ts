@@ -1,4 +1,6 @@
+import { z } from 'zod';
 import type { FastifyInstance } from 'fastify';
+import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 
 export type SystemRouteOptions = {
   databaseConfigured: boolean;
@@ -8,34 +10,33 @@ export function registerSystemRoutes(
   app: FastifyInstance,
   options: SystemRouteOptions,
 ): void {
-  app.get('/health', async () => ({
-    status: 'ok',
-    service: 'deep-blue-lure-api',
-  }));
+  const r = app.withTypeProvider<ZodTypeProvider>();
 
-  app.get('/ready', async (_request, reply) => {
+  r.get('/health', {
+    schema: {
+      tags: ['system'],
+      summary: 'Process liveness (no database required)',
+      response: { 200: z.object({ status: z.literal('ok'), service: z.string() }) },
+    },
+  }, async () => ({ status: 'ok' as const, service: 'deep-blue-lure-api' }));
+
+  r.get('/ready', {
+    schema: {
+      tags: ['system'],
+      summary: 'Dependency readiness',
+      response: {
+        200: z.object({ status: z.literal('ready'), checks: z.object({ database: z.string() }) }),
+        503: z.object({ status: z.literal('not_ready'), checks: z.object({ database: z.string() }) }),
+      },
+    },
+  }, async (_request, reply) => {
     if (!options.databaseConfigured) {
-      return reply.status(503).send({
-        status: 'not_ready',
-        checks: { database: 'not_configured' },
-      });
+      return reply.status(503).send({ status: 'not_ready' as const, checks: { database: 'not_configured' } });
     }
-
-    return {
-      status: 'ready',
-      checks: { database: 'configured' },
-    };
+    return { status: 'ready' as const, checks: { database: 'configured' } };
   });
 
-  app.get('/openapi.json', async () => ({
-    openapi: '3.0.3',
-    info: {
-      title: 'Deep Blue Lure API',
-      version: '0.1.0',
-    },
-    paths: {
-      '/health': { get: { responses: { '200': { description: 'Service is alive' } } } },
-      '/ready': { get: { responses: { '200': { description: 'Service is ready' } } } },
-    },
-  }));
+  r.get('/openapi.json', {
+    schema: { tags: ['system'], summary: 'OpenAPI contract for this API', hide: true },
+  }, async () => app.swagger());
 }
