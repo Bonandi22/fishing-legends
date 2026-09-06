@@ -1,11 +1,26 @@
+import { randomBytes, scrypt } from 'node:crypto';
+import { promisify } from 'node:util';
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { eq } from 'drizzle-orm';
 import { createTestDatabase, type TestDatabase } from '../testing/pgHarness.js';
 import { playerProgress } from '../db/schema.js';
 import { createPgAuthRepository } from './pgRepository.js';
+import { createAuthService } from './service.js';
 
 let harness: TestDatabase;
 let repo: ReturnType<typeof createPgAuthRepository>;
+
+const serviceConfig = {
+  accessTokenSecret: new Uint8Array(Buffer.from('test-secret-that-is-at-least-32-bytes-long')),
+  accessTokenTtlSeconds: 900,
+  refreshTokenTtlSeconds: 2_592_000,
+};
+
+async function legacyScryptHash(password: string): Promise<string> {
+  const salt = randomBytes(16);
+  const key = (await promisify(scrypt)(password, salt, 64)) as Buffer;
+  return `scrypt$${salt.toString('base64url')}$${key.toString('base64url')}`;
+}
 
 beforeAll(async () => {
   harness = await createTestDatabase();
@@ -52,6 +67,21 @@ describe('pg auth repository (integration)', () => {
 
   it('returns null for an unknown email', async () => {
     expect(await repo.findUserByEmail('nobody@example.com')).toBeNull();
+  });
+
+  it('upgrades a legacy scrypt password hash to Argon2id on successful login', async () => {
+    const email = `legacy-${crypto.randomUUID()}@example.com`;
+    await repo.createUser(newUser({ email, passwordHash: await legacyScryptHash('legacy-secret-123') }));
+
+    const service = createAuthService(repo, serviceConfig);
+    const result = await service.login({ email, password: 'legacy-secret-123' });
+    expect(result.accessToken).toEqual(expect.any(String));
+
+    const stored = await repo.findUserByEmail(email);
+    expect(stored?.passwordHash.startsWith('$argon2id$')).toBe(true);
+
+    // the upgraded hash still authenticates
+    await expect(service.login({ email, password: 'legacy-secret-123' })).resolves.toBeTruthy();
   });
 
   const later = () => new Date(Date.now() + 60_000);

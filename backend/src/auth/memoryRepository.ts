@@ -38,6 +38,10 @@ export function createMemoryAuthRepository(): AuthRepository {
       users.set(user.id, user);
       return user;
     },
+    async updatePasswordHash(userId, passwordHash) {
+      const user = users.get(userId);
+      if (user) users.set(userId, { ...user, passwordHash });
+    },
     async createSession(input) {
       const session: AuthSession = { id: randomUUID(), userId: input.userId, expiresAt: input.expiresAt };
       sessions.set(session.id, session);

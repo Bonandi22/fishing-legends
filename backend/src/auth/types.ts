@@ -35,6 +35,7 @@ export type AuthRepository = {
     username: string;
     country: string;
   }): Promise<AuthUser>;
+  updatePasswordHash(userId: string, passwordHash: string): Promise<void>;
   createSession(input: {
     userId: string;
     tokenHash: string;

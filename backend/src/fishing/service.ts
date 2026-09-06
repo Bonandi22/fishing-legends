@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import type { createCatalogService } from '../catalog/service.js';
 import type { PlayerRepository } from '../players/types.js';
 import { rollCatch } from './roll.js';
+import { isSessionExpired } from './session.js';
 
 type FishingSession = {
   id: string;
@@ -9,7 +10,8 @@ type FishingSession = {
   locationId: string;
   rulesetVersion: string;
   idempotencyKey: string;
-  status: 'open' | 'completed';
+  status: 'open' | 'completed' | 'expired';
+  createdAt: Date;
   result?: {
     fishId: string;
     weight: number;
@@ -21,6 +23,7 @@ export function createFishingService(
   catalog: ReturnType<typeof createCatalogService>,
   players: PlayerRepository,
   onCatch?: (input: { userId: string; fishId: string; locationId: string; weight: number; xp: number }) => Promise<unknown>,
+  now: () => Date = () => new Date(),
 ) {
   const sessions = new Map<string, FishingSession>();
   const idempotentSessions = new Map<string, FishingSession>();
@@ -42,6 +45,7 @@ export function createFishingService(
         rulesetVersion: catalog.getPublicCatalog().version,
         idempotencyKey,
         status: 'open',
+        createdAt: now(),
       };
       sessions.set(session.id, session);
       idempotentSessions.set(`${userId}:${idempotencyKey}`, session);
@@ -52,6 +56,10 @@ export function createFishingService(
       const session = sessions.get(sessionId);
       if (!session || session.userId !== userId) throw new Error('INVALID_FISHING_SESSION');
       if (session.status === 'completed' && session.result) return { session, result: session.result };
+      if (session.status === 'expired' || (session.status === 'open' && isSessionExpired(session.createdAt, now()))) {
+        session.status = 'expired';
+        throw new Error('FISHING_SESSION_EXPIRED');
+      }
 
       const location = catalog.findLocation(session.locationId);
       if (!location) throw new Error('INVALID_FISHING_SESSION');

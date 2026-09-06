@@ -5,6 +5,7 @@ import { aquariumFish, walletTransactions, wallets, warehouseFish } from '../db/
 import type { EconomyService } from '../economy/service.js';
 import { fishSaleValue } from '../economy/pricing.js';
 import type { createCatalogService } from '../catalog/service.js';
+import { addWarehouseFish } from './warehouse.js';
 import type { WarehouseFish } from './service.js';
 
 export function createPgInventoryService(
@@ -14,15 +15,7 @@ export function createPgInventoryService(
 ) {
   return {
     async addCatch(input: Omit<WarehouseFish, 'id'>) {
-      const [item] = await db.insert(warehouseFish).values({
-        id: randomUUID(),
-        userId: input.userId,
-        fishId: input.fishId,
-        locationId: input.locationId,
-        weight: input.weight.toFixed(2),
-        xp: input.xp,
-      }).returning();
-      return item;
+      return addWarehouseFish(db, input);
     },
     async list(userId: string) {
       const items = await db.select().from(warehouseFish).where(eq(warehouseFish.userId, userId));

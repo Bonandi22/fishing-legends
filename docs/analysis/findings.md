@@ -235,10 +235,17 @@ funcional `UNIQUE (lower(username))` (a casing de exibição preserva-se). `crea
 Helpers de erro pg movidos para `backend/src/db/pgErrors.ts` (`isUniqueViolation`).
 Testes: `app.test.ts` (memória) + integração (`Angler` vs `angler` → `USERNAME_TAKEN`).
 
-### L5 · Parâmetros de hashing não versionados · esforço M
-`security-review.md` S10. `scrypt` sem N/r/p no encoded hash; `ARCHITECTURE` pede
-Argon2id.
-**Ajuste**: Argon2id (`@node-rs/argon2`) ou incluir custo no hash + verificação.
+### L5 · Parâmetros de hashing não versionados · esforço M · ✅ feito 2026-09-06
+`security-review.md` S10.
+**Feito**: `hashPassword` usa Argon2id via `@node-rs/argon2` (string PHC com
+`m=19456,t=2,p=1` embutido). `verifyPassword` aceita `$argon2*` **e** o formato
+`scrypt$...` legado. `needsRehash(encoded)` → `login` re-hash transparente para
+Argon2id quando o hash é legado (`updatePasswordHash` no `AuthRepository`, PG +
+memória). O decoy hash de timing (M2) passa a ser Argon2. Testes: `crypto.test.ts`
+(round-trip Argon2, verify de scrypt legado, `needsRehash`, hash malformado) +
+integração (hash scrypt semeado → login → hash atualizado para `$argon2id$`).
+Nota: `@node-rs/argon2` traz binários pré-compilados (musl para o Alpine, gnu para
+o CI) — ambos no `package-lock.json`.
 
 ### L6 · Testes unitários de domínio no backend · esforço P · ✅ feito 2026-09-06
 `quality-review.md` §2.2.
@@ -247,12 +254,24 @@ Argon2id.
 `config/env.test.ts` (A2), `economy/pricing.test.ts` (M4), `migration/service.test.ts`
 (`validateLocalSave` — 6 casos). Score do leaderboard coberto pela integração.
 
-### L7 · Fishing session sem expiração / limite de frequência · esforço M
-`backend-review.md` fishing. `status='expired'` no CHECK mas nunca usado.
-**Ajuste**: TTL na sessão + rejeição de conclusão tardia; base para antifraude.
+### L7 · Fishing session sem expiração / limite de frequência · esforço M · ✅ feito 2026-09-06
+`backend-review.md` fishing.
+**Feito**: `backend/src/fishing/session.ts` — `FISHING_SESSION_TTL_MS` (5 min),
+`isSessionExpired(createdAt, now)`, `sessionExpiresAt`. `complete` (PG e memória)
+rejeita sessões fora da janela: marca `status='expired'` e lança
+`FISHING_SESSION_EXPIRED` (410). `toSession` expõe `expiresAt`. Sem migração
+(deriva de `created_at`). Testes: `session.test.ts` (pure), `service.test.ts`
+(memória, `now` injetável), integração (backdate de `created_at` → 410 + status
+gravado + sem captura). **Limite de frequência** fica para o módulo de antifraude
+(Fase 11).
 
-### L8 · `fishing` insere em `warehouse_fish` diretamente · esforço P
-`backend-review.md` fishing. Cruza fronteira de módulo (`ARCHITECTURE.md:42`).
+### L8 · `fishing` insere em `warehouse_fish` diretamente · esforço P · ✅ feito 2026-09-06
+`backend-review.md` fishing. Cruzava a fronteira de módulo (`ARCHITECTURE.md:42`).
+**Feito**: `backend/src/inventory/warehouse.ts` — `addWarehouseFish(executor, input)`
+onde `executor` é a `Database` **ou** uma transação aberta. `fishing/pgService`
+chama-o passando o seu `tx` (mantém a atomicidade); `inventory/pgRepository.addCatch`
+também passa a usá-lo. O `fishing/pgService` deixou de importar a tabela
+`warehouseFish`. Coberto pelos testes de integração de pesca/inventário existentes.
 **Ajuste**: passar pelo serviço de inventário (dentro da mesma transação).
 
 ### L9 · Higiene de repositório · esforço P · ✅ feito 2026-09-06

@@ -40,6 +40,7 @@ const DOMAIN_ERRORS: Record<string, DomainErrorSpec> = {
   INVALID_PLAYER_PROGRESS: { status: 422, message: 'Player progress is not available' },
   INVALID_FISHING_REQUEST: { status: 422, message: 'The fishing request is not valid' },
   INVALID_FISHING_SESSION: { status: 422, message: 'The fishing session is not valid' },
+  FISHING_SESSION_EXPIRED: { status: 410, message: 'The fishing session expired; start a new one' },
   NO_FISH_AVAILABLE: { status: 422, message: 'No fish are available at that location' },
   USERNAME_TAKEN: { status: 409, message: 'That username is already taken' },
 };

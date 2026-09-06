@@ -1,11 +1,13 @@
 import { and, eq } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
 import type { Database } from '../db/client.js';
-import { fishingSessions, playerProgress, warehouseFish } from '../db/schema.js';
+import { fishingSessions, playerProgress } from '../db/schema.js';
 import type { createCatalogService } from '../catalog/service.js';
 import type { PlayerRepository } from '../players/types.js';
+import { addWarehouseFish } from '../inventory/warehouse.js';
 import { applyCatchProgress } from '../players/progress.js';
 import { rollCatch } from './roll.js';
+import { isSessionExpired, sessionExpiresAt } from './session.js';
 
 export function createPgFishingService(
   db: Database,
@@ -14,7 +16,8 @@ export function createPgFishingService(
 ) {
   const toSession = (row: typeof fishingSessions.$inferSelect) => ({
     ...row,
-    status: (row.status === 'completed' ? 'completed' : 'open') as 'open' | 'completed',
+    status: (row.status === 'completed' ? 'completed' : row.status === 'expired' ? 'expired' : 'open') as 'open' | 'completed' | 'expired',
+    expiresAt: sessionExpiresAt(row.createdAt),
     ...(row.resultFishId && row.resultWeight !== null && row.resultXp !== null
       ? { result: { fishId: row.resultFishId, weight: Number(row.resultWeight), xp: row.resultXp } }
       : {}),
@@ -48,6 +51,13 @@ export function createPgFishingService(
           result: { fishId: current.resultFishId, weight: Number(current.resultWeight), xp: current.resultXp },
         };
       }
+      if (current.status === 'expired' || (current.status === 'open' && isSessionExpired(current.createdAt))) {
+        if (current.status === 'open') {
+          await db.update(fishingSessions).set({ status: 'expired' })
+            .where(and(eq(fishingSessions.id, sessionId), eq(fishingSessions.status, 'open')));
+        }
+        throw new Error('FISHING_SESSION_EXPIRED');
+      }
       const location = catalog.findLocation(current.locationId);
       if (!location) throw new Error('INVALID_FISHING_SESSION');
       const available = location.fishIds.map(id => catalog.findFish(id))
@@ -73,9 +83,9 @@ export function createPgFishingService(
         const progress = await tx.select().from(playerProgress).where(eq(playerProgress.userId, userId)).limit(1);
         if (!progress[0]) throw new Error('INVALID_PLAYER_PROGRESS');
         const updated = applyCatchProgress({ level: progress[0].level, xp: progress[0].xp }, result.xp);
-        await tx.insert(warehouseFish).values({
-          id: randomUUID(), userId, fishId: result.fishId, locationId: current.locationId,
-          weight: result.weight.toFixed(2), xp: result.xp,
+        await addWarehouseFish(tx, {
+          userId, fishId: result.fishId, locationId: current.locationId,
+          weight: result.weight, xp: result.xp,
         });
         await tx.update(playerProgress).set({
           level: updated.level, xp: updated.xp,

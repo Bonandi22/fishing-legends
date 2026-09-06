@@ -1,7 +1,8 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { eq } from 'drizzle-orm';
 import { createTestDatabase, type TestDatabase } from '../testing/pgHarness.js';
-import { playerProgress, warehouseFish } from '../db/schema.js';
+import { fishingSessions, playerProgress, warehouseFish } from '../db/schema.js';
+import { FISHING_SESSION_TTL_MS } from './session.js';
 import { createCatalogService } from '../catalog/service.js';
 import { createPgAuthRepository } from '../auth/pgRepository.js';
 import { createPgPlayerRepository } from '../players/pgRepository.js';
@@ -91,5 +92,23 @@ describe('pg fishing service (integration)', () => {
     const intruder = await seedUser();
     const session = await fishing.start(owner, 'amazon', key());
     await expect(fishing.complete(intruder, session.id)).rejects.toThrow('INVALID_FISHING_SESSION');
+  });
+
+  it('expires a session that is completed too late and marks it in the database', async () => {
+    const userId = await seedUser();
+    const session = await fishing.start(userId, 'amazon', key());
+
+    await harness.db.update(fishingSessions)
+      .set({ createdAt: new Date(Date.now() - FISHING_SESSION_TTL_MS - 1000) })
+      .where(eq(fishingSessions.id, session.id));
+
+    await expect(fishing.complete(userId, session.id)).rejects.toThrow('FISHING_SESSION_EXPIRED');
+
+    const [row] = await harness.db.select().from(fishingSessions).where(eq(fishingSessions.id, session.id));
+    expect(row.status).toBe('expired');
+
+    // no catch was recorded
+    const stored = await harness.db.select().from(warehouseFish).where(eq(warehouseFish.userId, userId));
+    expect(stored).toHaveLength(0);
   });
 });

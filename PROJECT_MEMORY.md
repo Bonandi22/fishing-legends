@@ -901,8 +901,24 @@ Próximo: completar B3 (pesca/inventário/rewards/migração) e seguir para A1�
   L10 (`bodyLimit`), L11 (`leaderboard.total`).
 - Branch enviada para `origin/feature/task-06-backend-foundation` (nunca tinha sido
   pushada); `.gitignore`/`.dockerignore` revistos, `bun.lock`/`bun.lockb` removidos.
-- **PR aberta**: `Bonandi22/deep-blue-lure#6` (→ `main`), CI verde (`quality` +
-  `integration`), `mergeStateStatus: CLEAN`.
+- **PR #6 mergeada em `main`** (merge commit `d23155a`), CI verde. Workflows do
+  Claude no GitHub adicionados (paridade com o ICM); secret `CLAUDE_CODE_OAUTH_TOKEN`
+  configurado pelo utilizador; GitHub App instalada.
+
+### Task 7 — endurecimento do backend — branch `feature/task-07-backend-hardening`
+
+- **L7** — expiração de sessões de pesca (`fishing/session.ts`, TTL 5 min,
+  `FISHING_SESSION_EXPIRED` 410; sem migração).
+- **README + GitHub About** atualizados (tecnologias, arquitetura, roadmap,
+  descrição + topics do repo).
+- **L8** — `fishing/pgService` deixa de inserir em `warehouse_fish` diretamente;
+  usa `inventory/warehouse.ts` `addWarehouseFish(executor, input)` passando o seu `tx`.
+- **L5** — Argon2id (`@node-rs/argon2`) com verify-and-upgrade dos hashes scrypt
+  legados no login. `AuthRepository.updatePasswordHash` (PG + memória).
+- Pendente na Task 7: **M8** (OpenAPI dos schemas Zod).
+- Nota: builds Docker locais a falhar intermitentemente com `ECONNRESET` no
+  `npm ci` (rede, não código); Dockerfiles endurecidos com `--fetch-retries`.
+  O CI do GitHub valida o `npm ci` (linux/gnu) na PR.
 
 ### Workflows Claude no GitHub (paridade com o ICM) — 2026-09-06
 
