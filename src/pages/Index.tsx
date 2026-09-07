@@ -21,6 +21,9 @@ import { useBackgroundMusic } from '@/game/useBackgroundMusic';
 import { I18nProvider } from '@/game/i18n';
 import { AuthProvider } from '@/game/auth/AuthProvider';
 import { hydrateFromServer } from '@/game/auth/hydrate';
+import { maybeOfferImport, runImport } from '@/game/auth/importFlow';
+import ImportSaveDialog from '@/components/game/menu/ImportSaveDialog';
+import type { MigrationPreview } from '@/api/types';
 import { FishingLocation, Fish } from '@/game/types';
 
 type Screen = 'menu' | 'locations' | 'fishing' | 'collection' | 'warehouse' | 'submarine' | 'multiplier' | 'skins' | 'boatSkins' | 'roulette' | 'skinRoulette' | 'ranking' | 'aquarium' | 'dailyGifts' | 'net' | 'netShop';
@@ -123,9 +126,30 @@ const IndexInner = () => {
     );
   }
 
+  const [importPreview, setImportPreview] = useState<(MigrationPreview & { raw: unknown }) | null>(null);
+
+  const afterAuth = async () => {
+    await hydrateFromServer(replaceFromServer).catch(() => {});
+    await maybeOfferImport({ onPreview: setImportPreview });
+  };
+
+  const confirmImport = async () => {
+    if (!importPreview) return;
+    await runImport(importPreview.raw).catch(() => {});
+    setImportPreview(null);
+    await hydrateFromServer(replaceFromServer).catch(() => {});
+  };
+
   return (
-    <AuthProvider onAuthenticated={() => hydrateFromServer(replaceFromServer).catch(() => {})}>
+    <AuthProvider onAuthenticated={afterAuth}>
       {content}
+      <ImportSaveDialog
+        preview={importPreview}
+        localLevel={player.level}
+        localCoins={player.coins}
+        onImport={confirmImport}
+        onDismiss={() => setImportPreview(null)}
+      />
     </AuthProvider>
   );
 };
