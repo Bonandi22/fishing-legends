@@ -28,3 +28,8 @@ export interface MigrationResult {
   sourceVersion: number;
   summary: { accepted: number; rejected: number };
 }
+
+export interface GameStateEnvelope {
+  state: unknown;
+  updatedAt: string | null;
+}

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import * as client from './client';
-import { register, login, logout, getMe, previewMigration, importMigration } from './endpoints';
+import { register, login, logout, getMe, previewMigration, importMigration, getGameState, putGameState } from './endpoints';
 
 describe('endpoints', () => {
   it('register POSTs /auth/register with the body', async () => {
@@ -28,6 +28,20 @@ describe('endpoints', () => {
     const spy = vi.spyOn(client, 'apiFetch').mockResolvedValue(undefined as never);
     await logout();
     expect(spy).toHaveBeenCalledWith('/auth/logout', { method: 'POST' });
+    spy.mockRestore();
+  });
+
+  it('getGameState GETs /me/state', async () => {
+    const spy = vi.spyOn(client, 'apiFetch').mockResolvedValue({ state: null, updatedAt: null } as never);
+    await getGameState();
+    expect(spy).toHaveBeenCalledWith('/me/state');
+    spy.mockRestore();
+  });
+
+  it('putGameState PUTs /me/state with { state }', async () => {
+    const spy = vi.spyOn(client, 'apiFetch').mockResolvedValue(undefined as never);
+    await putGameState({ schemaVersion: 1, player: { level: 3 } });
+    expect(spy).toHaveBeenCalledWith('/me/state', { method: 'PUT', body: { state: { schemaVersion: 1, player: { level: 3 } } } });
     spy.mockRestore();
   });
 });

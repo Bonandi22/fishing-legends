@@ -1,5 +1,5 @@
 import { apiFetch } from './client';
-import type { ApiUser, PlayerProfile, MigrationPreview, MigrationResult } from './types';
+import type { ApiUser, PlayerProfile, MigrationPreview, MigrationResult, GameStateEnvelope } from './types';
 
 export interface RegisterInput { email: string; password: string; username: string; country: string; }
 
@@ -20,4 +20,10 @@ export function previewMigration(save: unknown): Promise<MigrationPreview> {
 }
 export function importMigration(save: unknown, idempotencyKey: string): Promise<MigrationResult> {
   return apiFetch('/migration/local/import', { method: 'POST', body: save, idempotencyKey });
+}
+export function getGameState(): Promise<GameStateEnvelope> {
+  return apiFetch('/me/state');
+}
+export function putGameState(state: unknown): Promise<void> {
+  return apiFetch('/me/state', { method: 'PUT', body: { state } });
 }
