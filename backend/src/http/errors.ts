@@ -46,6 +46,7 @@ const DOMAIN_ERRORS: Record<string, DomainErrorSpec> = {
   USERNAME_TAKEN: { status: 409, message: 'That username is already taken' },
   CSRF_FAILED: { status: 403, message: 'CSRF token missing or invalid' },
   STATE_VERSION_CONFLICT: { status: 409, message: 'The game state was modified elsewhere; reload before saving' },
+  GAME_STATE_NOT_FOUND: { status: 409, message: 'No saved game state for this account yet' },
 };
 
 export function registerErrorHandling(app: FastifyInstance): void {

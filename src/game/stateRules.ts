@@ -11,7 +11,7 @@ import {
   NET_PRICE,
   PlayerState,
   WAREHOUSE_LIMIT,
-} from './types';
+} from './types.js';
 
 export interface Progression {
   xp: number;
