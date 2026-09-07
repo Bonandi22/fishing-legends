@@ -7,6 +7,7 @@ import {
   date,
   index,
   integer,
+  jsonb,
   numeric,
   pgTable,
   text,
@@ -139,6 +140,12 @@ export const playerProgress = pgTable('player_progress', {
   strengthMultiplierPowerCheck: check('player_progress_strength_multiplier_power_check', sql`${table.strengthMultiplierPower} IN (0, 2, 4)`),
 }));
 
+export const playerGameState = pgTable('player_game_state', {
+  userId: uuid('user_id').primaryKey().references(() => users.id, { onDelete: 'cascade' }),
+  state: jsonb('state').notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
 export const wallets = pgTable('wallets', {
   userId: uuid('user_id').primaryKey().references(() => users.id, { onDelete: 'cascade' }),
   balance: bigint('balance', { mode: 'number' }).notNull().default(0),
@@ -211,6 +218,7 @@ export const schema = {
   localSaveMigrations,
   seasons,
   playerProgress,
+  playerGameState,
   wallets,
   walletTransactions,
   dailyRewardClaims,
