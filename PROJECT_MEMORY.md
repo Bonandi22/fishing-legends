@@ -1576,5 +1576,18 @@ sem merge campo-a-campo (fatia C).
      /auth/logout 204`, jogo reinicia para 0;
   5. novo login → estado do servidor (7777) restaurado.
 - Contentores `backend`+`frontend` reiniciados (migração 0016 + 204→200).
-- **Pendente (utilizador)**: rever o diff + confirmar num browser real (jogar em 2
-  separadores → o 2º apanha o conflito e adota o estado do 1º).
+- **Integrado na `main`**: PR `Bonandi22/deep-blue-lure#18` merged em `617d83a`
+  (merge commit). Branches `feature/task-10-2-state-version-guard` (local + remota)
+  apagadas.
+- **Pendente (utilizador)**: confirmar num browser real (jogar em 2 separadores →
+  o 2º apanha o conflito e adota o estado do 1º).
+
+### Estado — 2026-09-07 (fim da sessão)
+
+- `main` em `617d83a`. Tasks 10.1 (auth foundation + persistência de estado) e 10.2
+  fatia A (guarda de concorrência otimista) integradas e verificadas.
+- Próximo do 10.x (ver "o que falta" acordado): 10.2 fatia B (pull periódico),
+  10.3 (economia server-autoritativa + reestruturar o blob em colunas), 10.4
+  (pesca/inventário), 10.5 (ranking/temporadas reais, tipos do OpenAPI, CSP).
+- Código morto a limpar numa fatia própria: `src/game/auth/importFlow.ts`,
+  `ImportSaveDialog.tsx`, rotas `/api/v1/migration/local/*`.
