@@ -3,6 +3,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { createApp } from './app.js';
 import type { AppConfig } from './config/env.js';
+import { registerAndAuth } from './testing/authClient.js';
 
 const testConfig: AppConfig = {
   environment: 'test',
@@ -25,6 +26,19 @@ afterEach(async () => {
   await Promise.all([...apps].map(app => app.close()));
   apps.clear();
 });
+
+/** Parse a `Set-Cookie` response header into a name -> value jar. */
+function cookieJar(res: { headers: Record<string, unknown> }): Record<string, string> {
+  const raw = res.headers['set-cookie'];
+  const arr = Array.isArray(raw) ? raw : raw ? [String(raw)] : [];
+  const jar: Record<string, string> = {};
+  for (const entry of arr) {
+    const [pair] = entry.split(';');
+    const eq = pair.indexOf('=');
+    if (eq >= 0) jar[pair.slice(0, eq)] = pair.slice(eq + 1);
+  }
+  return jar;
+}
 
 describe('backend foundation', () => {
   it('reports liveness without requiring a database', async () => {
@@ -68,41 +82,59 @@ describe('backend foundation', () => {
     });
     expect(registerResponse.statusCode).toBe(201);
     const registered = registerResponse.json();
-    expect(registered.accessToken).toEqual(expect.any(String));
-    expect(registered.refreshToken).toEqual(expect.any(String));
+    expect(registered).not.toHaveProperty('accessToken');
+    expect(registered).not.toHaveProperty('refreshToken');
     expect(registered.user).not.toHaveProperty('passwordHash');
+
+    const jar = cookieJar(registerResponse);
+    expect(jar.dbl_at).toEqual(expect.any(String));
+    expect(jar.dbl_rt).toEqual(expect.any(String));
+    expect(jar.dbl_csrf).toEqual(expect.any(String));
 
     const refreshResponse = await app.inject({
       method: 'POST',
       url: '/api/v1/auth/refresh',
-      payload: { refreshToken: registered.refreshToken },
+      cookies: jar,
+      headers: { 'x-csrf-token': jar.dbl_csrf },
     });
+    expect(refreshResponse.statusCode).toBe(204);
+    const rotated = cookieJar(refreshResponse);
+    expect(rotated.dbl_rt).toEqual(expect.any(String));
+    expect(rotated.dbl_rt).not.toBe(jar.dbl_rt);
 
-    expect(refreshResponse.statusCode).toBe(200);
-    expect(refreshResponse.json().refreshToken).not.toBe(registered.refreshToken);
+    const profile = await app.inject({
+      method: 'GET',
+      url: '/api/v1/me',
+      cookies: { ...jar, ...rotated },
+    });
+    expect(profile.statusCode).toBe(200);
+    expect(JSON.stringify(profile.json())).not.toContain('passwordHash');
   });
 
   it('logs out, revoking the session so its refresh token stops working', async () => {
     const app = await createApp({ config: testConfig });
     apps.add(app);
 
-    const registered = (await app.inject({
+    const registered = await app.inject({
       method: 'POST',
       url: '/api/v1/auth/register',
       payload: { email: 'logout@example.com', password: 'a-strong-password-123', username: 'logout_user', country: 'br' },
-    })).json();
+    });
+    const jar = cookieJar(registered);
 
     const loggedOut = await app.inject({
       method: 'POST',
       url: '/api/v1/auth/logout',
-      headers: { authorization: `Bearer ${registered.accessToken}` },
+      cookies: jar,
+      headers: { 'x-csrf-token': jar.dbl_csrf },
     });
     expect(loggedOut.statusCode).toBe(204);
 
     const refresh = await app.inject({
       method: 'POST',
       url: '/api/v1/auth/refresh',
-      payload: { refreshToken: registered.refreshToken },
+      cookies: jar,
+      headers: { 'x-csrf-token': jar.dbl_csrf },
     });
     expect(refresh.statusCode).toBe(401);
   });
@@ -111,23 +143,29 @@ describe('backend foundation', () => {
     const app = await createApp({ config: testConfig });
     apps.add(app);
 
-    const registered = (await app.inject({
+    const registered = await app.inject({
       method: 'POST',
       url: '/api/v1/auth/register',
       payload: { email: 'reuse@example.com', password: 'a-strong-password-123', username: 'reuse_user', country: 'br' },
-    })).json();
+    });
+    const jar = cookieJar(registered);
+    const originalRt = jar.dbl_rt;
 
-    const rotated = (await app.inject({
+    const rotatedResponse = await app.inject({
       method: 'POST',
       url: '/api/v1/auth/refresh',
-      payload: { refreshToken: registered.refreshToken },
-    })).json();
+      cookies: jar,
+      headers: { 'x-csrf-token': jar.dbl_csrf },
+    });
+    expect(rotatedResponse.statusCode).toBe(204);
+    const rotated = cookieJar(rotatedResponse);
 
-    // Replaying the original token is a reuse.
+    // Replaying the original refresh token is a reuse.
     const reuse = await app.inject({
       method: 'POST',
       url: '/api/v1/auth/refresh',
-      payload: { refreshToken: registered.refreshToken },
+      cookies: { ...jar, dbl_rt: originalRt },
+      headers: { 'x-csrf-token': jar.dbl_csrf },
     });
     expect(reuse.statusCode).toBe(401);
     expect(reuse.json().error.code).toBe('REFRESH_TOKEN_REUSED');
@@ -136,7 +174,8 @@ describe('backend foundation', () => {
     const afterReuse = await app.inject({
       method: 'POST',
       url: '/api/v1/auth/refresh',
-      payload: { refreshToken: rotated.refreshToken },
+      cookies: { ...jar, dbl_rt: rotated.dbl_rt },
+      headers: { 'x-csrf-token': jar.dbl_csrf },
     });
     expect(afterReuse.statusCode).toBe(401);
   });
@@ -178,29 +217,30 @@ describe('backend foundation', () => {
   });
 
   it('returns the authenticated player profile and rejects missing credentials', async () => {
-      const app = await createApp({ config: testConfig });
-      apps.add(app);
-      const registration = await app.inject({
-        method: 'POST',
-        url: '/api/v1/auth/register',
-        payload: {
-          email: 'profile@example.com',
-          password: 'a-strong-password-123',
-          username: 'profile_user',
-          country: 'pt',
-        },
-      });
-      const token = registration.json().accessToken;
-      const profile = await app.inject({
-        method: 'GET',
-        url: '/api/v1/me',
-        headers: { authorization: `Bearer ${token}` },
-      });
-      expect(profile.statusCode).toBe(200);
-      expect(profile.json().user.level).toBe(1);
+    const app = await createApp({ config: testConfig });
+    apps.add(app);
+    const client = await registerAndAuth(app, { country: 'pt' });
 
-      const unauthorized = await app.inject({ method: 'GET', url: '/api/v1/me' });
-      expect(unauthorized.statusCode).toBe(401);
+    const profile = await client.request({ method: 'GET', url: '/api/v1/me' });
+    expect(profile.statusCode).toBe(200);
+    expect(profile.json().user.level).toBe(1);
+
+    const unauthorized = await app.inject({ method: 'GET', url: '/api/v1/me' });
+    expect(unauthorized.statusCode).toBe(401);
+  });
+
+  it('accepts a Bearer access token on protected routes when no cookie is present', async () => {
+    const app = await createApp({ config: testConfig });
+    apps.add(app);
+    const client = await registerAndAuth(app);
+
+    const profile = await app.inject({
+      method: 'GET',
+      url: '/api/v1/me',
+      headers: { authorization: `Bearer ${client.accessToken}` },
+    });
+    expect(profile.statusCode).toBe(200);
+    expect(profile.json().user.userId).toBe(client.userId);
   });
 
   it('serves a validated public catalog', async () => {
@@ -216,48 +256,33 @@ describe('backend foundation', () => {
   it('creates an idempotent fishing session and completes it server-side', async () => {
     const app = await createApp({ config: testConfig });
     apps.add(app);
-    const registration = await app.inject({
-      method: 'POST',
-      url: '/api/v1/auth/register',
-      payload: {
-        email: 'fisher@example.com',
-        password: 'a-strong-password-123',
-        username: 'fisher_user',
-        country: 'br',
-      },
-    });
-    const token = registration.json().accessToken;
-    const headers = { authorization: `Bearer ${token}`, 'idempotency-key': 'fishing-key-123456' };
-    const first = await app.inject({
+    const client = await registerAndAuth(app);
+
+    const first = await client.request({
       method: 'POST',
       url: '/api/v1/fishing/sessions',
-      headers,
       payload: { locationId: 'amazon' },
+      idempotencyKey: 'fishing-key-123456',
     });
-    const second = await app.inject({
+    const second = await client.request({
       method: 'POST',
       url: '/api/v1/fishing/sessions',
-      headers,
       payload: { locationId: 'amazon' },
+      idempotencyKey: 'fishing-key-123456',
     });
     expect(first.statusCode).toBe(200);
     expect(second.json().id).toBe(first.json().id);
 
-    const completed = await app.inject({
+    const completed = await client.request({
       method: 'POST',
       url: `/api/v1/fishing/sessions/${first.json().id}/complete`,
-      headers: { authorization: `Bearer ${token}` },
     });
     expect(completed.statusCode).toBe(200);
     expect(completed.json().result.fishId).toEqual(expect.any(String));
     expect(completed.json().result.weight).toBeGreaterThan(0);
 
     // The catch is reflected in the player's progress (same as the PostgreSQL path)
-    const profile = await app.inject({
-      method: 'GET',
-      url: '/api/v1/me',
-      headers: { authorization: `Bearer ${token}` },
-    });
+    const profile = await client.request({ method: 'GET', url: '/api/v1/me' });
     expect(profile.json().user.totalFishCaught).toBe(1);
     expect(profile.json().user.xp > 0 || profile.json().user.level > 1).toBe(true);
   });
@@ -265,21 +290,9 @@ describe('backend foundation', () => {
   it('exposes a server-owned wallet balance', async () => {
     const app = await createApp({ config: testConfig });
     apps.add(app);
-    const registration = await app.inject({
-      method: 'POST',
-      url: '/api/v1/auth/register',
-      payload: {
-        email: 'wallet@example.com',
-        password: 'a-strong-password-123',
-        username: 'wallet_user',
-        country: 'br',
-      },
-    });
-    const response = await app.inject({
-      method: 'GET',
-      url: '/api/v1/wallet',
-      headers: { authorization: `Bearer ${registration.json().accessToken}` },
-    });
+    const client = await registerAndAuth(app);
+
+    const response = await client.request({ method: 'GET', url: '/api/v1/wallet' });
     expect(response.statusCode).toBe(200);
     expect(response.json()).toEqual({ balance: 0 });
   });
@@ -287,37 +300,26 @@ describe('backend foundation', () => {
   it('exposes an authenticated warehouse and rejects an empty sale', async () => {
     const app = await createApp({ config: testConfig });
     apps.add(app);
-    const registration = await app.inject({
-      method: 'POST',
-      url: '/api/v1/auth/register',
-      payload: {
-        email: 'warehouse@example.com',
-        password: 'a-strong-password-123',
-        username: 'warehouse_user',
-        country: 'br',
-      },
-    });
-    const headers = { authorization: `Bearer ${registration.json().accessToken}` };
-    const list = await app.inject({ method: 'GET', url: '/api/v1/inventory/warehouse', headers });
+    const client = await registerAndAuth(app);
+
+    const list = await client.request({ method: 'GET', url: '/api/v1/inventory/warehouse' });
     expect(list.statusCode).toBe(200);
     expect(list.json()).toEqual({ items: [] });
-    const sale = await app.inject({
+
+    const sale = await client.request({
       method: 'POST',
       url: '/api/v1/inventory/warehouse/sell',
-      headers: { ...headers, 'idempotency-key': 'warehouse-sale-123456' },
+      idempotencyKey: 'warehouse-sale-123456',
     });
     expect(sale.statusCode).toBe(422);
-    const aquarium = await app.inject({
-      method: 'GET',
-      url: '/api/v1/inventory/aquarium/1',
-      headers,
-    });
+
+    const aquarium = await client.request({ method: 'GET', url: '/api/v1/inventory/aquarium/1' });
     expect(aquarium.statusCode).toBe(200);
     expect(aquarium.json()).toEqual({ items: [] });
-    const placement = await app.inject({
+
+    const placement = await client.request({
       method: 'POST',
       url: '/api/v1/inventory/aquarium',
-      headers,
       payload: { warehouseItemId: '00000000-0000-0000-0000-000000000000', sector: 1 },
     });
     expect(placement.statusCode).toBe(404);
@@ -327,24 +329,13 @@ describe('backend foundation', () => {
   it('rejects a net purchase when the net limit is already reached', async () => {
     const app = await createApp({ config: testConfig });
     apps.add(app);
-    const registration = await app.inject({
-      method: 'POST',
-      url: '/api/v1/auth/register',
-      payload: {
-        email: 'nets@example.com',
-        password: 'a-strong-password-123',
-        username: 'nets_user',
-        country: 'br',
-      },
-    });
-    const response = await app.inject({
+    const client = await registerAndAuth(app);
+
+    const response = await client.request({
       method: 'POST',
       url: '/api/v1/economy/nets/purchase',
-      headers: {
-        authorization: `Bearer ${registration.json().accessToken}`,
-        'idempotency-key': 'nets-purchase-123456',
-      },
       payload: { quantity: 1 },
+      idempotencyKey: 'nets-purchase-123456',
     });
     expect(response.statusCode).toBe(409);
     expect(response.json().error.code).toBe('NET_LIMIT_REACHED');
@@ -353,24 +344,13 @@ describe('backend foundation', () => {
   it('rejects a multiplier purchase without wallet funds', async () => {
     const app = await createApp({ config: testConfig });
     apps.add(app);
-    const registration = await app.inject({
-      method: 'POST',
-      url: '/api/v1/auth/register',
-      payload: {
-        email: 'multiplier@example.com',
-        password: 'a-strong-password-123',
-        username: 'multiplier_user',
-        country: 'br',
-      },
-    });
-    const response = await app.inject({
+    const client = await registerAndAuth(app);
+
+    const response = await client.request({
       method: 'POST',
       url: '/api/v1/economy/multipliers/purchase',
-      headers: {
-        authorization: `Bearer ${registration.json().accessToken}`,
-        'idempotency-key': 'multiplier-purchase-123',
-      },
       payload: { type: 'luck', power: 2 },
+      idempotencyKey: 'multiplier-purchase-123',
     });
     expect(response.statusCode).toBe(409);
     expect(response.json().error.code).toBe('INSUFFICIENT_FUNDS');
@@ -379,21 +359,9 @@ describe('backend foundation', () => {
   it('returns an authenticated paginated leaderboard', async () => {
     const app = await createApp({ config: testConfig });
     apps.add(app);
-    const registration = await app.inject({
-      method: 'POST',
-      url: '/api/v1/auth/register',
-      payload: {
-        email: 'ranking@example.com',
-        password: 'a-strong-password-123',
-        username: 'ranking_user',
-        country: 'br',
-      },
-    });
-    const response = await app.inject({
-      method: 'GET',
-      url: '/api/v1/leaderboard?limit=10&offset=0',
-      headers: { authorization: `Bearer ${registration.json().accessToken}` },
-    });
+    const client = await registerAndAuth(app, { username: 'ranking_user' });
+
+    const response = await client.request({ method: 'GET', url: '/api/v1/leaderboard?limit=10&offset=0' });
     expect(response.statusCode).toBe(200);
     expect(response.json().season).toBe('all-time');
     expect(response.json().entries[0].username).toBe('ranking_user');
@@ -402,19 +370,10 @@ describe('backend foundation', () => {
   it('claims a daily reward only once', async () => {
     const app = await createApp({ config: testConfig });
     apps.add(app);
-    const registration = await app.inject({
-      method: 'POST',
-      url: '/api/v1/auth/register',
-      payload: {
-        email: 'rewards@example.com',
-        password: 'a-strong-password-123',
-        username: 'rewards_user',
-        country: 'br',
-      },
-    });
-    const headers = { authorization: `Bearer ${registration.json().accessToken}` };
-    const first = await app.inject({ method: 'POST', url: '/api/v1/rewards/daily/claim', headers });
-    const second = await app.inject({ method: 'POST', url: '/api/v1/rewards/daily/claim', headers });
+    const client = await registerAndAuth(app);
+
+    const first = await client.request({ method: 'POST', url: '/api/v1/rewards/daily/claim' });
+    const second = await client.request({ method: 'POST', url: '/api/v1/rewards/daily/claim' });
     expect(first.statusCode).toBe(200);
     expect(first.json().claimed).toBe(true);
     expect(first.json().day).toBe(1);
@@ -425,21 +384,9 @@ describe('backend foundation', () => {
   it('returns the active authenticated season', async () => {
     const app = await createApp({ config: testConfig });
     apps.add(app);
-    const registration = await app.inject({
-      method: 'POST',
-      url: '/api/v1/auth/register',
-      payload: {
-        email: 'season@example.com',
-        password: 'a-strong-password-123',
-        username: 'season_user',
-        country: 'br',
-      },
-    });
-    const response = await app.inject({
-      method: 'GET',
-      url: '/api/v1/seasons/current',
-      headers: { authorization: `Bearer ${registration.json().accessToken}` },
-    });
+    const client = await registerAndAuth(app);
+
+    const response = await client.request({ method: 'GET', url: '/api/v1/seasons/current' });
     expect(response.statusCode).toBe(200);
     expect(response.json().season.status).toBe('active');
   });
