@@ -3,13 +3,9 @@ import type { FastifyInstance } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 import type { createMemoryInventoryService } from './service.js';
 import type { createPgInventoryService } from './pgRepository.js';
+import { idempotencyKey } from '../http/idempotency.js';
 
 type InventoryService = ReturnType<typeof createMemoryInventoryService> | ReturnType<typeof createPgInventoryService>;
-
-function idempotencyKey(value: unknown): string {
-  if (typeof value !== 'string' || value.length < 16 || value.length > 128) throw new Error('INVALID_IDEMPOTENCY_KEY');
-  return value;
-}
 
 export function registerInventoryRoutes(app: FastifyInstance, inventory: InventoryService): void {
   const r = app.withTypeProvider<ZodTypeProvider>();

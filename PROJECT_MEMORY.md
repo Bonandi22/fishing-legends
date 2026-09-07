@@ -1668,23 +1668,36 @@ economia seguintes.
 
 #### Backend
 
-- **`game_state_operations`** (migração `0016_game_state_operations.sql`, espelhada em
+- **`game_state_operations`** (migração `0017_game_state_operations.sql`, espelhada em
   `db/schema.ts`): tabela de replay/idempotência para mutações sobre o blob
   `player_game_state`. PK `(user_id, idempotency_key)`, FK `user_id` com
   `ON DELETE CASCADE`, guarda `operation` + `result` (jsonb) + `created_at`. Uma
   segunda chamada com a mesma `Idempotency-Key` devolve o `result` gravado sem tocar
-  no estado.
+  no estado. A **identidade de replay é `(user_id, operation, idempotency_key)`** —
+  tanto o serviço em memória (chave do Map) como o pg (`WHERE` do `readRecordedResult`)
+  incluem `operation`, para uma `Idempotency-Key` reutilizada entre dois endpoints de
+  economia não devolver o envelope do primeiro.
+- **Retenção**: cada linha guarda um envelope `{ state, version }` **completo** (o blob
+  inteiro do jogador). Aceitável para uma operação de baixa frequência como a venda do
+  armazém; **antes** de migrar operações de alta frequência (captura, aquário) é
+  preciso um job de retenção/prune de `game_state_operations` — follow-up conhecido.
 - **`POST /api/v1/me/economy/warehouse/sell`** (`backend/src/gamestate/economyRoutes.ts`):
   `requireAuth` + CSRF + `Idempotency-Key` (16–128 chars). Numa transação:
   `SELECT ... FOR UPDATE` da linha de estado, corre `stateRules.sellWarehouse` sobre
   o `player` do blob, grava o novo blob com `version + 1`, insere a linha de replay,
   devolve `{ state, version }` (mesma forma do envelope de `/me/state`, sem `updatedAt`).
-  Armazém vazio → devolve o estado inalterado (sem incremento de versão). Sem linha
-  de estado → `GAME_STATE_NOT_FOUND`.
+  Armazém vazio → lança `WAREHOUSE_EMPTY` → **HTTP 422**, nada escrito (nem blob nem
+  linha de replay, a transação faz rollback). Sem linha de estado → `GAME_STATE_NOT_FOUND`.
+  O double-check pré-lock/pós-lock de `game_state_operations` assume **READ COMMITTED**
+  (o default do projeto).
 - Serviço em memória (`economyService`) e pg (`economyPgService`) partilham o mesmo
   contrato e o mesmo `MemoryGameStateStore` partilhado registado em `app.ts`.
 - Testes: `gamestate/economyRoutes.test.ts` (6 — venda, replay, vazio, 401, 403, 400),
-  `gamestate/economyService.integration.test.ts` (4 — txn, replay, vazio, cascade),
+  `gamestate/economyService.test.ts` (memória — venda, replay, vazio, not-found, F2
+  replay com chave escopada à operação),
+  `gamestate/economyService.integration.test.ts` (6 — txn, replay, vazio, cascade +
+  **concorrência**: mesma chave → resultado idêntico / 1 linha / versão 2; chaves
+  diferentes → só uma vende, a outra perde a corrida ao lock com `WAREHOUSE_EMPTY`),
   `economy/pricing.test.ts`.
 
 #### Frontend
@@ -1699,7 +1712,9 @@ economia seguintes.
 - **`src/pages/Index.tsx`** — `handleSellWarehouse` ramifica por `syncEnabled`:
   - `!syncEnabled` (anónimo / GET inicial falhou) → `sellWarehouse()` local do
     `useGameState` (regra pura).
-  - autenticado → `setSelling(true)` → `applyServerResult(await sellWarehouseApi(crypto.randomUUID()))`
+  - autenticado → `setSelling(true)` → **`await flushNow()`** (persiste o blob local
+    pendente antes de o servidor vender — sem isto uma captura feita nos últimos 4s
+    perde-se) → `applyServerResult(await sellWarehouseApi(crypto.randomUUID()))`
     → `catch` `console.warn` → `finally` `setSelling(false)`.
   - Ramifica em `syncEnabled` e **não** no estado de auth porque `IndexInner` é quem
     renderiza `<AuthProvider>` e por isso não pode chamar `useAuth()`.
@@ -1720,7 +1735,11 @@ seguem todas esta forma:
    `Idempotency-Key`, transação com `FOR UPDATE` sobre a linha de `player_game_state`,
    corre a **regra pura de `src/game/stateRules.ts`** sobre o blob, `version + 1`,
    linha em `game_state_operations`, devolve `{ state, version }`.
-2. Cliente: wrapper em `endpoints.ts` → `applyServerResult(...)` no handler.
+2. Cliente: wrapper em `endpoints.ts`. No handler, **`await flushNow()` ANTES** da
+   chamada ao servidor (persiste qualquer mutação local pendente do debounce de 4s —
+   sem isto o servidor corre a operação sobre um blob obsoleto e `applyServerResult`
+   sobrescreve o que ainda não foi enviado), depois `applyServerResult(await <op>Api(...))`.
+   Padrão: **flush → operação no servidor → applyServerResult**.
 3. `Index.tsx` (ou o componente dono do handler) ramifica em `syncEnabled`: servidor
    quando autenticado, regra pura local quando anónimo. **Mesma regra dos dois lados.**
 4. Componente recebe uma prop `<verbo>ing?: boolean` para desativar o controlo

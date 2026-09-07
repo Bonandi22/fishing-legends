@@ -3,13 +3,9 @@ import type { FastifyInstance } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 import type { createMemoryEconomyService } from './service.js';
 import type { createPgEconomyService } from './pgRepository.js';
+import { idempotencyKey } from '../http/idempotency.js';
 
 type EconomyService = ReturnType<typeof createMemoryEconomyService> | ReturnType<typeof createPgEconomyService>;
-
-function idempotencyKey(value: unknown): string {
-  if (typeof value !== 'string' || value.length < 16 || value.length > 128) throw new Error('INVALID_IDEMPOTENCY_KEY');
-  return value;
-}
 
 export function registerEconomyRoutes(app: FastifyInstance, economy: EconomyService): void {
   const r = app.withTypeProvider<ZodTypeProvider>();
