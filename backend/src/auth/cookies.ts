@@ -7,7 +7,7 @@ export const CSRF_COOKIE = 'dbl_csrf';
 
 const AT_PATH = '/api';
 const RT_PATH = '/api/v1/auth';
-const CSRF_PATH = '/api';
+const CSRF_PATH = '/';
 
 export type CookieConfig = {
   secure: boolean;

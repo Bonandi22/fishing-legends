@@ -38,7 +38,7 @@ describe('cookies', () => {
 
     const csrfCookie = calls.find(c => c.name === CSRF_COOKIE)!;
     expect(csrfCookie.value).toBe(csrf);
-    expect(csrfCookie.opts).toMatchObject({ httpOnly: false, secure: true, sameSite: 'lax', path: '/api' });
+    expect(csrfCookie.opts).toMatchObject({ httpOnly: false, secure: true, sameSite: 'lax', path: '/' });
   });
 
   it('adds domain only when set', () => {

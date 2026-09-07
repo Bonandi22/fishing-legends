@@ -67,7 +67,7 @@ apiFetch() ──cookies (dbl_at)──▶ requireAuth ──▶ rota
 |---|---|---|
 | `dbl_at` | access token (JWT) | `HttpOnly; Secure=COOKIE_SECURE; SameSite=Lax; Path=/api; Max-Age=ACCESS_TOKEN_TTL_SECONDS` |
 | `dbl_rt` | refresh token | `HttpOnly; Secure=COOKIE_SECURE; SameSite=Strict; Path=/api/v1/auth; Max-Age=REFRESH_TOKEN_TTL_SECONDS` |
-| `dbl_csrf` | random 32 bytes base64url | `Secure=COOKIE_SECURE; SameSite=Lax; Path=/api` (**não** HttpOnly — o JS lê-o) |
+| `dbl_csrf` | random 32 bytes base64url | `Secure=COOKIE_SECURE; SameSite=Lax; Path=/api` (**não** HttpOnly — o JS lê-o) — **Path=/ na implementação** — um cookie em Path=/api não é legível por document.cookie numa SPA servida em /. |
 
 **`auth/routes.ts`:**
 - `register` / `login` → em sucesso: `reply.setCookie` para os 3 cookies; corpo

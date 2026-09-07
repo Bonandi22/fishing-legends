@@ -5,6 +5,7 @@ const g = globalThis as unknown as { fetch: ReturnType<typeof vi.fn> };
 
 beforeEach(() => {
   g.fetch = vi.fn();
+  // path=/ matches the real dbl_csrf Path (see backend/src/auth/cookies.ts CSRF_PATH)
   document.cookie = 'dbl_csrf=csrf-token-value; path=/';
 });
 afterEach(() => { document.cookie = 'dbl_csrf=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/'; });
