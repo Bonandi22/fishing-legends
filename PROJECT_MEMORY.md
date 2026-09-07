@@ -1584,11 +1584,22 @@ sem merge campo-a-campo (fatia C).
 
 ### Estado — 2026-09-07 (fim da sessão)
 
-- `main` em `617d83a`. Tasks 10.1 (auth foundation + persistência de estado) e 10.2
-  fatia A (guarda de concorrência otimista) integradas e verificadas.
-- Próximo do 10.x (ver "o que falta" acordado): 10.2 fatia B (pull periódico),
-  10.3 (economia server-autoritativa + reestruturar o blob em colunas), 10.4
-  (pesca/inventário), 10.5 (ranking/temporadas reais, tipos do OpenAPI, CSP).
+- `main` em `2d20ef6`. Integrado e verificado nesta sessão:
+  - **10.1** — auth foundation (cookies httpOnly + CSRF + proxy `/api`) + persistência
+    de estado no servidor (PR #17).
+  - **10.2 fatia A** — guarda de concorrência otimista no `PUT /me/state` (PR #18).
+  - **Limpeza** — remoção do fluxo de import órfão (PR #19).
+  - **10.2 fatia B** — pull periódico de 45 s (PR #20, merge `2d20ef6`). Branch
+    `feature/task-10-2b-periodic-pull` apagada.
+- `tsc app` + `backend:typecheck` + `npm test` (48 ficheiros, 273 testes) verdes na `main`.
+- **Limitação aberta do 10.2**: 1 `PUT` redundante por pull cross-device (ver secção
+  da fatia B). Candidato a resolver: `replaceFromServer` fazer replace verdadeiro.
+- Próximo do 10.x: 10.3 (economia server-autoritativa + reestruturar o blob
+  `player_game_state` em colunas), 10.4 (pesca/inventário), 10.5 (ranking/temporadas
+  reais, tipos do OpenAPI, CSP). O 10.3 merece a sua própria sessão de design
+  (*architectural*).
+- `.claude/settings.json` (config local de plugins) aparece como untracked; não foi
+  commitado. Pôr no `.gitignore` se incomodar.
 - **Limpeza feita**: PR `#19` merged em `2445ef2` — removidos `src/game/auth/importFlow.ts`,
   `ImportSaveDialog.tsx` e os wrappers `previewMigration`/`importMigration` (mortos
   desde o 10.2). Os endpoints backend `/api/v1/migration/local/*` **ficaram** (isolados,
