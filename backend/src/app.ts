@@ -89,6 +89,12 @@ export async function createApp({ config }: AppDependencies): Promise<FastifyIns
     accessTokenTtlSeconds: config.accessTokenTtlSeconds,
     refreshTokenTtlSeconds: config.refreshTokenTtlSeconds,
   });
+  const cookieCfg = {
+    secure: config.cookieSecure,
+    domain: config.cookieDomain,
+    accessTtlSeconds: config.accessTokenTtlSeconds,
+    refreshTtlSeconds: config.refreshTokenTtlSeconds,
+  };
   app.decorateRequest('userId', '');
   app.decorate('requireAuth', createRequireAuth(authService));
   const playerRepository = database
@@ -100,7 +106,7 @@ export async function createApp({ config }: AppDependencies): Promise<FastifyIns
     : createMemoryLeaderboardService(playerRepository);
   const rewardsService = database ? createPgRewardsService(database) : createMemoryRewardsService();
   const seasonsService = database ? createPgSeasonsService(database) : createMemorySeasonsService();
-  void registerAuthRoutes(app, authService);
+  void registerAuthRoutes(app, authService, cookieCfg);
   registerPlayerRoutes(app, playerRepository);
   registerMigrationRoutes(app, migrationService);
   registerLeaderboardRoutes(app, leaderboardService);
