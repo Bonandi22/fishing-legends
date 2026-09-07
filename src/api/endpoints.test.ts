@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import * as client from './client';
-import { register, login, logout, getMe, previewMigration, importMigration, getGameState, putGameState } from './endpoints';
+import { register, login, logout, getMe, getGameState, putGameState } from './endpoints';
 
 describe('endpoints', () => {
   it('register POSTs /auth/register with the body', async () => {
@@ -14,13 +14,6 @@ describe('endpoints', () => {
     const spy = vi.spyOn(client, 'apiFetch').mockResolvedValue({ user: {} } as never);
     await getMe();
     expect(spy).toHaveBeenCalledWith('/me');
-    spy.mockRestore();
-  });
-
-  it('importMigration passes the idempotency key', async () => {
-    const spy = vi.spyOn(client, 'apiFetch').mockResolvedValue({ imported: true } as never);
-    await importMigration({ any: 'save' }, 'idem-key-1234567890');
-    expect(spy).toHaveBeenCalledWith('/migration/local/import', { method: 'POST', body: { any: 'save' }, idempotencyKey: 'idem-key-1234567890' });
     spy.mockRestore();
   });
 

@@ -17,18 +17,6 @@ export interface PlayerProfile {
   unlockedLocations: string[];
 }
 
-export interface MigrationPreview {
-  sourceVersion: number;
-  summary: { accepted: number; rejected: number };
-  rejected: unknown[];
-}
-
-export interface MigrationResult {
-  imported: boolean;
-  sourceVersion: number;
-  summary: { accepted: number; rejected: number };
-}
-
 export interface GameStateEnvelope {
   state: unknown;
   updatedAt: string | null;
