@@ -1501,7 +1501,9 @@ mantidos por agora; remover numa limpeza posterior.
   (código presente, listeners registados; o plano remete-o para teste manual). O
   debounce cobriu o mesmo `PUT` várias vezes.
 - **Teste manual do utilizador**: confirmado a funcionar no browser dele
-  (`Bonandi22/deep-blue-lure#17`, 2026-09-07).
-- **PR aberto**: `Bonandi22/deep-blue-lure#17` — base `main`, junta a fundação de
-  auth 10.1 + esta sincronização de estado (34 commits). A aguardar revisão do diff
-  e decisão de merge.
+  (2026-09-07).
+- **Integrado na `main`**: PR `Bonandi22/deep-blue-lure#17` merged em `3988c7d`
+  (merge commit). Junta a fundação de auth 10.1 + esta sincronização de estado.
+  `main` local sincronizada, typecheck (app + backend) e 263 testes verdes na `main`.
+  Branch local `feature/task-10-1-auth-foundation` apagada; a remota ainda existe
+  em `origin` (apagar quando conveniente).
