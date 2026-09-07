@@ -34,6 +34,9 @@ import { createPgLeaderboardService } from './leaderboard/pgRepository.js';
 import { registerRewardsRoutes } from './rewards/routes.js';
 import { createMemoryRewardsService } from './rewards/memoryRepository.js';
 import { createPgRewardsService } from './rewards/pgRepository.js';
+import { registerGameStateRoutes } from './gamestate/routes.js';
+import { createMemoryGameStateService } from './gamestate/memoryService.js';
+import { createPgGameStateService } from './gamestate/pgRepository.js';
 import { registerSecurityHooks } from './security/http.js';
 import { registerSeasonsRoutes } from './seasons/routes.js';
 import { createMemorySeasonsService } from './seasons/service.js';
@@ -67,6 +70,7 @@ export async function createApp({ config }: AppDependencies): Promise<FastifyIns
         { name: 'system' }, { name: 'auth' }, { name: 'players' }, { name: 'catalog' },
         { name: 'fishing' }, { name: 'economy' }, { name: 'inventory' },
         { name: 'migration' }, { name: 'leaderboard' }, { name: 'rewards' }, { name: 'seasons' },
+        { name: 'gamestate' },
       ],
     },
     transform: jsonSchemaTransform,
@@ -106,12 +110,14 @@ export async function createApp({ config }: AppDependencies): Promise<FastifyIns
     : createMemoryLeaderboardService(playerRepository);
   const rewardsService = database ? createPgRewardsService(database) : createMemoryRewardsService();
   const seasonsService = database ? createPgSeasonsService(database) : createMemorySeasonsService();
+  const gameStateService = database ? createPgGameStateService(database) : createMemoryGameStateService();
   void registerAuthRoutes(app, authService, cookieCfg);
   registerPlayerRoutes(app, playerRepository);
   registerMigrationRoutes(app, migrationService);
   registerLeaderboardRoutes(app, leaderboardService);
   registerRewardsRoutes(app, rewardsService);
   registerSeasonsRoutes(app, seasonsService);
+  registerGameStateRoutes(app, gameStateService);
   const catalogService = createCatalogService();
   registerCatalogRoutes(app, catalogService);
   const economyService = database ? createPgEconomyService(database) : createMemoryEconomyService();

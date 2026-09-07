@@ -1,6 +1,6 @@
 import { z } from 'zod';
-import { CaughtFish, MAX_LEVEL, NET_LIMIT, PlayerState } from './types';
-import { FISH, LOCATIONS } from './data';
+import { CaughtFish, MAX_LEVEL, NET_LIMIT, PlayerState } from './types.js';
+import { FISH, LOCATIONS } from './data.js';
 
 export const SAVE_SCHEMA_VERSION = 1;
 
