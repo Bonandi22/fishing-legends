@@ -1,6 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, cleanup, fireEvent, waitFor, act } from '@testing-library/react';
 import * as endpoints from '@/api/endpoints';
+import * as client from '@/api/client';
 import { ApiError } from '@/api/client';
 import { AuthProvider, useAuth } from './AuthProvider';
 
@@ -58,5 +59,29 @@ describe('AuthProvider', () => {
     await waitFor(() => expect(screen.getByTestId('status').textContent).toBe('authenticated'));
     fireEvent.click(screen.getByText('logout'));
     await waitFor(() => expect(screen.getByTestId('status').textContent).toBe('anonymous'));
+  });
+
+  it('explicit logout fires onLoggedOut exactly once', async () => {
+    vi.spyOn(endpoints, 'getMe').mockResolvedValue({ user: { userId: 'u1', username: 'A', email: 'e', country: 'BR' } } as never);
+    vi.spyOn(endpoints, 'logout').mockResolvedValue();
+    const onLoggedOut = vi.fn();
+    render(<AuthProvider onLoggedOut={onLoggedOut}><Probe /></AuthProvider>);
+    await waitFor(() => expect(screen.getByTestId('status').textContent).toBe('authenticated'));
+    fireEvent.click(screen.getByText('logout'));
+    await waitFor(() => expect(screen.getByTestId('status').textContent).toBe('anonymous'));
+    expect(onLoggedOut).toHaveBeenCalledTimes(1);
+  });
+
+  it('session-expiry (setLoggedOutHandler callback) goes anonymous WITHOUT firing onLoggedOut', async () => {
+    let sessionExpired: (() => void) | null = null;
+    vi.spyOn(client, 'setLoggedOutHandler').mockImplementation((fn) => { sessionExpired = fn; });
+    vi.spyOn(endpoints, 'getMe').mockResolvedValue({ user: { userId: 'u1', username: 'A', email: 'e', country: 'BR' } } as never);
+    const onLoggedOut = vi.fn();
+    render(<AuthProvider onLoggedOut={onLoggedOut}><Probe /></AuthProvider>);
+    await waitFor(() => expect(screen.getByTestId('status').textContent).toBe('authenticated'));
+    expect(sessionExpired).toBeTypeOf('function');
+    act(() => { sessionExpired!(); });
+    await waitFor(() => expect(screen.getByTestId('status').textContent).toBe('anonymous'));
+    expect(onLoggedOut).not.toHaveBeenCalled();
   });
 });

@@ -21,7 +21,7 @@ import { useBackgroundMusic } from '@/game/useBackgroundMusic';
 import { I18nProvider } from '@/game/i18n';
 import { AuthProvider } from '@/game/auth/AuthProvider';
 import { hydrateFromServer } from '@/game/auth/hydrate';
-import { maybeOfferImport, runImport, type ImportPreview } from '@/game/auth/importFlow';
+import { maybeOfferImport, runImport, IMPORT_DONE_KEY, type ImportPreview } from '@/game/auth/importFlow';
 import ImportSaveDialog from '@/components/game/menu/ImportSaveDialog';
 import { FishingLocation, Fish } from '@/game/types';
 
@@ -134,6 +134,12 @@ const IndexInner = () => {
     await hydrateFromServer(replaceFromServer).catch(() => {});
   };
 
+  const handleLoggedOut = () => {
+    resetProgress();
+    try { localStorage.removeItem(IMPORT_DONE_KEY); } catch { /* ignore */ }
+    setImportPreview(null);
+  };
+
   const confirmImport = async () => {
     if (!importPreview) return;
     let imported = true;
@@ -147,7 +153,7 @@ const IndexInner = () => {
   };
 
   return (
-    <AuthProvider onAuthenticated={afterAuth}>
+    <AuthProvider onAuthenticated={afterAuth} onLoggedOut={handleLoggedOut}>
       {content}
       <ImportSaveDialog
         preview={importPreview}

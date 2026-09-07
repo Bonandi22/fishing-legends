@@ -15,11 +15,13 @@ export interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-export function AuthProvider({ children, onAuthenticated }: { children: ReactNode; onAuthenticated?: () => void | Promise<void> }) {
+export function AuthProvider({ children, onAuthenticated, onLoggedOut }: { children: ReactNode; onAuthenticated?: () => void | Promise<void>; onLoggedOut?: () => void }) {
   const [status, setStatus] = useState<AuthStatus>('loading');
   const [user, setUser] = useState<ApiUser | null>(null);
   const onAuthRef = useRef(onAuthenticated);
   onAuthRef.current = onAuthenticated;
+  const onLoggedOutRef = useRef(onLoggedOut);
+  onLoggedOutRef.current = onLoggedOut;
 
   const enter = useCallback(async (u: ApiUser) => {
     setUser(u);
@@ -48,6 +50,7 @@ export function AuthProvider({ children, onAuthenticated }: { children: ReactNod
 
   const logout = useCallback(async () => {
     try { await endpoints.logout(); } finally { setUser(null); setStatus('anonymous'); }
+    onLoggedOutRef.current?.();
   }, []);
 
   return <AuthContext.Provider value={{ status, user, login, register, logout }}>{children}</AuthContext.Provider>;

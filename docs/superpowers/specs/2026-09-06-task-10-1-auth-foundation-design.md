@@ -223,6 +223,7 @@ useAuth(): {
   a **hidratação** (Componente E) + o **fluxo de importação** (abaixo).
 - `logout` → `endpoints.logout()`, status `anonymous`, `user = null`. (Não apaga o
   save local — o jogo anónimo continua.)
+  **Alterado 2026-09-07: o logout explícito reinicia o jogo local para o estado inicial (decisão do utilizador). A expiração de sessão não reinicia.**
 - Montado em `Index.tsx` à volta do `I18nProvider`/`IndexInner`.
 
 **`AccountModal` (`src/components/game/menu/AccountModal.tsx`) — religar:**

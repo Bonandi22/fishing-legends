@@ -1365,6 +1365,29 @@ autenticação e importa o save local uma vez no 1º login.
   `auth.haveAccount`, `auth.needAccount`, `auth.importTitle`, `auth.importBody`,
   `auth.importYes`, `auth.importNo`, e `auth.err.{VALIDATION,ACCOUNT,USERNAME,INVALID,NETWORK}`.
 
+#### Alteração 2026-09-07 — logout explícito reinicia o jogo local
+
+Decisão do utilizador, **desvia do spec original** ("logout keeps the local save"):
+o **logout explícito** (método `logout()` do `useAuth()`) reinicia o save local para
+o estado inicial — nível 1, 0 moedas, locais base, coleção / armazém / aquário
+vazios. Racional: o progresso da conta é do lado do servidor e a 10.2 torna o
+servidor autoritativo; deixar o save do jogador anterior visível após logout é
+enganoso. **A expiração de sessão / falha de refresh NÃO reinicia** (o
+`setLoggedOutHandler` continua só a pôr `status: 'anonymous'`) — o utilizador pode
+voltar a entrar e apagar-lhe o jogo aí seria hostil.
+
+- `AuthProvider` ganhou prop opcional `onLoggedOut?: () => void`, guardada em
+  `onLoggedOutRef` e chamada só no fim do `logout()` (depois de `setUser(null)` /
+  `setStatus('anonymous')`), nunca no caminho do `setLoggedOutHandler`.
+- `src/pages/Index.tsx` — `handleLoggedOut`: `resetProgress()` +
+  `localStorage.removeItem(IMPORT_DONE_KEY)` (para o import poder ser re-oferecido
+  num login futuro) + `setImportPreview(null)`. Passado como
+  `<AuthProvider onAuthenticated={afterAuth} onLoggedOut={handleLoggedOut}>`.
+- Testes: `AuthProvider.test.tsx` cobre "logout dispara `onLoggedOut` uma vez" e
+  "callback do `setLoggedOutHandler` vai a anonymous sem disparar `onLoggedOut`".
+  Não há teste de render do `Index.tsx` (desproporcionado); o fio fica coberto
+  pelo teste de callback + verificação manual.
+
 #### Fora de âmbito (10.2–10.5)
 
 Leituras contínuas de `/me` / `/wallet` / `/catalog` / `/leaderboard` / `/inventory`;
