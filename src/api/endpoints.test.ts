@@ -38,10 +38,18 @@ describe('endpoints', () => {
     spy.mockRestore();
   });
 
-  it('putGameState PUTs /me/state with { state }', async () => {
-    const spy = vi.spyOn(client, 'apiFetch').mockResolvedValue(undefined as never);
-    await putGameState({ schemaVersion: 1, player: { level: 3 } });
-    expect(spy).toHaveBeenCalledWith('/me/state', { method: 'PUT', body: { state: { schemaVersion: 1, player: { level: 3 } } } });
+  it('putGameState PUTs /me/state with { state, baseVersion } and returns the new version', async () => {
+    const spy = vi.spyOn(client, 'apiFetch').mockResolvedValue({ version: 4 } as never);
+    const out = await putGameState({ schemaVersion: 1, player: { level: 3 } }, 3);
+    expect(spy).toHaveBeenCalledWith('/me/state', { method: 'PUT', body: { state: { schemaVersion: 1, player: { level: 3 } }, baseVersion: 3 } });
+    expect(out).toEqual({ version: 4 });
+    spy.mockRestore();
+  });
+
+  it('putGameState sends baseVersion null for a first write', async () => {
+    const spy = vi.spyOn(client, 'apiFetch').mockResolvedValue({ version: 1 } as never);
+    await putGameState({ schemaVersion: 1, player: { level: 1 } }, null);
+    expect(spy).toHaveBeenCalledWith('/me/state', { method: 'PUT', body: { state: { schemaVersion: 1, player: { level: 1 } }, baseVersion: null } });
     spy.mockRestore();
   });
 });

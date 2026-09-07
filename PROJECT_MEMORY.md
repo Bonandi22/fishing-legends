@@ -1505,5 +1505,76 @@ mantidos por agora; remover numa limpeza posterior.
 - **Integrado na `main`**: PR `Bonandi22/deep-blue-lure#17` merged em `3988c7d`
   (merge commit). Junta a fundação de auth 10.1 + esta sincronização de estado.
   `main` local sincronizada, typecheck (app + backend) e 263 testes verdes na `main`.
-  Branch local `feature/task-10-1-auth-foundation` apagada; a remota ainda existe
-  em `origin` (apagar quando conveniente).
+  Branches `feature/task-10-1-auth-foundation` (local + remota) apagadas. Commit de
+  registo do merge: `172d923` (na `main`).
+
+### Task 10.2 (fatia A) — guarda de concorrência otimista no `PUT /me/state` — branch `feature/task-10-2-state-version-guard` — 2026-09-07
+
+Fecha o buraco de perda de progresso multi-dispositivo do 10.1 (era
+último-a-gravar-ganha puro). **Fatia A** só: versão otimista. Sem polling (fatia B),
+sem merge campo-a-campo (fatia C).
+
+- **Spec/brainstorm**: em chat (tarefa *bounded*, sem spec-doc). Implementada com TDD.
+- Commits `acd5647` (migração + schema), `d5ef1cf` (backend), `16ae498` (frontend).
+
+#### Backend
+
+- `backend/migrations/0016_player_game_state_version.sql` — `ADD COLUMN version
+  integer NOT NULL DEFAULT 1`. Espelhado em `db/schema.ts` (`playerGameState.version`).
+- Contrato do serviço (memória + PG iguais):
+  `get → { state, updatedAt, version } | null`;
+  `put(userId, state, baseVersion: number | null) → { version }`.
+  - `baseVersion = N` → grava só se a versão actual for N; sobe para N+1.
+  - `baseVersion = null` → grava só se **não existe** linha; cria em `version: 1`.
+  - desajuste → `throw new Error('STATE_VERSION_CONFLICT')`, não grava nada.
+  - PG: uma só instrução por ramo (`INSERT … ON CONFLICT DO NOTHING RETURNING` /
+    `UPDATE … WHERE version = $base RETURNING`). Concorrentes não ganham os dois.
+- `PUT /api/v1/me/state` — body ganha `baseVersion` (Zod `int | null`), passa a
+  responder **`200 { version }`** (era `204`). `GET` devolve `version`.
+- `STATE_VERSION_CONFLICT` → `409` em `http/errors.ts`.
+- Testes: `gamestate/routes.test.ts` 8 (base certa → 200+versão, base stale → 409,
+  base null com linha → 409) · `gamestate/pgRepository.integration.test.ts` 6.
+
+#### Frontend
+
+- `putGameState(state, baseVersion)` → body `{ state, baseVersion }`, devolve
+  `{ version }`. `GameStateEnvelope` ganha `version`.
+- `hydrateFromServer(replace)` → `{ kind, version }` (`loaded` traz a versão do
+  servidor; `empty`/`error` → `null`).
+- `useGameStateSync({ player, enabled, replace })` → `{ flushNow, start }`:
+  - `baseVersion` interno; avança a cada `PUT` bem-sucedido.
+  - `start()` = `hydrateFromServer` + (se `empty`) adopção do save local com
+    `baseVersion: null`; semeia a versão. Consolidou o que estava no `afterAuth`.
+  - `409 STATE_VERSION_CONFLICT` → `console.warn` + re-corre `hydrateFromServer`
+    (pull + replace + re-semeia); a alteração seguinte volta a empurrar. **O delta
+    local não gravado do lado perdedor perde-se** (limitação assumida da fatia A;
+    a janela do debounce de 4 s torna-a pequena).
+  - *dirty check* (`JSON.stringify` do envelope vs. último enviado) — evita `PUT`
+    no-op logo após um replace e no logout sem alterações.
+  - keepalive de `pagehide` manda `baseVersion` no corpo.
+- `src/pages/Index.tsx` — `afterAuth` encolheu para
+  `setSyncEnabled((await startSync()) !== 'error')`; perdeu os imports de
+  `hydrateFromServer` / `putGameState` / `SAVE_SCHEMA_VERSION`.
+
+#### Verificação (2026-09-07)
+
+- `tsc app` ✅ · `backend:typecheck` ✅ · `lint` ✅ (0 erros, 12 avisos) ·
+  `npm test` ✅ **49 ficheiros, 273 testes** · `build` ✅.
+- `npm run test:integration` ✅ **9 ficheiros, 51 testes** contra `postgres:16` local
+  (migração 0016 aplicada).
+- **Smoke HTTP backend** (curl): `GET` vazio → `version: null`; `PUT` base `null`
+  → `200 {version:1}`; base `1` → `200 {version:2}`; base `1` de novo → `409
+  STATE_VERSION_CONFLICT`, `GET` mantém coins da 2ª escrita.
+- **Smoke browser** (Playwright, stack Docker) — todos verdes:
+  1. registo → `GET /me/state 200` + `PUT 200` (adopção, era 204);
+  2. escrita fora-de-banda via consola (sobe o servidor para v2, coins 7777);
+  3. compra de skin no jogo → `PUT` com base stale → **`409`** → `console.warn`
+     "game state version conflict; pulling the server state" → `GET` → estado local
+     **substituído** (ecrã passa a 7777 moedas, a compra da skin é descartada) →
+     `PUT` seguinte com versão fresca → `200`;
+  4. logout sem alterações → **sem `PUT` redundante** (dirty check), `POST
+     /auth/logout 204`, jogo reinicia para 0;
+  5. novo login → estado do servidor (7777) restaurado.
+- Contentores `backend`+`frontend` reiniciados (migração 0016 + 204→200).
+- **Pendente (utilizador)**: rever o diff + confirmar num browser real (jogar em 2
+  separadores → o 2º apanha o conflito e adota o estado do 1º).

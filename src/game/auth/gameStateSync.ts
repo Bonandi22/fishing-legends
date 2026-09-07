@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useRef } from 'react';
 import type { PlayerState } from '@/game/types';
 import { SAVE_SCHEMA_VERSION } from '@/game/persistence';
+import { ApiError } from '@/api/client';
 import { putGameState } from '@/api/endpoints';
+import { hydrateFromServer, type HydrateResult } from './hydrate';
 
 const DEBOUNCE_MS = 4000;
 
@@ -16,27 +18,45 @@ interface GameStateEnvelope {
   player: PlayerState;
 }
 
+function isVersionConflict(err: unknown): boolean {
+  return err instanceof ApiError && err.code === 'STATE_VERSION_CONFLICT';
+}
+
 /**
- * Pushes the player's game state to the server while they play:
- * - a debounced `PUT /me/state` ~4s after the last `player` change,
+ * Pushes the player's game state to the server while they play, with optimistic
+ * concurrency:
+ * - `start()` (called by `afterAuth`) loads the server blob, replaces local state,
+ *   and seeds the base version; on an empty server it adopts the local save.
+ * - a debounced `PUT /me/state` ~4s after the last `player` change, carrying the
+ *   base version; a successful PUT advances it. A `STATE_VERSION_CONFLICT` means
+ *   another device wrote — the hook re-runs `hydrateFromServer` (pull + replace +
+ *   reseed) and the next change pushes again.
  * - an immediate keepalive `fetch` on `pagehide` / tab hide (survives unload;
- *   `navigator.sendBeacon` can't set the CSRF header, so we use `fetch`),
- * - `flushNow()` for logout (Task 8): clears the timer and awaits a PUT now.
+ *   `navigator.sendBeacon` can't set the CSRF header, so we use `fetch`).
+ * - `flushNow()` for logout: clears the timer and awaits a PUT now.
  *
- * `enabled === false` makes the hook inert: no timer, listeners are no-ops.
+ * A `player` that serializes identically to the last sent envelope is skipped.
+ * `enabled === false` makes the hook inert.
  */
 export function useGameStateSync({
   player,
   enabled,
+  replace,
 }: {
   player: PlayerState;
   enabled: boolean;
-}): { flushNow: () => Promise<void> } {
+  replace: (updater: (prev: PlayerState) => Partial<PlayerState>) => void;
+}): { flushNow: () => Promise<void>; start: () => Promise<HydrateResult['kind']> } {
   const playerRef = useRef(player);
   playerRef.current = player;
   const enabledRef = useRef(enabled);
   enabledRef.current = enabled;
+  const replaceRef = useRef(replace);
+  replaceRef.current = replace;
+
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const baseVersion = useRef<number | null>(null);
+  const lastSent = useRef<string | null>(null);
 
   const envelope = useCallback(
     (): GameStateEnvelope => ({ schemaVersion: SAVE_SCHEMA_VERSION, player: playerRef.current }),
@@ -50,15 +70,51 @@ export function useGameStateSync({
     }
   }, []);
 
+  const resync = useCallback(async () => {
+    const res = await hydrateFromServer(replaceRef.current);
+    if (res.kind === 'loaded') {
+      baseVersion.current = res.version;
+      lastSent.current = null; // the replaced state is server-fresh; let the next real change push
+    }
+    return res;
+  }, []);
+
+  /** Send the current envelope once. Best-effort: resolves on any failure. */
+  const push = useCallback(async () => {
+    if (!enabledRef.current) return;
+    const body = JSON.stringify(envelope());
+    if (body === lastSent.current) return;
+    try {
+      const { version } = await putGameState(envelope(), baseVersion.current);
+      baseVersion.current = version;
+      lastSent.current = body;
+    } catch (err) {
+      if (isVersionConflict(err)) {
+        console.warn('game state version conflict; pulling the server state');
+        await resync();
+      }
+      // other failures: retried on the next change
+    }
+  }, [envelope, resync]);
+
+  const start = useCallback(async (): Promise<HydrateResult['kind']> => {
+    const res = await resync();
+    if (res.kind === 'empty') {
+      try {
+        const { version } = await putGameState(envelope(), null);
+        baseVersion.current = version;
+        lastSent.current = JSON.stringify(envelope());
+      } catch {
+        /* best-effort adopt */
+      }
+    }
+    return res.kind;
+  }, [envelope, resync]);
+
   const flushNow = useCallback(async () => {
     clearTimer();
-    if (!enabledRef.current) return;
-    try {
-      await putGameState(envelope());
-    } catch {
-      /* best-effort: resolve even on failure */
-    }
-  }, [clearTimer, envelope]);
+    await push();
+  }, [clearTimer, push]);
 
   // Debounce on player change.
   useEffect(() => {
@@ -69,17 +125,16 @@ export function useGameStateSync({
     clearTimer();
     timer.current = setTimeout(() => {
       timer.current = null;
-      putGameState(envelope()).catch(() => {
-        /* retried on the next change */
-      });
+      void push();
     }, DEBOUNCE_MS);
     return clearTimer;
-  }, [player, enabled, clearTimer, envelope]);
+  }, [player, enabled, clearTimer, push]);
 
   // Flush on tab close / hide. keepalive lets the request outlive the document.
   useEffect(() => {
     const send = () => {
       if (!enabledRef.current) return;
+      const body = JSON.stringify({ state: envelope(), baseVersion: baseVersion.current });
       const t = csrfToken();
       try {
         void fetch('/api/v1/me/state', {
@@ -90,7 +145,7 @@ export function useGameStateSync({
             'Content-Type': 'application/json',
             ...(t ? { 'X-CSRF-Token': t } : {}),
           },
-          body: JSON.stringify({ state: envelope() }),
+          body,
         });
       } catch {
         /* best-effort */
@@ -107,5 +162,5 @@ export function useGameStateSync({
     };
   }, [envelope]);
 
-  return { flushNow };
+  return { flushNow, start };
 }

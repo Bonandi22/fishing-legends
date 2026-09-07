@@ -9,7 +9,10 @@ type GameStateService =
   | ReturnType<typeof createMemoryGameStateService>
   | ReturnType<typeof createPgGameStateService>;
 
-const putBody = z.object({ state: saveSchema });
+const putBody = z.object({
+  state: saveSchema,
+  baseVersion: z.number().int().nonnegative().nullable(),
+});
 const STATE_BODY_LIMIT = 2 * 1024 * 1024;
 
 export function registerGameStateRoutes(app: FastifyInstance, service: GameStateService): void {
@@ -20,15 +23,14 @@ export function registerGameStateRoutes(app: FastifyInstance, service: GameState
     preHandler: app.requireAuth,
   }, async request => {
     const entry = await service.get(request.userId);
-    return { state: entry?.state ?? null, updatedAt: entry?.updatedAt ?? null };
+    return { state: entry?.state ?? null, updatedAt: entry?.updatedAt ?? null, version: entry?.version ?? null };
   });
 
   r.put('/api/v1/me/state', {
-    schema: { tags: ['gamestate'], summary: 'Replace the account game state (last write wins)', body: putBody },
+    schema: { tags: ['gamestate'], summary: 'Replace the account game state (optimistic concurrency on baseVersion)', body: putBody },
     bodyLimit: STATE_BODY_LIMIT,
     preHandler: app.requireAuth,
-  }, async (request, reply) => {
-    await service.put(request.userId, request.body.state);
-    return reply.status(204).send();
+  }, async request => {
+    return service.put(request.userId, request.body.state, request.body.baseVersion);
   });
 }
