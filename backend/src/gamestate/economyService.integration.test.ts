@@ -198,6 +198,53 @@ describe('pg game-state economy service (integration)', () => {
     expect(ops.map(o => o.operation).sort()).toEqual(['net_purchase', 'warehouse_sell']);
   });
 
+  it('buys a multiplier transactionally: -3000 coins, luck power/end set, version +1, one op row', async () => {
+    const userId = await seedUser();
+    await gameState.put(userId, netBlob({ coins: 8_000 }), null);
+
+    const res = await economy.purchaseMultiplier(userId, 'mult-key-int-aaaaaaaa', 'luck', 2);
+    expect(res.version).toBe(2);
+    expect(res.state.player.coins).toBe(5_000);
+    expect(res.state.player.luckMultiplierPower).toBe(2);
+    expect(typeof res.state.player.luckMultiplierEnd).toBe('number');
+
+    const ops = await harness.db.select().from(gameStateOperations).where(eq(gameStateOperations.userId, userId));
+    expect(ops).toHaveLength(1);
+    expect(ops[0].operation).toBe('multiplier_purchase');
+  });
+
+  it('multiplier purchase replays the same key: identical result, one row, not charged twice', async () => {
+    const userId = await seedUser();
+    await gameState.put(userId, netBlob({ coins: 8_000 }), null);
+
+    const first = await economy.purchaseMultiplier(userId, 'mult-key-int-bbbbbbbb', 'strength', 4);
+    const replay = await economy.purchaseMultiplier(userId, 'mult-key-int-bbbbbbbb', 'strength', 4);
+    expect(replay).toEqual(first);
+
+    const ops = await harness.db.select().from(gameStateOperations).where(eq(gameStateOperations.userId, userId));
+    expect(ops).toHaveLength(1);
+    expect((await gameState.get(userId))!.version).toBe(2);
+  });
+
+  it('multiplier purchase: concurrent same-key resolves identically, one op row, version 2', async () => {
+    const userId = await seedUser();
+    await gameState.put(userId, netBlob({ coins: 20_000 }), null);
+
+    const key = 'mult-key-int-race-same';
+    const [a, b] = await Promise.all([
+      economy.purchaseMultiplier(userId, key, 'luck', 2),
+      economy.purchaseMultiplier(userId, key, 'luck', 2),
+    ]);
+
+    expect(a).toEqual(b);
+    expect(a.version).toBe(2);
+    expect(a.state.player.coins).toBe(17_000); // charged once
+
+    const ops = await harness.db.select().from(gameStateOperations).where(eq(gameStateOperations.userId, userId));
+    expect(ops).toHaveLength(1);
+    expect((await gameState.get(userId))!.version).toBe(2);
+  });
+
   it('deleting the user cascades game_state_operations', async () => {
     const userId = await seedUser();
     await gameState.put(userId, blob(oneFish), null);
