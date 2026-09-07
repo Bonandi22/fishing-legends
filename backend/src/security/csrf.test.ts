@@ -57,6 +57,45 @@ describe('CSRF double-submit', () => {
     expect(res.statusCode).toBe(204);
   });
 
+  it('logout as the browser now sends it — no Content-Type, no body — returns 204 and clears cookies', async () => {
+    const a = await app();
+    const reg = await a.inject({ method: 'POST', url: '/api/v1/auth/register', payload: creds });
+    const jar = cookieJar(reg.headers['set-cookie']);
+    // This is the exact shape endpoints.logout() produces after the apiFetch fix:
+    // a body-less POST with no Content-Type header. Before the fix apiFetch always
+    // set Content-Type: application/json, Fastify rejected the empty body with
+    // FST_ERR_CTP_EMPTY_JSON_BODY before the route ran, clearAuthCookies never
+    // fired, and the user stayed logged in after a reload.
+    const res = await a.inject({
+      method: 'POST', url: '/api/v1/auth/logout',
+      headers: { cookie: `dbl_at=${jar.dbl_at}; dbl_csrf=${jar.dbl_csrf}`, 'x-csrf-token': jar.dbl_csrf },
+    });
+    expect(res.statusCode).toBe(204);
+    const cleared = ([] as string[]).concat(res.headers['set-cookie'] as string[]);
+    expect(cleared.some(c => /^dbl_at=;/.test(c))).toBe(true);
+  });
+
+  it('logout with content-type application/json and an empty body is a clean 400, never a leaked 500', async () => {
+    const a = await app();
+    const reg = await a.inject({ method: 'POST', url: '/api/v1/auth/register', payload: creds });
+    const jar = cookieJar(reg.headers['set-cookie']);
+    // Defence in depth for any client still sending the pre-fix shape: Fastify's
+    // JSON parser rejects an empty body regardless of route schema, so the route
+    // cannot run — but errors.ts must map FST_ERR_CTP_* to a 400 client fault
+    // rather than leaking it as a 500.
+    const res = await a.inject({
+      method: 'POST', url: '/api/v1/auth/logout',
+      headers: {
+        cookie: `dbl_at=${jar.dbl_at}; dbl_csrf=${jar.dbl_csrf}`,
+        'x-csrf-token': jar.dbl_csrf,
+        'content-type': 'application/json',
+      },
+      payload: '',
+    });
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error.code).toBe('INVALID_REQUEST_BODY');
+  });
+
   it('does not require CSRF for login or register', async () => {
     const a = await app();
     const res = await a.inject({ method: 'POST', url: '/api/v1/auth/register', payload: creds });

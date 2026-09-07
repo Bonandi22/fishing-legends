@@ -76,6 +76,22 @@ describe('apiFetch', () => {
     setLoggedOutHandler(() => {});
   });
 
+  it('sends no Content-Type and no body on a body-less POST (logout)', async () => {
+    g.fetch.mockResolvedValueOnce(jsonResponse(204, undefined));
+    await apiFetch('/auth/logout', { method: 'POST' });
+    const [, init] = g.fetch.mock.calls[0];
+    expect('Content-Type' in init.headers).toBe(false);
+    expect(init.body).toBeUndefined();
+  });
+
+  it('sends Content-Type: application/json and a serialized body when a body is given', async () => {
+    g.fetch.mockResolvedValueOnce(jsonResponse(200, {}));
+    await apiFetch('/x', { method: 'POST', body: { a: 1 } });
+    const [, init] = g.fetch.mock.calls[0];
+    expect(init.headers['Content-Type']).toBe('application/json');
+    expect(init.body).toBe(JSON.stringify({ a: 1 }));
+  });
+
   it('does not refresh-retry a 401 from an /auth/ route', async () => {
     g.fetch.mockResolvedValueOnce(jsonResponse(401, { error: { code: 'INVALID_CREDENTIALS', message: '' } }));
     await expect(apiFetch('/auth/login', { method: 'POST', body: {} })).rejects.toMatchObject({ code: 'INVALID_CREDENTIALS' });

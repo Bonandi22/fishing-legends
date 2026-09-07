@@ -37,7 +37,11 @@ export async function apiFetch<T>(path: string, opts: Opts = {}): Promise<T> {
 
 async function run<T>(path: string, opts: Opts, isRetry: boolean): Promise<T> {
   const method = opts.method ?? 'GET';
-  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  const headers: Record<string, string> = {};
+  // Only advertise a JSON body when we are actually sending one. A body-less POST
+  // (e.g. /auth/logout) with Content-Type: application/json makes Fastify reject
+  // the request before the route runs (FST_ERR_CTP_EMPTY_JSON_BODY).
+  if (opts.body !== undefined) headers['Content-Type'] = 'application/json';
   if (method !== 'GET' && method !== 'HEAD') {
     const t = csrfToken();
     if (t) headers['X-CSRF-Token'] = t;

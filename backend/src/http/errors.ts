@@ -71,6 +71,17 @@ export function registerErrorHandling(app: FastifyInstance): void {
       });
     }
 
+    // Fastify content-type parser errors (empty/malformed JSON body, unsupported
+    // media type, body too large). These are client faults, not a 500.
+    if (
+      error && typeof (error as { code?: unknown }).code === 'string'
+      && String((error as { code: string }).code).startsWith('FST_ERR_CTP_')
+    ) {
+      return reply.status(400).send({
+        error: { code: 'INVALID_REQUEST_BODY', message: 'Request body is missing or malformed' },
+      });
+    }
+
     // A concurrent request with the same idempotency key won the insert race.
     // The client can retry: the second attempt reads the stored result.
     if (pgErrorCode(error) === '23505') {
