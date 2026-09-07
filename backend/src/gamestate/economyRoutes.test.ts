@@ -34,6 +34,15 @@ async function seed(client: Awaited<ReturnType<typeof registerAndAuth>>, warehou
   expect(put.statusCode).toBe(200);
 }
 
+const netBlob = (over: Record<string, unknown> = {}) => ({
+  schemaVersion: SAVE_SCHEMA_VERSION,
+  player: { ...blob([]).player, coins: 10_000, nets: 0, ...over },
+});
+async function seedBlob(client: Awaited<ReturnType<typeof registerAndAuth>>, state: unknown) {
+  const put = await client.request({ method: 'PUT', url: '/api/v1/me/state', payload: { state, baseVersion: null } });
+  expect(put.statusCode).toBe(200);
+}
+
 describe('POST /api/v1/me/economy/warehouse/sell', () => {
   it('sells: warehouse cleared, coins up, version 1 -> 2', async () => {
     const a = await app();
@@ -103,5 +112,55 @@ describe('POST /api/v1/me/economy/warehouse/sell', () => {
     });
     expect(res.statusCode).toBe(400);
     expect(res.json().error.code).toBe('INVALID_IDEMPOTENCY_KEY');
+  });
+});
+
+describe('POST /api/v1/me/economy/nets/purchase', () => {
+  it('buys a net: -5000 coins, +1 net, version 1 -> 2', async () => {
+    const a = await app();
+    const client = await registerAndAuth(a);
+    await seedBlob(client, netBlob({ coins: 8_000, nets: 1 }));
+    const res = await client.request({ method: 'POST', url: '/api/v1/me/economy/nets/purchase' });
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(body.version).toBe(2);
+    expect(body.state.player.coins).toBe(3_000);
+    expect(body.state.player.nets).toBe(2);
+  });
+
+  it('replay with the same Idempotency-Key returns the same body, no double charge', async () => {
+    const a = await app();
+    const client = await registerAndAuth(a);
+    await seedBlob(client, netBlob({ coins: 8_000 }));
+    const first = await client.request({ method: 'POST', url: '/api/v1/me/economy/nets/purchase', idempotencyKey: 'net-key-replayreplay01' });
+    const replay = await client.request({ method: 'POST', url: '/api/v1/me/economy/nets/purchase', idempotencyKey: 'net-key-replayreplay01' });
+    expect(replay.json()).toEqual(first.json());
+    const get = await client.request({ method: 'GET', url: '/api/v1/me/state' });
+    expect(get.json().version).toBe(2);
+    expect(get.json().state.player.coins).toBe(3_000);
+  });
+
+  it('insufficient coins -> 409 INSUFFICIENT_FUNDS', async () => {
+    const a = await app();
+    const client = await registerAndAuth(a);
+    await seedBlob(client, netBlob({ coins: 4_999 }));
+    const res = await client.request({ method: 'POST', url: '/api/v1/me/economy/nets/purchase' });
+    expect(res.statusCode).toBe(409);
+    expect(res.json().error.code).toBe('INSUFFICIENT_FUNDS');
+  });
+
+  it('at the net limit -> 409 NET_LIMIT_REACHED', async () => {
+    const a = await app();
+    const client = await registerAndAuth(a);
+    await seedBlob(client, netBlob({ coins: 1_000_000, nets: 10 }));
+    const res = await client.request({ method: 'POST', url: '/api/v1/me/economy/nets/purchase' });
+    expect(res.statusCode).toBe(409);
+    expect(res.json().error.code).toBe('NET_LIMIT_REACHED');
+  });
+
+  it('no session -> 401', async () => {
+    const a = await app();
+    const res = await a.inject({ method: 'POST', url: '/api/v1/me/economy/nets/purchase' });
+    expect(res.statusCode).toBe(401);
   });
 });

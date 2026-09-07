@@ -47,6 +47,11 @@ const blob = (warehouse: unknown[]) => ({
 });
 const oneFish = [{ fish: FISH[0], weight: 2, location: 'atlantic', timestamp: 1 }];
 
+const netBlob = (over: Record<string, unknown> = {}) => ({
+  schemaVersion: SAVE_SCHEMA_VERSION,
+  player: { ...blob([]).player, coins: 10_000, nets: 0, ...over },
+});
+
 describe('pg game-state economy service (integration)', () => {
   it('sells transactionally: warehouse cleared, coins up, version +1, one operation row', async () => {
     const userId = await seedUser();
@@ -127,6 +132,70 @@ describe('pg game-state economy service (integration)', () => {
     const ops = await harness.db.select().from(gameStateOperations).where(eq(gameStateOperations.userId, userId));
     expect(ops).toHaveLength(1);
     expect((await gameState.get(userId))!.version).toBe(2);
+  });
+
+  it('buys a net transactionally: -5000 coins, +1 net, version +1, one op row', async () => {
+    const userId = await seedUser();
+    await gameState.put(userId, netBlob({ coins: 8_000, nets: 1 }), null);
+
+    const res = await economy.purchaseNet(userId, 'net-key-int-aaaaaaaa');
+    expect(res.version).toBe(2);
+    expect(res.state.player.coins).toBe(3_000);
+    expect(res.state.player.nets).toBe(2);
+
+    const got = await gameState.get(userId);
+    expect(got!.version).toBe(2);
+    const ops = await harness.db.select().from(gameStateOperations).where(eq(gameStateOperations.userId, userId));
+    expect(ops).toHaveLength(1);
+    expect(ops[0].operation).toBe('net_purchase');
+  });
+
+  it('net purchase replays the same key: identical result, still one row, not charged twice', async () => {
+    const userId = await seedUser();
+    await gameState.put(userId, netBlob({ coins: 8_000 }), null);
+
+    const first = await economy.purchaseNet(userId, 'net-key-int-bbbbbbbb');
+    const replay = await economy.purchaseNet(userId, 'net-key-int-bbbbbbbb');
+    expect(replay).toEqual(first);
+
+    const ops = await harness.db.select().from(gameStateOperations).where(eq(gameStateOperations.userId, userId));
+    expect(ops).toHaveLength(1);
+    expect((await gameState.get(userId))!.version).toBe(2);
+    expect((first.state.player as { coins: number }).coins).toBe(3_000);
+  });
+
+  it('net purchase: concurrent same-key resolves identically, exactly one op row, version 2', async () => {
+    const userId = await seedUser();
+    await gameState.put(userId, netBlob({ coins: 20_000 }), null);
+
+    const key = 'net-key-int-race-same';
+    const [a, b] = await Promise.all([
+      economy.purchaseNet(userId, key),
+      economy.purchaseNet(userId, key),
+    ]);
+
+    expect(a).toEqual(b);
+    expect(a.version).toBe(2);
+    expect(a.state.player.coins).toBe(15_000); // charged once
+
+    const ops = await harness.db.select().from(gameStateOperations).where(eq(gameStateOperations.userId, userId));
+    expect(ops).toHaveLength(1);
+    expect((await gameState.get(userId))!.version).toBe(2);
+  });
+
+  it('F2: a net purchase does not replay a warehouse sell recorded under the same key', async () => {
+    const userId = await seedUser();
+    await gameState.put(userId, netBlob({ coins: 8_000, warehouse: oneFish }), null);
+
+    const key = 'shared-key-int-cross-op';
+    await economy.sellWarehouse(userId, key); // version 2, op 'warehouse_sell'
+    const net = await economy.purchaseNet(userId, key); // version 3, op 'net_purchase' — fresh
+
+    expect(net.version).toBe(3);
+    expect(net.state.player.nets).toBe(1);
+    const ops = await harness.db.select().from(gameStateOperations).where(eq(gameStateOperations.userId, userId));
+    expect(ops).toHaveLength(2);
+    expect(ops.map(o => o.operation).sort()).toEqual(['net_purchase', 'warehouse_sell']);
   });
 
   it('deleting the user cascades game_state_operations', async () => {

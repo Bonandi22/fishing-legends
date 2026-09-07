@@ -155,7 +155,7 @@ export const gameStateOperations = pgTable('game_state_operations', {
   result: jsonb('result').notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 }, (t) => ({
-  pk: primaryKey({ name: 'game_state_operations_idempotency_pk', columns: [t.userId, t.idempotencyKey] }),
+  pk: primaryKey({ name: 'game_state_operations_idempotency_pk', columns: [t.userId, t.idempotencyKey, t.operation] }),
 }));
 
 export const wallets = pgTable('wallets', {
