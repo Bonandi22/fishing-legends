@@ -45,6 +45,7 @@ const DOMAIN_ERRORS: Record<string, DomainErrorSpec> = {
   NO_FISH_AVAILABLE: { status: 422, message: 'No fish are available at that location' },
   USERNAME_TAKEN: { status: 409, message: 'That username is already taken' },
   CSRF_FAILED: { status: 403, message: 'CSRF token missing or invalid' },
+  STATE_VERSION_CONFLICT: { status: 409, message: 'The game state was modified elsewhere; reload before saving' },
 };
 
 export function registerErrorHandling(app: FastifyInstance): void {

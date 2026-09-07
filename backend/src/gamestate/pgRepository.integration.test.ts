@@ -47,33 +47,35 @@ describe('pg game-state service (integration)', () => {
     expect(await svc.get(randomUUID())).toBeNull();
   });
 
-  it('round-trips the exact envelope and an ISO updatedAt', async () => {
+  it('first put (baseVersion null) creates version 1 and round-trips the envelope', async () => {
     const userId = await seedUser();
     const blob = envelope();
 
-    await svc.put(userId, blob);
+    const put = await svc.put(userId, blob, null);
+    expect(put).toEqual({ version: 1 });
     const got = await svc.get(userId);
 
     expect(got).not.toBeNull();
     expect(got!.state).toEqual(blob);
-    expect(typeof got!.updatedAt).toBe('string');
+    expect(got!.version).toBe(1);
     expect(Number.isNaN(Date.parse(got!.updatedAt))).toBe(false);
   });
 
-  it('upserts on the second put: new state, later updatedAt, no duplicate row', async () => {
+  it('upserts on a matching baseVersion: new state, bumped version, later updatedAt, no duplicate row', async () => {
     const userId = await seedUser();
 
-    await svc.put(userId, envelope());
+    await svc.put(userId, envelope(), null);
     const first = await svc.get(userId);
-    expect(first).not.toBeNull();
+    expect(first!.version).toBe(1);
 
     await new Promise(r => setTimeout(r, 5));
     const changed = envelope({ level: 9, coins: 1234 });
-    await svc.put(userId, changed);
+    const put = await svc.put(userId, changed, 1);
+    expect(put).toEqual({ version: 2 });
     const second = await svc.get(userId);
 
-    expect(second).not.toBeNull();
     expect(second!.state).toEqual(changed);
+    expect(second!.version).toBe(2);
     expect(Date.parse(second!.updatedAt)).toBeGreaterThan(Date.parse(first!.updatedAt));
 
     const rows = await harness.db
@@ -83,9 +85,28 @@ describe('pg game-state service (integration)', () => {
     expect(rows).toHaveLength(1);
   });
 
+  it('rejects a stale baseVersion and leaves the stored state untouched', async () => {
+    const userId = await seedUser();
+    await svc.put(userId, envelope({ coins: 1 }), null);
+    await svc.put(userId, envelope({ coins: 2 }), 1);
+
+    await expect(svc.put(userId, envelope({ coins: 3 }), 1)).rejects.toThrow('STATE_VERSION_CONFLICT');
+
+    const got = await svc.get(userId);
+    expect((got!.state as { player: { coins: number } }).player.coins).toBe(2);
+    expect(got!.version).toBe(2);
+  });
+
+  it('rejects baseVersion null when a row already exists', async () => {
+    const userId = await seedUser();
+    await svc.put(userId, envelope(), null);
+
+    await expect(svc.put(userId, envelope({ coins: 7 }), null)).rejects.toThrow('STATE_VERSION_CONFLICT');
+  });
+
   it('cascades on user deletion: get returns null with no error', async () => {
     const userId = await seedUser();
-    await svc.put(userId, envelope());
+    await svc.put(userId, envelope(), null);
 
     await harness.db.delete(users).where(eq(users.id, userId));
 

@@ -28,29 +28,65 @@ const envelope = (over: Record<string, unknown> = {}) => ({
 });
 
 describe('me/state', () => {
-  it('GET returns { state: null } when nothing is saved', async () => {
+  it('GET returns { state: null, version: null } when nothing is saved', async () => {
     const a = await app();
     const client = await registerAndAuth(a);
     const res = await client.request({ method: 'GET', url: '/api/v1/me/state' });
     expect(res.statusCode).toBe(200);
-    expect(res.json()).toEqual({ state: null, updatedAt: null });
+    expect(res.json()).toEqual({ state: null, updatedAt: null, version: null });
   });
 
-  it('PUT then GET round-trips the exact envelope', async () => {
+  it('first PUT (baseVersion null) creates the row at version 1 and GET round-trips it', async () => {
     const a = await app();
     const client = await registerAndAuth(a);
     const body = envelope({ level: 9, coins: 1234 });
-    const put = await client.request({ method: 'PUT', url: '/api/v1/me/state', payload: { state: body } });
-    expect(put.statusCode).toBe(204);
+    const put = await client.request({ method: 'PUT', url: '/api/v1/me/state', payload: { state: body, baseVersion: null } });
+    expect(put.statusCode).toBe(200);
+    expect(put.json()).toEqual({ version: 1 });
     const get = await client.request({ method: 'GET', url: '/api/v1/me/state' });
     expect(get.json().state).toEqual(body);
+    expect(get.json().version).toBe(1);
     expect(typeof get.json().updatedAt).toBe('string');
+  });
+
+  it('PUT with the current baseVersion succeeds and bumps the version', async () => {
+    const a = await app();
+    const client = await registerAndAuth(a);
+    await client.request({ method: 'PUT', url: '/api/v1/me/state', payload: { state: envelope(), baseVersion: null } });
+    const put = await client.request({ method: 'PUT', url: '/api/v1/me/state', payload: { state: envelope({ coins: 999 }), baseVersion: 1 } });
+    expect(put.statusCode).toBe(200);
+    expect(put.json()).toEqual({ version: 2 });
+    const get = await client.request({ method: 'GET', url: '/api/v1/me/state' });
+    expect(get.json().state.player.coins).toBe(999);
+    expect(get.json().version).toBe(2);
+  });
+
+  it('PUT with a stale baseVersion is 409 STATE_VERSION_CONFLICT and does not write', async () => {
+    const a = await app();
+    const client = await registerAndAuth(a);
+    await client.request({ method: 'PUT', url: '/api/v1/me/state', payload: { state: envelope(), baseVersion: null } });
+    await client.request({ method: 'PUT', url: '/api/v1/me/state', payload: { state: envelope({ coins: 111 }), baseVersion: 1 } });
+    const stale = await client.request({ method: 'PUT', url: '/api/v1/me/state', payload: { state: envelope({ coins: 222 }), baseVersion: 1 } });
+    expect(stale.statusCode).toBe(409);
+    expect(stale.json().error.code).toBe('STATE_VERSION_CONFLICT');
+    const get = await client.request({ method: 'GET', url: '/api/v1/me/state' });
+    expect(get.json().state.player.coins).toBe(111);
+    expect(get.json().version).toBe(2);
+  });
+
+  it('PUT with baseVersion null when a row already exists is 409 STATE_VERSION_CONFLICT', async () => {
+    const a = await app();
+    const client = await registerAndAuth(a);
+    await client.request({ method: 'PUT', url: '/api/v1/me/state', payload: { state: envelope(), baseVersion: null } });
+    const res = await client.request({ method: 'PUT', url: '/api/v1/me/state', payload: { state: envelope({ coins: 5 }), baseVersion: null } });
+    expect(res.statusCode).toBe(409);
+    expect(res.json().error.code).toBe('STATE_VERSION_CONFLICT');
   });
 
   it('PUT with an invalid player shape is 400 VALIDATION_ERROR', async () => {
     const a = await app();
     const client = await registerAndAuth(a);
-    const res = await client.request({ method: 'PUT', url: '/api/v1/me/state', payload: { state: { schemaVersion: 1, player: { level: 0 } } } });
+    const res = await client.request({ method: 'PUT', url: '/api/v1/me/state', payload: { state: { schemaVersion: 1, player: { level: 0 } }, baseVersion: null } });
     expect(res.statusCode).toBe(400);
     expect(res.json().error.code).toBe('VALIDATION_ERROR');
   });
