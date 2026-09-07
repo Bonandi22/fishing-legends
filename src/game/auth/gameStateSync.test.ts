@@ -21,6 +21,7 @@ function mount(props: { player: unknown; enabled: boolean }) {
 beforeEach(() => {
   vi.useFakeTimers();
   vi.spyOn(endpoints, 'putGameState').mockResolvedValue({ version: 1 });
+  vi.spyOn(endpoints, 'getGameState').mockResolvedValue({ state: null, updatedAt: null, version: null });
 });
 afterEach(() => {
   vi.useRealTimers();
@@ -153,6 +154,74 @@ describe('useGameStateSync — start', () => {
     const { result } = mount({ player: mkPlayer({ level: 1 }), enabled: true });
     expect(await result.current.start()).toBe('error');
     expect(endpoints.putGameState).not.toHaveBeenCalled();
+  });
+});
+
+describe('useGameStateSync — periodic pull', () => {
+  const seedVersion = async (v: number) => {
+    const player = mkPlayer({ level: 1 });
+    vi.spyOn(hydrateModule, 'hydrateFromServer').mockResolvedValue({ kind: 'loaded', version: v, player });
+    const h = mount({ player, enabled: true });
+    await h.result.current.start();
+    await vi.advanceTimersByTimeAsync(4_000); // let the post-start debounce settle (dirty-check skips it)
+    vi.mocked(hydrateModule.hydrateFromServer).mockClear();
+    return h;
+  };
+
+  it('polls GET /me/state on a 45s interval while enabled', async () => {
+    mount({ player: mkPlayer({ level: 1 }), enabled: true });
+    expect(endpoints.getGameState).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(45_000);
+    expect(endpoints.getGameState).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(45_000);
+    expect(endpoints.getGameState).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not poll when disabled', async () => {
+    mount({ player: mkPlayer({ level: 1 }), enabled: false });
+    await vi.advanceTimersByTimeAsync(200_000);
+    expect(endpoints.getGameState).not.toHaveBeenCalled();
+  });
+
+  it('replaces local state when the poll sees a newer server version', async () => {
+    await seedVersion(3);
+    vi.mocked(endpoints.getGameState).mockResolvedValue({ state: {}, updatedAt: 'x', version: 5 });
+    await vi.advanceTimersByTimeAsync(45_000);
+    expect(hydrateModule.hydrateFromServer).toHaveBeenCalledWith(noopReplace);
+  });
+
+  it('does not replace when the poll sees the same version', async () => {
+    await seedVersion(3);
+    vi.mocked(endpoints.getGameState).mockResolvedValue({ state: {}, updatedAt: 'x', version: 3 });
+    await vi.advanceTimersByTimeAsync(45_000);
+    expect(hydrateModule.hydrateFromServer).not.toHaveBeenCalled();
+  });
+
+  it('skips the poll tick while the tab is hidden', async () => {
+    Object.defineProperty(document, 'visibilityState', { value: 'hidden', configurable: true });
+    mount({ player: mkPlayer({ level: 1 }), enabled: true });
+    await vi.advanceTimersByTimeAsync(45_000);
+    expect(endpoints.getGameState).not.toHaveBeenCalled();
+    Object.defineProperty(document, 'visibilityState', { value: 'visible', configurable: true });
+  });
+
+  it('polls immediately when the tab becomes visible', async () => {
+    mount({ player: mkPlayer({ level: 1 }), enabled: true });
+    document.dispatchEvent(new Event('visibilitychange'));
+    await vi.advanceTimersByTimeAsync(0);
+    expect(endpoints.getGameState).toHaveBeenCalledTimes(1);
+  });
+
+  it('skips the poll while a push is in flight', async () => {
+    let resolvePut: (v: { version: number }) => void = () => {};
+    vi.mocked(endpoints.putGameState).mockReturnValue(new Promise(r => { resolvePut = r; }));
+    const { rerender } = mount({ player: mkPlayer({ level: 1 }), enabled: true });
+    rerender({ player: mkPlayer({ level: 2 }), enabled: true });
+    await vi.advanceTimersByTimeAsync(4_000); // debounce fires → push starts, never resolves
+    vi.mocked(endpoints.getGameState).mockClear();
+    await vi.advanceTimersByTimeAsync(45_000); // poll tick
+    expect(endpoints.getGameState).not.toHaveBeenCalled();
+    resolvePut({ version: 2 });
   });
 });
 
