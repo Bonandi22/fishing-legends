@@ -21,7 +21,7 @@ import { useBackgroundMusic } from '@/game/useBackgroundMusic';
 import { I18nProvider } from '@/game/i18n';
 import { AuthProvider } from '@/game/auth/AuthProvider';
 import { useGameStateSync } from '@/game/auth/gameStateSync';
-import { sellWarehouse as sellWarehouseApi, purchaseNet as purchaseNetApi } from '@/api/endpoints';
+import { sellWarehouse as sellWarehouseApi, purchaseNet as purchaseNetApi, purchaseMultiplier as purchaseMultiplierApi } from '@/api/endpoints';
 import type { GameStateEnvelope } from '@/api/types';
 import { FishingLocation, Fish } from '@/game/types';
 
@@ -38,7 +38,7 @@ const IndexInner = () => {
   } = useGameState();
   const { isPlaying: musicPlaying, toggle: toggleMusic, trackId: musicTrack, setTrack: setMusicTrack } = useBackgroundMusic();
   const [syncEnabled, setSyncEnabled] = useState(false);
-  const [busyOp, setBusyOp] = useState<null | 'sell' | 'net'>(null);
+  const [busyOp, setBusyOp] = useState<null | 'sell' | 'net' | 'multiplier'>(null);
   const { flushNow, start: startSync, applyServerResult } = useGameStateSync({ player, enabled: syncEnabled, replace: replaceFromServer });
   const [screen, setScreen] = useState<Screen>('menu');
   const [selectedLocation, setSelectedLocation] = useState<FishingLocation | null>(null);
@@ -77,7 +77,7 @@ const IndexInner = () => {
   // change), then the server op, then adopt its authoritative result. Failure is
   // silent (no toast surface) and leaves local state untouched.
   const runEconomyOp = useCallback(async (
-    op: 'sell' | 'net',
+    op: 'sell' | 'net' | 'multiplier',
     local: () => void,
     api: (idempotencyKey: string) => Promise<GameStateEnvelope>,
   ) => {
@@ -101,6 +101,13 @@ const IndexInner = () => {
     () => runEconomyOp('net', buyNet, purchaseNetApi),
     [runEconomyOp, buyNet],
   );
+  const handleBuyMultiplier = useCallback(
+    (type: 'luck' | 'strength', power: number = 2) => {
+      const p: 2 | 4 = power === 4 ? 4 : 2;
+      return runEconomyOp('multiplier', () => buyMultiplier(type, p), key => purchaseMultiplierApi(key, type, p));
+    },
+    [runEconomyOp, buyMultiplier],
+  );
 
   let content: JSX.Element;
   if (screen === 'locations') {
@@ -118,7 +125,7 @@ const IndexInner = () => {
   } else if (screen === 'submarine') {
     content = <SubmarineFishing player={player} onCatch={handleCatch} onBack={() => setScreen('menu')} />;
   } else if (screen === 'multiplier') {
-    content = <MultiplierShop player={player} onBuy={buyMultiplier} onBack={() => setScreen('menu')} />;
+    content = <MultiplierShop player={player} onBuy={handleBuyMultiplier} buying={busyOp === 'multiplier'} onBack={() => setScreen('menu')} />;
   } else if (screen === 'skins') {
     content = <SkinsShop player={player} onBuy={buySkin} onEquip={equipSkin} onBack={() => setScreen('menu')} onOpenBoatVisuals={() => setScreen('boatSkins')} />;
   } else if (screen === 'boatSkins') {

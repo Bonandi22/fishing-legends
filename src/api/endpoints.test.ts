@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import * as client from './client';
-import { register, login, logout, getMe, getGameState, putGameState, sellWarehouse, purchaseNet } from './endpoints';
+import { register, login, logout, getMe, getGameState, putGameState, sellWarehouse, purchaseNet, purchaseMultiplier } from './endpoints';
 
 describe('endpoints', () => {
   it('register POSTs /auth/register with the body', async () => {
@@ -57,6 +57,13 @@ describe('endpoints', () => {
     const spy = vi.spyOn(client, 'apiFetch').mockResolvedValue({ state: {}, updatedAt: null, version: 3 } as never);
     await purchaseNet('idem-key-9876543210');
     expect(spy).toHaveBeenCalledWith('/me/economy/nets/purchase', { method: 'POST', idempotencyKey: 'idem-key-9876543210' });
+    spy.mockRestore();
+  });
+
+  it('purchaseMultiplier POSTs /me/economy/multipliers/purchase with the body and idempotency key', async () => {
+    const spy = vi.spyOn(client, 'apiFetch').mockResolvedValue({ state: {}, updatedAt: null, version: 4 } as never);
+    await purchaseMultiplier('idem-key-multmultmult', 'luck', 4);
+    expect(spy).toHaveBeenCalledWith('/me/economy/multipliers/purchase', { method: 'POST', body: { type: 'luck', power: 4 }, idempotencyKey: 'idem-key-multmultmult' });
     spy.mockRestore();
   });
 });
