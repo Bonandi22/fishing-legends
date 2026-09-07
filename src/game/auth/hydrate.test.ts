@@ -21,7 +21,8 @@ describe('hydrateFromServer', () => {
     });
     const replace = vi.fn();
     const res = await hydrateFromServer(replace);
-    expect(res).toEqual({ kind: 'loaded', version: 5 });
+    expect(res).toMatchObject({ kind: 'loaded', version: 5 });
+    expect(res.player).toMatchObject({ level: 7, coins: 900, totalFishCaught: 20 });
     const applied = replace.mock.calls[0][0]({ level: 1, coins: 0 });
     expect(applied).toMatchObject({ level: 7, coins: 900, totalFishCaught: 20 });
   });

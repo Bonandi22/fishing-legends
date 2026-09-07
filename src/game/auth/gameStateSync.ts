@@ -2,10 +2,11 @@ import { useCallback, useEffect, useRef } from 'react';
 import type { PlayerState } from '@/game/types';
 import { SAVE_SCHEMA_VERSION } from '@/game/persistence';
 import { ApiError } from '@/api/client';
-import { putGameState } from '@/api/endpoints';
+import { getGameState, putGameState } from '@/api/endpoints';
 import { hydrateFromServer, type HydrateResult } from './hydrate';
 
 const DEBOUNCE_MS = 4000;
+const POLL_MS = 45_000;
 
 /** Read the `dbl_csrf` cookie the same way `src/api/client.ts` `csrfToken()` does. */
 function csrfToken(): string | null {
@@ -23,6 +24,20 @@ function isVersionConflict(err: unknown): boolean {
 }
 
 /**
+ * JSON with object keys sorted, so the dirty-check compares content, not key order.
+ * `replaceFromServer` merges (`{ ...prev, ...server }`), which reorders keys relative
+ * to a fresh server blob — a plain `JSON.stringify` would see those as different and
+ * push the server state straight back (version ping-pong between two idle tabs).
+ * Arrays keep their order (it is meaningful in `PlayerState`).
+ */
+function stableStringify(value: unknown): string {
+  if (value === null || typeof value !== 'object') return JSON.stringify(value) ?? 'null';
+  if (Array.isArray(value)) return `[${value.map(stableStringify).join(',')}]`;
+  const obj = value as Record<string, unknown>;
+  return `{${Object.keys(obj).sort().map(k => `${JSON.stringify(k)}:${stableStringify(obj[k])}`).join(',')}}`;
+}
+
+/**
  * Pushes the player's game state to the server while they play, with optimistic
  * concurrency:
  * - `start()` (called by `afterAuth`) loads the server blob, replaces local state,
@@ -31,6 +46,9 @@ function isVersionConflict(err: unknown): boolean {
  *   base version; a successful PUT advances it. A `STATE_VERSION_CONFLICT` means
  *   another device wrote — the hook re-runs `hydrateFromServer` (pull + replace +
  *   reseed) and the next change pushes again.
+ * - a background `GET /me/state` every 45s (only while the tab is visible, and not
+ *   while a PUT is in flight): if the server version is ahead of ours, another
+ *   device saved — pull + replace. Still last-write-wins by blob; no field merge.
  * - an immediate keepalive `fetch` on `pagehide` / tab hide (survives unload;
  *   `navigator.sendBeacon` can't set the CSRF header, so we use `fetch`).
  * - `flushNow()` for logout: clears the timer and awaits a PUT now.
@@ -57,6 +75,7 @@ export function useGameStateSync({
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const baseVersion = useRef<number | null>(null);
   const lastSent = useRef<string | null>(null);
+  const busy = useRef(false);
 
   const envelope = useCallback(
     (): GameStateEnvelope => ({ schemaVersion: SAVE_SCHEMA_VERSION, player: playerRef.current }),
@@ -74,7 +93,11 @@ export function useGameStateSync({
     const res = await hydrateFromServer(replaceRef.current);
     if (res.kind === 'loaded') {
       baseVersion.current = res.version;
-      lastSent.current = null; // the replaced state is server-fresh; let the next real change push
+      // Mark the just-applied server state as already sent, so the debounce that
+      // fires after `replace()` re-renders does not push it straight back.
+      lastSent.current = res.player
+        ? stableStringify({ schemaVersion: SAVE_SCHEMA_VERSION, player: res.player })
+        : null;
     }
     return res;
   }, []);
@@ -82,8 +105,9 @@ export function useGameStateSync({
   /** Send the current envelope once. Best-effort: resolves on any failure. */
   const push = useCallback(async () => {
     if (!enabledRef.current) return;
-    const body = JSON.stringify(envelope());
+    const body = stableStringify(envelope());
     if (body === lastSent.current) return;
+    busy.current = true;
     try {
       const { version } = await putGameState(envelope(), baseVersion.current);
       baseVersion.current = version;
@@ -94,8 +118,28 @@ export function useGameStateSync({
         await resync();
       }
       // other failures: retried on the next change
+    } finally {
+      busy.current = false;
     }
   }, [envelope, resync]);
+
+  /** Background check: if the server version is ahead of ours, another device saved. */
+  const poll = useCallback(async () => {
+    if (!enabledRef.current || busy.current) return;
+    if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
+    busy.current = true;
+    try {
+      const { version } = await getGameState();
+      if (version != null && baseVersion.current != null && version > baseVersion.current) {
+        console.warn('game state changed on another device; pulling the server state');
+        await resync();
+      }
+    } catch {
+      /* transient; the next tick retries */
+    } finally {
+      busy.current = false;
+    }
+  }, [resync]);
 
   const start = useCallback(async (): Promise<HydrateResult['kind']> => {
     const res = await resync();
@@ -103,7 +147,7 @@ export function useGameStateSync({
       try {
         const { version } = await putGameState(envelope(), null);
         baseVersion.current = version;
-        lastSent.current = JSON.stringify(envelope());
+        lastSent.current = stableStringify(envelope());
       } catch {
         /* best-effort adopt */
       }
@@ -129,6 +173,20 @@ export function useGameStateSync({
     }, DEBOUNCE_MS);
     return clearTimer;
   }, [player, enabled, clearTimer, push]);
+
+  // Background pull: every 45s while enabled and visible, plus one on becoming visible.
+  useEffect(() => {
+    if (!enabled) return;
+    const id = setInterval(() => { void poll(); }, POLL_MS);
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') void poll();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      clearInterval(id);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, [enabled, poll]);
 
   // Flush on tab close / hide. keepalive lets the request outlive the document.
   useEffect(() => {

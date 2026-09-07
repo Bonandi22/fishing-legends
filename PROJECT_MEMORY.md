@@ -1593,3 +1593,50 @@ sem merge campo-a-campo (fatia C).
   `ImportSaveDialog.tsx` e os wrappers `previewMigration`/`importMigration` (mortos
   desde o 10.2). Os endpoints backend `/api/v1/migration/local/*` **ficaram** (isolados,
   testados, na OpenAPI — base para uma futura ferramenta "importar save antigo").
+
+### Task 10.2 fatia B — pull periódico — branch `feature/task-10-2b-periodic-pull` — 2026-09-07
+
+Completa o multi-dispositivo do 10.2: um dispositivo apanha uma gravação de outro em
+~45 s, sem reload. Ainda **sem merge campo-a-campo** (isso é a fatia C).
+
+- Tarefa *bounded*, brainstorm em chat, TDD. Só `gameStateSync.ts` + `hydrate.ts`
+  (+ testes). API do hook, `Index.tsx`, backend — intocados.
+- Commits: `cb37dd7` (hydrate devolve `player`), `eccd9f8` (pull periódico),
+  `25c2725` (dirty-check independente de ordem de chaves).
+
+#### `useGameStateSync` — o poll
+
+- `useEffect` com `setInterval(POLL_MS = 45_000)`, ativo só com `enabled` **e**
+  separador visível; `clearInterval` + listener de `visibilitychange` no cleanup.
+- Cada tick (`poll`): salta se `busy` (um `PUT` em curso — `push` marca `busy`) ou
+  separador escondido. `GET /me/state` → se `version > baseVersion.current` →
+  `resync()` (pull + `replace` + re-semeia) + `console.warn`.
+- `visibilitychange → visible` → um `poll()` imediato.
+
+#### Melhorias de suporte
+
+- `hydrateFromServer` passa a devolver `{ kind, version, player? }` (o `player`
+  aplicado). `resync` usa-o para semear `lastSent`, para o debounce a seguir ao
+  `replace` não re-empurrar o estado acabado de puxar.
+- `stableStringify` (chaves de objeto ordenadas) no dirty-check: o `replaceFromServer`
+  faz merge (`{ ...prev, ...server }`) que reordena chaves vs. um blob fresco — um
+  `JSON.stringify` simples via-os diferentes e re-empurrava o estado puxado (ping-pong
+  de versões entre dois separadores parados). Arrays mantêm ordem.
+
+#### Verificação (2026-09-07)
+
+- `tsc app` ✅ · `backend:typecheck` ✅ · `lint` ✅ (0 erros, 12 avisos) ·
+  `npm test` ✅ **48 ficheiros, 273 testes** · `build` ✅. Integração não corrida
+  (backend intocado).
+- **Smoke browser** (Playwright, stack Docker):
+  1. separador parado + autenticado → só `GET` a cada ~45 s, **zero `PUT`** (ping-pong
+     resolvido) ao longo de ~200 s;
+  2. escrita fora-de-banda (servidor v10, coins 3131) → após ~45 s o ecrã passa a
+     3131 **sozinho** + `console.warn` "game state changed on another device";
+  3. **1 `PUT` redundante** logo após cada pull cross-device, depois quiescente (um
+     campo do merge do `replaceFromServer` ainda difere do blob puro — ver limitação).
+- **Limitação conhecida**: 1 `PUT` de conteúdo idêntico por cada pull cross-device
+  (a versão sobe). Num único separador estabiliza logo; entre 2 separadores
+  continuamente ativos há uma alternância lenta de ~1 `PUT`/45 s cada, sem perda de
+  dados. Fecha-se fazendo o `replaceFromServer` um replace verdadeiro (não merge) ou
+  na fatia C.
