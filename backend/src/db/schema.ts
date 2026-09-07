@@ -10,6 +10,7 @@ import {
   jsonb,
   numeric,
   pgTable,
+  primaryKey,
   text,
   timestamp,
   uniqueIndex,
@@ -147,6 +148,16 @@ export const playerGameState = pgTable('player_game_state', {
   version: integer('version').notNull().default(1),
 });
 
+export const gameStateOperations = pgTable('game_state_operations', {
+  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  idempotencyKey: text('idempotency_key').notNull(),
+  operation: text('operation').notNull(),
+  result: jsonb('result').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => ({
+  pk: primaryKey({ name: 'game_state_operations_idempotency_pk', columns: [t.userId, t.idempotencyKey] }),
+}));
+
 export const wallets = pgTable('wallets', {
   userId: uuid('user_id').primaryKey().references(() => users.id, { onDelete: 'cascade' }),
   balance: bigint('balance', { mode: 'number' }).notNull().default(0),
@@ -220,6 +231,7 @@ export const schema = {
   seasons,
   playerProgress,
   playerGameState,
+  gameStateOperations,
   wallets,
   walletTransactions,
   dailyRewardClaims,
