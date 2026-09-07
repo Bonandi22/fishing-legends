@@ -1799,3 +1799,11 @@ Segunda op do padrão (ordem acordada: rede → multiplicador → skin). Branch
 - Verificação: `tsc app` ✅ · `backend:typecheck` ✅ · `lint` ✅ 0 erros · `npm test` ✅
   **302** · `build` ✅ · `test:integration` ✅ **61** (Postgres local, migração 0018
   aplicada).
+- Smoke browser (stack Docker): UI "Comprar 1 rede" → `POST .../nets/purchase` 200,
+  moedas −5000, redes +1, sem `PUT` redundante; replay → sem duplo débito; sem fundos
+  → `409 INSUFFICIENT_FUNDS`, nada escrito.
+- **Integrado na `main`**: PR `Bonandi22/deep-blue-lure#22` merged em `03bc80e`.
+  Branch `feature/task-10-3-economy-net-purchase` apagada. `main` verde (302 + 61).
+- **Próximo**: fatia 3 = compra de multiplicador (`buyMultiplier`) — primeiro endpoint
+  de economia com body `{ type, power }`; depois fatia 4 = skin (`buySkin`, o servidor
+  passa a possuir os preços). Roletas/prendas ficam para depois.
