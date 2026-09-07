@@ -35,8 +35,10 @@ import { registerRewardsRoutes } from './rewards/routes.js';
 import { createMemoryRewardsService } from './rewards/memoryRepository.js';
 import { createPgRewardsService } from './rewards/pgRepository.js';
 import { registerGameStateRoutes } from './gamestate/routes.js';
-import { createMemoryGameStateService } from './gamestate/memoryService.js';
+import { createMemoryGameStateService, createMemoryGameStateStore } from './gamestate/memoryService.js';
 import { createPgGameStateService } from './gamestate/pgRepository.js';
+import { registerGameStateEconomyRoutes } from './gamestate/economyRoutes.js';
+import { createMemoryGameStateEconomyService, createPgGameStateEconomyService } from './gamestate/economyService.js';
 import { registerSecurityHooks } from './security/http.js';
 import { registerSeasonsRoutes } from './seasons/routes.js';
 import { createMemorySeasonsService } from './seasons/service.js';
@@ -110,7 +112,13 @@ export async function createApp({ config }: AppDependencies): Promise<FastifyIns
     : createMemoryLeaderboardService(playerRepository);
   const rewardsService = database ? createPgRewardsService(database) : createMemoryRewardsService();
   const seasonsService = database ? createPgSeasonsService(database) : createMemorySeasonsService();
-  const gameStateService = database ? createPgGameStateService(database) : createMemoryGameStateService();
+  const memoryGameStateStore = database ? undefined : createMemoryGameStateStore();
+  const gameStateService = database
+    ? createPgGameStateService(database)
+    : createMemoryGameStateService(memoryGameStateStore);
+  const gameStateEconomyService = database
+    ? createPgGameStateEconomyService(database)
+    : createMemoryGameStateEconomyService(memoryGameStateStore!);
   void registerAuthRoutes(app, authService, cookieCfg);
   registerPlayerRoutes(app, playerRepository);
   registerMigrationRoutes(app, migrationService);
@@ -118,6 +126,7 @@ export async function createApp({ config }: AppDependencies): Promise<FastifyIns
   registerRewardsRoutes(app, rewardsService);
   registerSeasonsRoutes(app, seasonsService);
   registerGameStateRoutes(app, gameStateService);
+  registerGameStateEconomyRoutes(app, gameStateEconomyService);
   const catalogService = createCatalogService();
   registerCatalogRoutes(app, catalogService);
   const economyService = database ? createPgEconomyService(database) : createMemoryEconomyService();
