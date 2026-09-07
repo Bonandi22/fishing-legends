@@ -24,6 +24,20 @@ function isVersionConflict(err: unknown): boolean {
 }
 
 /**
+ * JSON with object keys sorted, so the dirty-check compares content, not key order.
+ * `replaceFromServer` merges (`{ ...prev, ...server }`), which reorders keys relative
+ * to a fresh server blob — a plain `JSON.stringify` would see those as different and
+ * push the server state straight back (version ping-pong between two idle tabs).
+ * Arrays keep their order (it is meaningful in `PlayerState`).
+ */
+function stableStringify(value: unknown): string {
+  if (value === null || typeof value !== 'object') return JSON.stringify(value) ?? 'null';
+  if (Array.isArray(value)) return `[${value.map(stableStringify).join(',')}]`;
+  const obj = value as Record<string, unknown>;
+  return `{${Object.keys(obj).sort().map(k => `${JSON.stringify(k)}:${stableStringify(obj[k])}`).join(',')}}`;
+}
+
+/**
  * Pushes the player's game state to the server while they play, with optimistic
  * concurrency:
  * - `start()` (called by `afterAuth`) loads the server blob, replaces local state,
@@ -82,7 +96,7 @@ export function useGameStateSync({
       // Mark the just-applied server state as already sent, so the debounce that
       // fires after `replace()` re-renders does not push it straight back.
       lastSent.current = res.player
-        ? JSON.stringify({ schemaVersion: SAVE_SCHEMA_VERSION, player: res.player })
+        ? stableStringify({ schemaVersion: SAVE_SCHEMA_VERSION, player: res.player })
         : null;
     }
     return res;
@@ -91,7 +105,7 @@ export function useGameStateSync({
   /** Send the current envelope once. Best-effort: resolves on any failure. */
   const push = useCallback(async () => {
     if (!enabledRef.current) return;
-    const body = JSON.stringify(envelope());
+    const body = stableStringify(envelope());
     if (body === lastSent.current) return;
     busy.current = true;
     try {
@@ -133,7 +147,7 @@ export function useGameStateSync({
       try {
         const { version } = await putGameState(envelope(), null);
         baseVersion.current = version;
-        lastSent.current = JSON.stringify(envelope());
+        lastSent.current = stableStringify(envelope());
       } catch {
         /* best-effort adopt */
       }

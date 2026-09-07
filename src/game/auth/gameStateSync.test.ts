@@ -54,6 +54,19 @@ describe('useGameStateSync — debounced push', () => {
     expect(endpoints.putGameState).toHaveBeenCalledTimes(1);
   });
 
+  it('the dirty-check ignores object key order (no ping-pong re-push after a pull)', async () => {
+    // server hands back the same content the local state has, but key order differs
+    // (replaceFromServer merges, which reorders). A plain JSON.stringify would see a
+    // difference and push it straight back, bumping the version forever between tabs.
+    vi.spyOn(hydrateModule, 'hydrateFromServer').mockResolvedValue({
+      kind: 'loaded', version: 3, player: { coins: 500, level: 9 } as never,
+    });
+    const { result } = mount({ player: { level: 9, coins: 500 } as never, enabled: true });
+    await result.current.start();
+    await vi.advanceTimersByTimeAsync(4000);
+    expect(endpoints.putGameState).not.toHaveBeenCalled();
+  });
+
   it('does not PUT when the player serializes identically to the last sent', async () => {
     const { rerender } = mount({ player: mkPlayer({ level: 2 }), enabled: true });
     rerender({ player: mkPlayer({ level: 3 }), enabled: true });
