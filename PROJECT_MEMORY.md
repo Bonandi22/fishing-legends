@@ -1257,3 +1257,133 @@ rede) fica intacto.
   completo: puxar → abrir → haul, 1440px).
 
 **Task 9 completa** — todas as telas do jogo repaginadas na linguagem "deep blue".
+
+### Task 10.1 — Fundação de auth (httpOnly cookies + proxy /api + cliente) — branch `feature/task-10-1-auth-foundation` — 2026-09-07
+
+Primeira fatia da Task 10: o frontend passa a ter **sessão real via cookies httpOnly**
+servidos same-origin. Ainda **não** consome o backend para o loop de jogo — o
+`localStorage` continua a ser a store viva. Só troca identidade/progresso na
+autenticação e importa o save local uma vez no 1º login.
+
+- **Spec**: `docs/superpowers/specs/2026-09-06-task-10-1-auth-foundation-design.md`
+- **Plano**: `docs/superpowers/plans/2026-09-06-task-10-1-auth-foundation.md`
+- Commits `f2508f3..772891d` (13 tasks de implementação); esta secção = Task 14
+  (verificação + registo).
+
+#### Backend — auth por cookie + CSRF
+
+- `@fastify/cookie@^11` adicionado. `config/env.ts` ganha `COOKIE_SECURE`
+  (default `true`) e `COOKIE_DOMAIN` (opcional).
+- `backend/src/auth/cookies.ts` (novo) — helpers `setAuthCookies` / `clearAuthCookies`
+  / `readAccessToken` / `readRefreshToken` / `readCsrfCookie` / `generateCsrfToken`
+  + tipo `CookieConfig`. `COOKIE_DOMAIN` só entra nos 3 cookies quando definido.
+
+  | Cookie | Conteúdo | Atributos |
+  |---|---|---|
+  | `dbl_at` | JWT de acesso | `HttpOnly; Secure=<COOKIE_SECURE>; SameSite=Lax; Path=/api; Max-Age=ACCESS_TOKEN_TTL_SECONDS` |
+  | `dbl_rt` | refresh token | `HttpOnly; Secure; SameSite=Strict; Path=/api/v1/auth; Max-Age=REFRESH_TOKEN_TTL_SECONDS` |
+  | `dbl_csrf` | 32 bytes aleatórios base64url (**não** HttpOnly) | `Secure; SameSite=Lax; Path=/api; Max-Age=REFRESH_TOKEN_TTL_SECONDS` |
+
+- `auth/routes.ts`: `register` → `201 { user }` + 3 cookies; `login` → `200 { user }`
+  + 3 cookies; `refresh` → lê o cookie `dbl_rt` (o `refreshSchema` do body foi
+  removido), rotaciona, re-emite os 3 cookies, responde **204** sem body; `logout`
+  → limpa os 3 cookies, mantém `preHandler: requireAuth`, 204. `registerAuthRoutes`
+  ganhou um 3º parâmetro `cookieCfg`.
+- `auth/middleware.ts` `createRequireAuth`: lê o cookie `dbl_at` primeiro, com
+  fallback para `Authorization: Bearer` (mantido para clientes não-browser/testes).
+- `security/http.ts` — **CSRF double-submit** no hook `onRequest`: mutações
+  `POST|PUT|PATCH|DELETE` sob `/api/v1/` (exceto `/api/v1/auth/login` e
+  `/api/v1/auth/register`) exigem `X-CSRF-Token` == cookie `dbl_csrf`, senão
+  **403 `CSRF_FAILED`**. **Só é aplicado quando existe o cookie `dbl_csrf`** — uma
+  mutação sem cookie cai para o 401 da própria rota (preserva
+  `refresh`-sem-cookie → `401 INVALID_REFRESH_TOKEN`). `x-csrf-token` adicionado a
+  `access-control-allow-headers`. `CSRF_FAILED` → 403 em `http/errors.ts`.
+- `backend/src/testing/authClient.ts` (novo) — `registerAndAuth(app, overrides?)`:
+  cookie jar + CSRF/Idempotency-Key automáticos nas mutações. `app.test.ts`
+  totalmente migrado; mantido um teste explícito do fallback `Authorization: Bearer`.
+  **Nenhum `*.integration.test.ts` precisou de mudar** (exercitam repos/serviços PG
+  diretamente, não a auth HTTP).
+
+#### Proxy `/api` same-origin
+
+- `vite.config.ts`: proxy de dev `/api` → `process.env.VITE_API_BASE_URL ||
+  'http://localhost:8090'`, `changeOrigin`.
+- `docker/nginx.conf`: `location /api/` → `proxy_pass http://backend:8090` (antes de
+  `location /`).
+- `compose.yaml`: frontend `VITE_API_BASE_URL: http://backend:8090`.
+- `.env.example` / `.env.docker.example` (+ `.env.docker`, git-ignored) ganham
+  `COOKIE_SECURE=false` / `COOKIE_DOMAIN=`.
+
+#### Frontend — cliente API + contexto de auth + UI
+
+- `src/api/client.ts` (novo) — `apiFetch<T>(path, { method?, body?, idempotencyKey? })`:
+  base relativa `/api/v1`, `credentials: 'same-origin'`, `X-CSRF-Token` (do cookie
+  `dbl_csrf`) + `Idempotency-Key` nas mutações, um retry `401 → POST /auth/refresh →
+  repete` (de-dupado; não para paths `/auth/`; em falha de refresh chama o callback
+  de `setLoggedOutHandler` e lança), erro tipado `ApiError { status, code }`, `204 →
+  undefined`. `src/api/types.ts` escrito à mão (`ApiUser`, `PlayerProfile`,
+  `MigrationPreview`, `MigrationResult`).
+- `src/api/endpoints.ts` (novo) — `register` / `login` / `logout` / `getMe` /
+  `previewMigration` / `importMigration`.
+- `src/game/auth/AuthProvider.tsx` (novo) — `AuthProvider` + `useAuth()` →
+  `{ status: 'loading'|'anonymous'|'authenticated', user, login, register, logout }`.
+  `getMe()` no mount (qualquer rejeição → anonymous). `src/game/auth/countries.ts`
+  (novo) — `COUNTRIES` (16 bandeiras) + `flagToIso2` / `iso2ToFlag` (🌍 → `ZZ`),
+  movidos para fora de `account.ts`.
+- `src/game/auth/hydrate.ts` (novo) — `hydrateFromServer(replace)` one-shot: mapeia
+  `GET /me` → parcial de `PlayerState` (`level`, `xp`, `xpToNextLevel =
+  getXpForLevel(level)`, `totalFishCaught`, `coins`, `unlockedLocations`).
+  `useGameState` ganhou `replaceFromServer(partial)` (merge shallow + persist
+  existente). O `localStorage` continua a ser a store viva do jogo em 10.1.
+- `src/game/auth/importFlow.ts` (novo) — `maybeOfferImport` / `runImport`
+  (+ `IMPORT_DONE_KEY = 'dbl-import-done'`). `src/components/game/menu/
+  ImportSaveDialog.tsx` (novo). 1º login com save local e ainda não importado →
+  diálogo de preview → `POST /migration/local/import` → marca feito + re-hidrata.
+  "Agora não" **não** marca feito (re-oferecido no login seguinte).
+- `src/components/game/menu/AccountModal.tsx` — reescrita completa: 2 passos
+  (`signup`: email / password / username / país; `login`: email / password),
+  guiada por `useAuth()`, **birthdate removido**, mensagens de erro via i18n
+  `auth.err.<code>`. `account.ts` reduzido a apenas `TUTORIAL_KEY`.
+- `src/components/game/MainMenu.tsx` — chip de conta a partir de
+  `useAuth().user.username` (ou `menu.register` quando anónimo).
+- `src/pages/Index.tsx` — `<AuthProvider>` monta à volta de todo o render de
+  `IndexInner` (a cadeia de early-returns foi refatorada para um único valor
+  `content` primeiro, para o provider nunca remontar na navegação).
+  `onAuthenticated` → hidrata + eventualmente oferece import.
+- `src/game/i18n.tsx` — **19 chaves `auth.*` novas nos 6 idiomas**:
+  `auth.emailLabel`, `auth.passwordLabel`, `auth.passwordHint`, `auth.usernameLabel`,
+  `auth.countryLabel`, `auth.signupCta`, `auth.loginCta`, `auth.logoutCta`,
+  `auth.haveAccount`, `auth.needAccount`, `auth.importTitle`, `auth.importBody`,
+  `auth.importYes`, `auth.importNo`, e `auth.err.{VALIDATION,ACCOUNT,USERNAME,INVALID,NETWORK}`.
+
+#### Fora de âmbito (10.2–10.5)
+
+Leituras contínuas de `/me` / `/wallet` / `/catalog` / `/leaderboard` / `/inventory`;
+escritas de economia/pesca via API; ranking/temporadas reais; geração de tipos a
+partir do OpenAPI; CSP da SPA.
+
+#### Verificação (Task 14, 2026-09-07)
+
+- `npx tsc --noEmit -p tsconfig.app.json` ✅ — "No errors found".
+- `npm run backend:typecheck` (`tsc -p tsconfig.backend.json`) ✅ — 0 erros.
+- `npm run lint` ✅ — **0 erros, 12 avisos** (todos `react-refresh/only-export-components`,
+  pré-existentes; `AuthProvider.tsx` acrescenta 1, a extração de `NetFishing` na
+  Task 9 tinha removido 1 → líquido 12).
+- `npm test` ✅ — **47 ficheiros, 222 testes** (inclui `backend/src/auth/{cookies,routes}.test.ts`,
+  `backend/src/security/{http,csrf}.test.ts`, `src/api/endpoints.test.ts`,
+  `src/game/auth/{hydrate,importFlow}.test.ts`).
+- `npm run build` ✅ — `vite build` em ~13s (aviso pré-existente de chunk > 500 kB).
+- `npm run test:integration` ✅ — **8 ficheiros, 45 testes**, contra `postgres:16-alpine`
+  local (`docker compose up -d postgres`; `backend:db:migrate` → "No pending
+  migrations"). Task 10.1 não tocou nenhum `*.integration.test.ts`.
+- **Smoke HTTP do backend** (stack via `docker compose up -d --build backend` —
+  a imagem tinha de ser reconstruída porque `@fastify/cookie` é nova): `register`
+  → `201` + `Set-Cookie` dos 3 cookies com os atributos da tabela acima (`Secure`
+  ausente porque `COOKIE_SECURE=false` no `.env.docker`); `logout` com cookie e sem
+  `X-CSRF-Token` → `403 CSRF_FAILED`; com header válido → `204`; `refresh` sem
+  cookie → `401 INVALID_REFRESH_TOKEN`.
+- **Pendente (utilizador)**: smoke do contentor **frontend** no browser em
+  `http://localhost:8080` (`docker compose up --build`) — cookies `dbl_at` /
+  `dbl_rt` / `dbl_csrf` visíveis, reload mantém sessão, logout limpa, diálogo de
+  import no 1º login, erro "já existe uma conta" com email repetido; e revisão do
+  diff.
