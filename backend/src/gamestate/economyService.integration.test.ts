@@ -89,6 +89,46 @@ describe('pg game-state economy service (integration)', () => {
     expect(ops).toHaveLength(0);
   });
 
+  it('concurrent same-key: both resolve identically, exactly one op row, version 2 not 3', async () => {
+    const userId = await seedUser();
+    await gameState.put(userId, blob(oneFish), null);
+
+    const key = 'idem-key-int-race-same';
+    const [a, b] = await Promise.all([
+      economy.sellWarehouse(userId, key),
+      economy.sellWarehouse(userId, key),
+    ]);
+
+    expect(a).toEqual(b);
+    expect(a.version).toBe(2);
+    expect(a.state.player.warehouse).toEqual([]);
+
+    const ops = await harness.db.select().from(gameStateOperations).where(eq(gameStateOperations.userId, userId));
+    expect(ops).toHaveLength(1);
+    expect((await gameState.get(userId))!.version).toBe(2);
+  });
+
+  it('concurrent different keys: exactly one sells (v2), the other loses the lock race with WAREHOUSE_EMPTY', async () => {
+    const userId = await seedUser();
+    await gameState.put(userId, blob(oneFish), null);
+
+    const settled = await Promise.allSettled([
+      economy.sellWarehouse(userId, 'idem-key-int-race-diff-a'),
+      economy.sellWarehouse(userId, 'idem-key-int-race-diff-b'),
+    ]);
+
+    const fulfilled = settled.filter(s => s.status === 'fulfilled') as PromiseFulfilledResult<{ version: number }>[];
+    const rejected = settled.filter(s => s.status === 'rejected') as PromiseRejectedResult[];
+    expect(fulfilled).toHaveLength(1);
+    expect(fulfilled[0].value.version).toBe(2);
+    expect(rejected).toHaveLength(1);
+    expect((rejected[0].reason as Error).message).toBe('WAREHOUSE_EMPTY');
+
+    const ops = await harness.db.select().from(gameStateOperations).where(eq(gameStateOperations.userId, userId));
+    expect(ops).toHaveLength(1);
+    expect((await gameState.get(userId))!.version).toBe(2);
+  });
+
   it('deleting the user cascades game_state_operations', async () => {
     const userId = await seedUser();
     await gameState.put(userId, blob(oneFish), null);
