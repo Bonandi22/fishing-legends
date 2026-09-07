@@ -21,8 +21,9 @@ import { useBackgroundMusic } from '@/game/useBackgroundMusic';
 import { I18nProvider } from '@/game/i18n';
 import { AuthProvider } from '@/game/auth/AuthProvider';
 import { hydrateFromServer } from '@/game/auth/hydrate';
-import { maybeOfferImport, runImport, IMPORT_DONE_KEY, type ImportPreview } from '@/game/auth/importFlow';
-import ImportSaveDialog from '@/components/game/menu/ImportSaveDialog';
+import { useGameStateSync } from '@/game/auth/gameStateSync';
+import { putGameState } from '@/api/endpoints';
+import { SAVE_SCHEMA_VERSION } from '@/game/persistence';
 import { FishingLocation, Fish } from '@/game/types';
 
 type Screen = 'menu' | 'locations' | 'fishing' | 'collection' | 'warehouse' | 'submarine' | 'multiplier' | 'skins' | 'boatSkins' | 'roulette' | 'skinRoulette' | 'ranking' | 'aquarium' | 'dailyGifts' | 'net' | 'netShop';
@@ -37,6 +38,8 @@ const IndexInner = () => {
     replaceFromServer,
   } = useGameState();
   const { isPlaying: musicPlaying, toggle: toggleMusic, trackId: musicTrack, setTrack: setMusicTrack } = useBackgroundMusic();
+  const [syncEnabled, setSyncEnabled] = useState(false);
+  const { flushNow } = useGameStateSync({ player, enabled: syncEnabled });
   const [screen, setScreen] = useState<Screen>('menu');
   const [selectedLocation, setSelectedLocation] = useState<FishingLocation | null>(null);
   const [world, setWorld] = useState<1 | 2 | 3>(() => {
@@ -125,41 +128,24 @@ const IndexInner = () => {
     );
   }
 
-  const [importPreview, setImportPreview] = useState<ImportPreview | null>(null);
-
   const afterAuth = async () => {
-    // Offer the import BEFORE hydrating: the dialog describes the local save, and
-    // reading it must not race a hydrate-driven state/localStorage write.
-    await maybeOfferImport({ onPreview: setImportPreview });
-    await hydrateFromServer(replaceFromServer).catch(() => {});
+    // The server blob is authoritative: load it and replace local state. On a first
+    // login with no server state, adopt the local save as the account's starting point.
+    const res = await hydrateFromServer(replaceFromServer);
+    setSyncEnabled(res.kind !== 'error');
+    if (res.kind === 'empty') {
+      await putGameState({ schemaVersion: SAVE_SCHEMA_VERSION, player }).catch(() => {});
+    }
   };
 
   const handleLoggedOut = () => {
+    setSyncEnabled(false);
     resetProgress();
-    try { localStorage.removeItem(IMPORT_DONE_KEY); } catch { /* ignore */ }
-    setImportPreview(null);
-  };
-
-  const confirmImport = async () => {
-    if (!importPreview) return;
-    let imported = true;
-    // Silent on failure by design: there is no toast surface yet (out of scope for
-    // 10.1). We still dismiss the dialog so the user is not stuck, and we skip the
-    // re-hydrate — afterAuth already hydrated, and re-running it on a failed import
-    // would only look like the import had succeeded.
-    await runImport(importPreview.raw).catch(() => { imported = false; });
-    setImportPreview(null);
-    if (imported) await hydrateFromServer(replaceFromServer).catch(() => {});
   };
 
   return (
-    <AuthProvider onAuthenticated={afterAuth} onLoggedOut={handleLoggedOut}>
+    <AuthProvider onAuthenticated={afterAuth} onBeforeLogout={flushNow} onLoggedOut={handleLoggedOut}>
       {content}
-      <ImportSaveDialog
-        preview={importPreview}
-        onImport={confirmImport}
-        onDismiss={() => setImportPreview(null)}
-      />
     </AuthProvider>
   );
 };

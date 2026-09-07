@@ -72,6 +72,30 @@ describe('AuthProvider', () => {
     expect(onLoggedOut).toHaveBeenCalledTimes(1);
   });
 
+  it('logout awaits onBeforeLogout BEFORE endpoints.logout', async () => {
+    vi.spyOn(endpoints, 'getMe').mockResolvedValue({ user: { userId: 'u1', username: 'A', email: 'e', country: 'BR' } } as never);
+    const order: string[] = [];
+    vi.spyOn(endpoints, 'logout').mockImplementation(async () => { order.push('logout'); });
+    const onBeforeLogout = vi.fn(async () => { order.push('before'); });
+    render(<AuthProvider onBeforeLogout={onBeforeLogout}><Probe /></AuthProvider>);
+    await waitFor(() => expect(screen.getByTestId('status').textContent).toBe('authenticated'));
+    fireEvent.click(screen.getByText('logout'));
+    await waitFor(() => expect(screen.getByTestId('status').textContent).toBe('anonymous'));
+    expect(order).toEqual(['before', 'logout']);
+  });
+
+  it('session-expiry does NOT call onBeforeLogout', async () => {
+    let sessionExpired: (() => void) | null = null;
+    vi.spyOn(client, 'setLoggedOutHandler').mockImplementation((fn) => { sessionExpired = fn; });
+    vi.spyOn(endpoints, 'getMe').mockResolvedValue({ user: { userId: 'u1', username: 'A', email: 'e', country: 'BR' } } as never);
+    const onBeforeLogout = vi.fn();
+    render(<AuthProvider onBeforeLogout={onBeforeLogout}><Probe /></AuthProvider>);
+    await waitFor(() => expect(screen.getByTestId('status').textContent).toBe('authenticated'));
+    act(() => { sessionExpired!(); });
+    await waitFor(() => expect(screen.getByTestId('status').textContent).toBe('anonymous'));
+    expect(onBeforeLogout).not.toHaveBeenCalled();
+  });
+
   it('session-expiry (setLoggedOutHandler callback) goes anonymous WITHOUT firing onLoggedOut', async () => {
     let sessionExpired: (() => void) | null = null;
     vi.spyOn(client, 'setLoggedOutHandler').mockImplementation((fn) => { sessionExpired = fn; });

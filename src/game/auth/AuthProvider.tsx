@@ -15,13 +15,15 @@ export interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-export function AuthProvider({ children, onAuthenticated, onLoggedOut }: { children: ReactNode; onAuthenticated?: () => void | Promise<void>; onLoggedOut?: () => void }) {
+export function AuthProvider({ children, onAuthenticated, onLoggedOut, onBeforeLogout }: { children: ReactNode; onAuthenticated?: () => void | Promise<void>; onLoggedOut?: () => void; onBeforeLogout?: () => void | Promise<void> }) {
   const [status, setStatus] = useState<AuthStatus>('loading');
   const [user, setUser] = useState<ApiUser | null>(null);
   const onAuthRef = useRef(onAuthenticated);
   onAuthRef.current = onAuthenticated;
   const onLoggedOutRef = useRef(onLoggedOut);
   onLoggedOutRef.current = onLoggedOut;
+  const onBeforeLogoutRef = useRef(onBeforeLogout);
+  onBeforeLogoutRef.current = onBeforeLogout;
 
   const enter = useCallback(async (u: ApiUser) => {
     setUser(u);
@@ -49,6 +51,7 @@ export function AuthProvider({ children, onAuthenticated, onLoggedOut }: { child
   }, [enter]);
 
   const logout = useCallback(async () => {
+    try { await onBeforeLogoutRef.current?.(); } catch { /* best-effort flush */ }
     try { await endpoints.logout(); } finally { setUser(null); setStatus('anonymous'); }
     onLoggedOutRef.current?.();
   }, []);
