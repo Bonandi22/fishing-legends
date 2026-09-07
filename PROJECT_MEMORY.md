@@ -1589,5 +1589,7 @@ sem merge campo-a-campo (fatia C).
 - Próximo do 10.x (ver "o que falta" acordado): 10.2 fatia B (pull periódico),
   10.3 (economia server-autoritativa + reestruturar o blob em colunas), 10.4
   (pesca/inventário), 10.5 (ranking/temporadas reais, tipos do OpenAPI, CSP).
-- Código morto a limpar numa fatia própria: `src/game/auth/importFlow.ts`,
-  `ImportSaveDialog.tsx`, rotas `/api/v1/migration/local/*`.
+- **Limpeza feita**: PR `#19` merged em `2445ef2` — removidos `src/game/auth/importFlow.ts`,
+  `ImportSaveDialog.tsx` e os wrappers `previewMigration`/`importMigration` (mortos
+  desde o 10.2). Os endpoints backend `/api/v1/migration/local/*` **ficaram** (isolados,
+  testados, na OpenAPI — base para uma futura ferramenta "importar save antigo").
