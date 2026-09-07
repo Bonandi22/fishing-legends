@@ -1500,6 +1500,8 @@ mantidos por agora; remover numa limpeza posterior.
 - **Não exercido de forma determinística**: o caminho keepalive em `pagehide`
   (código presente, listeners registados; o plano remete-o para teste manual). O
   debounce cobriu o mesmo `PUT` várias vezes.
-- **Pendente (utilizador)**: repetir o fluxo no próprio browser (fisgar um peixe
-  real → logout → login → peixe lembrado; fechar o separador → login → progresso
-  mantido) e rever o diff.
+- **Teste manual do utilizador**: confirmado a funcionar no browser dele
+  (`Bonandi22/deep-blue-lure#17`, 2026-09-07).
+- **PR aberto**: `Bonandi22/deep-blue-lure#17` — base `main`, junta a fundação de
+  auth 10.1 + esta sincronização de estado (34 commits). A aguardar revisão do diff
+  e decisão de merge.
