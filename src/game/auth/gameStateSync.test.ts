@@ -268,3 +268,47 @@ describe('useGameStateSync — pagehide keepalive', () => {
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 });
+
+describe('useGameStateSync — applyServerResult', () => {
+  const validEnvelope = (over: Record<string, unknown> = {}) => ({
+    schemaVersion: SAVE_SCHEMA_VERSION,
+    player: {
+      level: 7, xp: 60, xpToNextLevel: 700, totalFishCaught: 20,
+      collection: [], unlockedLocations: ['atlantic'], heaviestFish: null, warehouse: [],
+      coins: 900, activeSkin: 'default', ownedSkins: ['default'], activeBoatSkin: 'classic', ownedBoatSkins: ['classic'],
+      luckMultiplierEnd: null, strengthMultiplierEnd: null, lastRouletteDate: null,
+      aquariumWarehouse: [], aquariumSectors: { 1: [], 2: [], 3: [], 4: [], 5: [] },
+      dailyGiftsLastClaim: null, dailyGiftsDay: 1, dailyGiftsWeek: 1, nets: 10,
+      ...over,
+    },
+  });
+
+  it('replaces local state, seeds the base version, and does not trigger a PUT', async () => {
+    const replace = vi.fn();
+    const { result, rerender } = renderHook(
+      ({ player, enabled }) => useGameStateSync({ player, enabled, replace }),
+      { initialProps: { player: mkPlayer({ level: 1 }) as never, enabled: true } },
+    );
+    result.current.applyServerResult({ state: validEnvelope({ coins: 1234 }), version: 9 });
+    expect(replace).toHaveBeenCalledTimes(1);
+    const applied = replace.mock.calls[0][0]({ level: 1 });
+    expect(applied).toMatchObject({ coins: 1234, level: 7 });
+
+    // a following debounce cycle must not push (dirty-check: the applied state is "already sent")
+    rerender({ player: applied as never, enabled: true });
+    await vi.advanceTimersByTimeAsync(4000);
+    expect(endpoints.putGameState).not.toHaveBeenCalled();
+  });
+
+  it('ignores an invalid envelope', () => {
+    const replace = vi.fn();
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const { result } = renderHook(
+      ({ player, enabled }) => useGameStateSync({ player, enabled, replace }),
+      { initialProps: { player: mkPlayer({ level: 1 }) as never, enabled: true } },
+    );
+    result.current.applyServerResult({ state: { schemaVersion: 1, player: { level: 0 } }, version: 3 });
+    expect(replace).not.toHaveBeenCalled();
+    expect(warn).toHaveBeenCalled();
+  });
+});

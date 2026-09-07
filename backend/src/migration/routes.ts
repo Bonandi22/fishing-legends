@@ -3,6 +3,7 @@ import type { FastifyInstance } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 import type { createMemoryMigrationService } from './memoryRepository.js';
 import type { createPgMigrationService } from './pgRepository.js';
+import { idempotencyKey } from '../http/idempotency.js';
 
 type MigrationService = ReturnType<typeof createMemoryMigrationService> | ReturnType<typeof createPgMigrationService>;
 
@@ -27,8 +28,7 @@ export function registerMigrationRoutes(app: FastifyInstance, migration: Migrati
     preHandler: app.requireAuth,
     bodyLimit: LOCAL_SAVE_BODY_LIMIT,
   }, async request => {
-    const key = request.headers['idempotency-key'];
-    if (typeof key !== 'string' || key.length < 16 || key.length > 128) throw new Error('INVALID_IDEMPOTENCY_KEY');
+    const key = idempotencyKey(request.headers['idempotency-key']);
     return migration.import(request.userId, request.body, key);
   });
 }

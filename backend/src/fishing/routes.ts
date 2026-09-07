@@ -2,6 +2,7 @@ import { z } from 'zod';
 import type { FastifyInstance } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 import type { createFishingService } from './service.js';
+import { idempotencyKey } from '../http/idempotency.js';
 
 type FishingService = ReturnType<typeof createFishingService>;
 
@@ -16,8 +17,7 @@ export function registerFishingRoutes(app: FastifyInstance, fishingService: Fish
     },
     preHandler: app.requireAuth,
   }, async request => {
-    const key = request.headers['idempotency-key'];
-    if (typeof key !== 'string' || key.length < 16 || key.length > 128) throw new Error('INVALID_IDEMPOTENCY_KEY');
+    const key = idempotencyKey(request.headers['idempotency-key']);
     return fishingService.start(request.userId, request.body.locationId, key);
   });
 

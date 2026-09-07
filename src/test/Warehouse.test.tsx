@@ -62,4 +62,22 @@ describe('Warehouse', () => {
     fireEvent.click(screen.getByRole('button', { name: /voltar/i }));
     expect(onBack).toHaveBeenCalledTimes(1);
   });
+
+  it('disables the sell-all control while a sale is in flight', () => {
+    render(
+      <I18nProvider>
+        <Warehouse player={makePlayer([stored('atum', 40)])} selling onSell={vi.fn()} onBack={vi.fn()} />
+      </I18nProvider>,
+    );
+    expect(screen.getByRole('button', { name: /XP/ })).toBeDisabled();
+  });
+
+  it('keeps the sell-all control enabled when not selling and the warehouse has fish', () => {
+    render(
+      <I18nProvider>
+        <Warehouse player={makePlayer([stored('atum', 40)])} onSell={vi.fn()} onBack={vi.fn()} />
+      </I18nProvider>,
+    );
+    expect(screen.getByRole('button', { name: /XP/ })).toBeEnabled();
+  });
 });

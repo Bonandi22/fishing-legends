@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import * as client from './client';
-import { register, login, logout, getMe, getGameState, putGameState } from './endpoints';
+import { register, login, logout, getMe, getGameState, putGameState, sellWarehouse } from './endpoints';
 
 describe('endpoints', () => {
   it('register POSTs /auth/register with the body', async () => {
@@ -43,6 +43,13 @@ describe('endpoints', () => {
     const spy = vi.spyOn(client, 'apiFetch').mockResolvedValue({ version: 1 } as never);
     await putGameState({ schemaVersion: 1, player: { level: 1 } }, null);
     expect(spy).toHaveBeenCalledWith('/me/state', { method: 'PUT', body: { state: { schemaVersion: 1, player: { level: 1 } }, baseVersion: null } });
+    spy.mockRestore();
+  });
+
+  it('sellWarehouse POSTs /me/economy/warehouse/sell with the idempotency key', async () => {
+    const spy = vi.spyOn(client, 'apiFetch').mockResolvedValue({ state: {}, updatedAt: null, version: 2 } as never);
+    await sellWarehouse('idem-key-0123456789');
+    expect(spy).toHaveBeenCalledWith('/me/economy/warehouse/sell', { method: 'POST', idempotencyKey: 'idem-key-0123456789' });
     spy.mockRestore();
   });
 });

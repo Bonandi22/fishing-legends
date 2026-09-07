@@ -1653,3 +1653,112 @@ Completa o multi-dispositivo do 10.2: um dispositivo apanha uma gravação de ou
   na fatia C.
 - **Teste manual do utilizador**: confirmado a funcionar em 2 browsers em simultâneo
   (2026-09-07).
+
+### Task 10.3 fatia 1 — venda do armazém server-autoritativa — 2026-09-07
+
+Primeira fatia da economia server-autoritativa: a "vender tudo" do armazém passa a
+ser executada pelo servidor quando o jogador está autenticado. O cliente anónimo
+continua a correr a regra pura local. Marca o **padrão** para todas as fatias de
+economia seguintes.
+
+- **Spec** (autoridade): `docs/superpowers/specs/2026-09-07-server-economy-warehouse-sell.md`
+- **Plano**: `docs/superpowers/plans/2026-09-07-server-economy-warehouse-sell.md`
+- **Ledger SDD**: `.superpowers/sdd/2026-09-07-server-economy-warehouse-sell/`
+- Branch `feature/task-10-3-economy-warehouse-sell`. Tarefas 1–7 do plano.
+
+#### Backend
+
+- **`game_state_operations`** (migração `0017_game_state_operations.sql`, espelhada em
+  `db/schema.ts`): tabela de replay/idempotência para mutações sobre o blob
+  `player_game_state`. PK `(user_id, idempotency_key)`, FK `user_id` com
+  `ON DELETE CASCADE`, guarda `operation` + `result` (jsonb) + `created_at`. Uma
+  segunda chamada com a mesma `Idempotency-Key` devolve o `result` gravado sem tocar
+  no estado. A **identidade de replay é `(user_id, operation, idempotency_key)`** —
+  tanto o serviço em memória (chave do Map) como o pg (`WHERE` do `readRecordedResult`)
+  incluem `operation`, para uma `Idempotency-Key` reutilizada entre dois endpoints de
+  economia não devolver o envelope do primeiro.
+- **Retenção**: cada linha guarda um envelope `{ state, version }` **completo** (o blob
+  inteiro do jogador). Aceitável para uma operação de baixa frequência como a venda do
+  armazém; **antes** de migrar operações de alta frequência (captura, aquário) é
+  preciso um job de retenção/prune de `game_state_operations` — follow-up conhecido.
+- **`POST /api/v1/me/economy/warehouse/sell`** (`backend/src/gamestate/economyRoutes.ts`):
+  `requireAuth` + CSRF + `Idempotency-Key` (16–128 chars). Numa transação:
+  `SELECT ... FOR UPDATE` da linha de estado, corre `stateRules.sellWarehouse` sobre
+  o `player` do blob, grava o novo blob com `version + 1`, insere a linha de replay,
+  devolve `{ state, version }` (mesma forma do envelope de `/me/state`, sem `updatedAt`).
+  Armazém vazio → lança `WAREHOUSE_EMPTY` → **HTTP 422**, nada escrito (nem blob nem
+  linha de replay, a transação faz rollback). Sem linha de estado → `GAME_STATE_NOT_FOUND`.
+  O double-check pré-lock/pós-lock de `game_state_operations` assume **READ COMMITTED**
+  (o default do projeto).
+- Serviço em memória (`economyService`) e pg (`economyPgService`) partilham o mesmo
+  contrato e o mesmo `MemoryGameStateStore` partilhado registado em `app.ts`.
+- Testes: `gamestate/economyRoutes.test.ts` (6 — venda, replay, vazio, 401, 403, 400),
+  `gamestate/economyService.test.ts` (memória — venda, replay, vazio, not-found, F2
+  replay com chave escopada à operação),
+  `gamestate/economyService.integration.test.ts` (6 — txn, replay, vazio, cascade +
+  **concorrência**: mesma chave → resultado idêntico / 1 linha / versão 2; chaves
+  diferentes → só uma vende, a outra perde a corrida ao lock com `WAREHOUSE_EMPTY`),
+  `economy/pricing.test.ts`.
+
+#### Frontend
+
+- **`src/api/endpoints.ts`** — `sellWarehouse(idempotencyKey): Promise<GameStateEnvelope>`.
+- **`useGameStateSync().applyServerResult({ state, version })`** — valida o envelope
+  com `saveSchema`, substitui o estado local (`replaceFromServer`), re-semeia a versão
+  base da concorrência otimista e marca o blob como "já enviado" (via
+  `adoptServerState`, fatorado da lógica de `resync`), de modo que o debounce que
+  dispara a seguir ao re-render **não** faz um `PUT` redundante. Envelope inválido →
+  `console.warn`, no-op.
+- **`src/pages/Index.tsx`** — `handleSellWarehouse` ramifica por `syncEnabled`:
+  - `!syncEnabled` (anónimo / GET inicial falhou) → `sellWarehouse()` local do
+    `useGameState` (regra pura).
+  - autenticado → `setSelling(true)` → **`await flushNow()`** (persiste o blob local
+    pendente antes de o servidor vender — sem isto uma captura feita nos últimos 4s
+    perde-se) → `applyServerResult(await sellWarehouseApi(crypto.randomUUID()))`
+    → `catch` `console.warn` → `finally` `setSelling(false)`.
+  - Ramifica em `syncEnabled` e **não** no estado de auth porque `IndexInner` é quem
+    renderiza `<AuthProvider>` e por isso não pode chamar `useAuth()`.
+- **`src/components/game/Warehouse.tsx`** — prop `selling?: boolean`; o botão
+  "vender tudo" fica `disabled={selling || warehouse.length === 0}`. Sem label de
+  "a processar" (não há chave i18n reutilizável e não se adiciona string por
+  traduzir); o estado desativado é o comportamento garantido.
+- Testes: `test/Warehouse.test.tsx` (botão desativado enquanto `selling`, ativo caso
+  contrário), mais os testes de `applyServerResult` e do wrapper de endpoint das
+  fatias 5–6.
+
+#### O padrão (para as fatias de economia seguintes)
+
+Redes / multiplicadores / skins / roletas / prendas diárias / captura / aquário
+seguem todas esta forma:
+
+1. `POST /api/v1/me/economy/<op>` (ou `/me/<área>/<op>`) — `requireAuth` + CSRF +
+   `Idempotency-Key`, transação com `FOR UPDATE` sobre a linha de `player_game_state`,
+   corre a **regra pura de `src/game/stateRules.ts`** sobre o blob, `version + 1`,
+   linha em `game_state_operations`, devolve `{ state, version }`.
+2. Cliente: wrapper em `endpoints.ts`. No handler, **`await flushNow()` ANTES** da
+   chamada ao servidor (persiste qualquer mutação local pendente do debounce de 4s —
+   sem isto o servidor corre a operação sobre um blob obsoleto e `applyServerResult`
+   sobrescreve o que ainda não foi enviado), depois `applyServerResult(await <op>Api(...))`.
+   Padrão: **flush → operação no servidor → applyServerResult**.
+3. `Index.tsx` (ou o componente dono do handler) ramifica em `syncEnabled`: servidor
+   quando autenticado, regra pura local quando anónimo. **Mesma regra dos dois lados.**
+4. Componente recebe uma prop `<verbo>ing?: boolean` para desativar o controlo
+   enquanto a chamada está em curso.
+
+#### Endpoints dormentes superados
+
+Os `/api/v1/economy/*` e `/api/v1/inventory/*` (e as tabelas `wallets`,
+`wallet_ledger`, `player_catches`, `player_items`) deixam de ser o caminho para o
+jogador autenticado — a economia autoritativa vive agora no blob
+`player_game_state` + `game_state_operations`. Continuam isolados, testados e na
+OpenAPI; **pendente uma limpeza** numa tarefa própria depois de as fatias de
+economia estarem todas migradas.
+
+#### Verificação (2026-09-07)
+
+- `tsc app` ✅ · `backend:typecheck` ✅ · `lint` ✅ (0 erros, 12 avisos) ·
+  `npm test` ✅ **50 ficheiros, 288 testes** · `build` ✅ ·
+  `test:integration` ✅ **10 ficheiros, 55 testes** (Postgres local, migrações já
+  aplicadas).
+- **Smoke browser na stack Docker**: deferido para o controlador da sessão SDD
+  (passo 6 do brief).

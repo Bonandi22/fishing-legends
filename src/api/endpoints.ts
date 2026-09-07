@@ -21,3 +21,6 @@ export function getGameState(): Promise<GameStateEnvelope> {
 export function putGameState(state: unknown, baseVersion: number | null): Promise<{ version: number }> {
   return apiFetch('/me/state', { method: 'PUT', body: { state, baseVersion } });
 }
+export function sellWarehouse(idempotencyKey: string): Promise<GameStateEnvelope> {
+  return apiFetch('/me/economy/warehouse/sell', { method: 'POST', idempotencyKey });
+}
