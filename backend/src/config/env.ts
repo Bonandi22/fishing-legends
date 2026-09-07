@@ -13,6 +13,8 @@ const envSchema = z.object({
   RATE_LIMIT_MAX: z.coerce.number().int().positive().default(120),
   RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(60_000),
   TRUST_PROXY: z.string().default('false'),
+  COOKIE_SECURE: z.enum(['true', 'false']).default('true'),
+  COOKIE_DOMAIN: z.string().trim().optional(),
 });
 
 export type TrustProxy = boolean | string[];
@@ -30,6 +32,8 @@ export type AppConfig = {
   rateLimitMax: number;
   rateLimitWindowMs: number;
   trustProxy: TrustProxy;
+  cookieSecure: boolean;
+  cookieDomain?: string;
 };
 
 /**
@@ -61,5 +65,7 @@ export function loadConfig(source: NodeJS.ProcessEnv = process.env): AppConfig {
     rateLimitMax: parsed.RATE_LIMIT_MAX,
     rateLimitWindowMs: parsed.RATE_LIMIT_WINDOW_MS,
     trustProxy: parseTrustProxy(parsed.TRUST_PROXY),
+    cookieSecure: parsed.COOKIE_SECURE === 'true',
+    cookieDomain: parsed.COOKIE_DOMAIN && parsed.COOKIE_DOMAIN.length > 0 ? parsed.COOKIE_DOMAIN : undefined,
   };
 }

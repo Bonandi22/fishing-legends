@@ -1,5 +1,6 @@
 import Fastify, { type FastifyInstance, type FastifyServerOptions } from 'fastify';
 import fastifySwagger from '@fastify/swagger';
+import cookie from '@fastify/cookie';
 import { jsonSchemaTransform, serializerCompiler, validatorCompiler } from 'fastify-type-provider-zod';
 import type { AppConfig } from './config/env.js';
 import { registerErrorHandling } from './http/errors.js';
@@ -55,6 +56,7 @@ export async function createApp({ config }: AppDependencies): Promise<FastifyIns
     bodyLimit: 128 * 1024,
   };
   const app = Fastify(serverOptions);
+  await app.register(cookie);
   app.setValidatorCompiler(validatorCompiler);
   app.setSerializerCompiler(serializerCompiler);
   await app.register(fastifySwagger, {

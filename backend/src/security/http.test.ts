@@ -16,6 +16,7 @@ const baseConfig: AppConfig = {
   rateLimitMax: 2,
   rateLimitWindowMs: 60_000,
   trustProxy: false,
+  cookieSecure: false,
 };
 
 const apps = new Set<Awaited<ReturnType<typeof createApp>>>();
