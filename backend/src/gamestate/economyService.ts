@@ -46,11 +46,17 @@ export function createPgGameStateEconomyService(db: Database): GameStateEconomyS
   return {
     async sellWarehouse(userId, idempotencyKey) {
       return db.transaction(async (tx) => {
-        const prior = await tx.select({ result: gameStateOperations.result })
-          .from(gameStateOperations)
-          .where(and(eq(gameStateOperations.userId, userId), eq(gameStateOperations.idempotencyKey, idempotencyKey)))
-          .limit(1);
-        if (prior[0]) return prior[0].result as Result;
+        const readRecordedResult = async (): Promise<Result | null> => {
+          const found = await tx.select({ result: gameStateOperations.result })
+            .from(gameStateOperations)
+            .where(and(eq(gameStateOperations.userId, userId), eq(gameStateOperations.idempotencyKey, idempotencyKey)))
+            .limit(1);
+          return found[0] ? (found[0].result as Result) : null;
+        };
+
+        // Fast path: a prior operation already recorded (common sequential retry).
+        const priorResult = await readRecordedResult();
+        if (priorResult) return priorResult;
 
         // Lock the row: the UPDATE below is keyed on user_id only (no version
         // guard in the WHERE), so without FOR UPDATE two concurrent ops both
@@ -59,6 +65,16 @@ export function createPgGameStateEconomyService(db: Database): GameStateEconomyS
           .where(eq(playerGameState.userId, userId)).limit(1).for('update');
         const row = rows[0];
         if (!row) throw new Error('GAME_STATE_NOT_FOUND');
+
+        // Race guard: under READ COMMITTED, a concurrent request with the same
+        // (userId, idempotencyKey) may have committed its sale — emptying the
+        // warehouse and inserting the operation row — while we waited on the
+        // lock above. Re-read the operation row now that we hold the lock and
+        // replay its recorded result, before computeSale would spuriously throw
+        // WAREHOUSE_EMPTY. Task 4's integration test exercises the concurrent
+        // path; it is not deterministically reproducible at the unit layer.
+        const lockedPriorResult = await readRecordedResult();
+        if (lockedPriorResult) return lockedPriorResult;
 
         const envelope = saveSchema.parse(row.state);
         const nextPlayer = computeSale(envelope);

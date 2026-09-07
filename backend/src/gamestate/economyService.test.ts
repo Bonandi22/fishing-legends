@@ -58,4 +58,13 @@ describe('memory game-state economy service — sellWarehouse', () => {
     const svc = createMemoryGameStateEconomyService(createMemoryGameStateStore());
     await expect(svc.sellWarehouse('ghost', 'idem-key-dddddddddddd')).rejects.toThrow('GAME_STATE_NOT_FOUND');
   });
+
+  // The pg service double-checks `game_state_operations` a second time AFTER
+  // taking the `FOR UPDATE` lock on `player_game_state`: under READ COMMITTED a
+  // concurrent same-key request can commit its sale (emptying the warehouse)
+  // while we wait on the lock, and without the post-lock re-read `computeSale`
+  // would throw a spurious WAREHOUSE_EMPTY on the retry race instead of
+  // replaying the recorded result. That race is not deterministically
+  // reproducible against the single-threaded memory store; Task 4's integration
+  // test asserts the concurrent behaviour against a real PostgreSQL.
 });
