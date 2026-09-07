@@ -74,13 +74,19 @@ const IndexInner = () => {
     if (!syncEnabled) { sellWarehouse(); return; }
     setSelling(true);
     try {
+      // Persist any pending local mutation (e.g. a fish caught within the last
+      // debounce window) BEFORE the server sells: otherwise the server runs the
+      // sale on a stale blob and `applyServerResult` overwrites the un-pushed
+      // fish. `flushNow` no-ops when nothing is dirty; a version conflict inside
+      // it self-heals via `resync`.
+      await flushNow();
       applyServerResult(await sellWarehouseApi(crypto.randomUUID()));
     } catch {
       console.warn('warehouse sell failed; state unchanged');
     } finally {
       setSelling(false);
     }
-  }, [syncEnabled, sellWarehouse, applyServerResult]);
+  }, [syncEnabled, sellWarehouse, flushNow, applyServerResult]);
 
   let content: JSX.Element;
   if (screen === 'locations') {
