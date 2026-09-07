@@ -21,10 +21,15 @@ function computeSale(envelope: SaveEnvelope): SaveEnvelope['player'] {
 }
 
 export function createMemoryGameStateEconomyService(store: MemoryGameStateStore): GameStateEconomyService {
-  const ops = new Map<string, Result>(); // key: `${userId}:${idempotencyKey}`
+  // F2: the replay identity is (userId, operation, idempotencyKey) — NOT just
+  // (userId, idempotencyKey). Once slices 2–7 add more economy endpoints, a
+  // client that reuses one Idempotency-Key across two of them must not get the
+  // first op's recorded envelope back from the second. The pg service enforces
+  // the same by adding `eq(gameStateOperations.operation, OP)` to its lookup.
+  const ops = new Map<string, Result>(); // key: `${userId}:${OP}:${idempotencyKey}`
   return {
     async sellWarehouse(userId, idempotencyKey) {
-      const opKey = `${userId}:${idempotencyKey}`;
+      const opKey = `${userId}:${OP}:${idempotencyKey}`;
       const seen = ops.get(opKey);
       if (seen) return seen;
 
@@ -45,11 +50,23 @@ export function createMemoryGameStateEconomyService(store: MemoryGameStateStore)
 export function createPgGameStateEconomyService(db: Database): GameStateEconomyService {
   return {
     async sellWarehouse(userId, idempotencyKey) {
+      // The pre-lock / post-lock double read of `game_state_operations` assumes
+      // READ COMMITTED (the project default): the post-lock read must see a row
+      // a concurrent same-key transaction committed while we waited on the lock.
+      // Under REPEATABLE READ the post-lock read would still see the frozen
+      // snapshot and the `UPDATE` below would raise a serialization error.
       return db.transaction(async (tx) => {
         const readRecordedResult = async (): Promise<Result | null> => {
+          // F2: scope the replay lookup to this operation, not just
+          // (userId, idempotencyKey) — a key reused across two economy endpoints
+          // must not replay the wrong op's envelope.
           const found = await tx.select({ result: gameStateOperations.result })
             .from(gameStateOperations)
-            .where(and(eq(gameStateOperations.userId, userId), eq(gameStateOperations.idempotencyKey, idempotencyKey)))
+            .where(and(
+              eq(gameStateOperations.userId, userId),
+              eq(gameStateOperations.operation, OP),
+              eq(gameStateOperations.idempotencyKey, idempotencyKey),
+            ))
             .limit(1);
           return found[0] ? (found[0].result as Result) : null;
         };
@@ -71,8 +88,9 @@ export function createPgGameStateEconomyService(db: Database): GameStateEconomyS
         // warehouse and inserting the operation row — while we waited on the
         // lock above. Re-read the operation row now that we hold the lock and
         // replay its recorded result, before computeSale would spuriously throw
-        // WAREHOUSE_EMPTY. Task 4's integration test exercises the concurrent
-        // path; it is not deterministically reproducible at the unit layer.
+        // WAREHOUSE_EMPTY. Covered by the "concurrent same-key" and
+        // "concurrent different keys" cases in economyService.integration.test.ts
+        // (real PostgreSQL); not deterministically reproducible at the unit layer.
         const lockedPriorResult = await readRecordedResult();
         if (lockedPriorResult) return lockedPriorResult;
 

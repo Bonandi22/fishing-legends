@@ -59,12 +59,28 @@ describe('memory game-state economy service — sellWarehouse', () => {
     await expect(svc.sellWarehouse('ghost', 'idem-key-dddddddddddd')).rejects.toThrow('GAME_STATE_NOT_FOUND');
   });
 
+  it('F2: the replay key is scoped to the operation, so same-op replay still hits', async () => {
+    // The memory `ops` Map is keyed `${userId}:${OP}:${idempotencyKey}`. A second
+    // sellWarehouse with the same key still replays (proves the OP segment does
+    // not break the happy path). A genuine cross-operation collision test lands
+    // with slice 2, when a second economy endpoint exists to reuse the key from.
+    const store = createMemoryGameStateStore();
+    store.set('u1', { state: withFish(), updatedAt: 'now', version: 1 });
+    const svc = createMemoryGameStateEconomyService(store);
+
+    const first = await svc.sellWarehouse('u1', 'idem-key-f2-aaaaaaaaaa');
+    const replay = await svc.sellWarehouse('u1', 'idem-key-f2-aaaaaaaaaa');
+    expect(replay).toEqual(first);
+    expect(store.get('u1')!.version).toBe(2);
+  });
+
   // The pg service double-checks `game_state_operations` a second time AFTER
   // taking the `FOR UPDATE` lock on `player_game_state`: under READ COMMITTED a
   // concurrent same-key request can commit its sale (emptying the warehouse)
   // while we wait on the lock, and without the post-lock re-read `computeSale`
   // would throw a spurious WAREHOUSE_EMPTY on the retry race instead of
   // replaying the recorded result. That race is not deterministically
-  // reproducible against the single-threaded memory store; Task 4's integration
-  // test asserts the concurrent behaviour against a real PostgreSQL.
+  // reproducible against the single-threaded memory store; the "concurrent
+  // same-key" and "concurrent different keys" cases in
+  // economyService.integration.test.ts assert it against a real PostgreSQL.
 });
