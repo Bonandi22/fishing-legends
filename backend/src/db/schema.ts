@@ -144,6 +144,7 @@ export const playerGameState = pgTable('player_game_state', {
   userId: uuid('user_id').primaryKey().references(() => users.id, { onDelete: 'cascade' }),
   state: jsonb('state').notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  version: integer('version').notNull().default(1),
 });
 
 export const wallets = pgTable('wallets', {
