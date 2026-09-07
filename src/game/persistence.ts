@@ -65,7 +65,7 @@ const playerSchema = z.object({
   dailyGiftsWeek: z.number().int().min(1).optional(),
 }) as z.ZodType<PlayerState>;
 
-const saveSchema = z.object({
+export const saveSchema = z.object({
   schemaVersion: z.literal(SAVE_SCHEMA_VERSION),
   player: playerSchema,
 });
