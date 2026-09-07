@@ -1419,3 +1419,87 @@ partir do OpenAPI; CSP da SPA.
   `dbl_rt` / `dbl_csrf` visíveis, reload mantém sessão, logout limpa, diálogo de
   import no 1º login, erro "já existe uma conta" com email repetido; e revisão do
   diff.
+
+### Persistência de estado de jogo no servidor (núcleo do 10.2, feito na branch do 10.1) — 2026-09-07
+
+A conta passa a lembrar o progresso entre logout/login e entre dispositivos. O
+frontend carrega o `PlayerState` guardado no servidor ao autenticar e empurra-o
+continuamente enquanto joga. **Último-a-gravar-ganha**; guarda de versão/merge fica
+para o 10.2 completo.
+
+- **Spec**: `docs/superpowers/specs/2026-09-07-server-game-state-sync-design.md`
+- **Plano**: `docs/superpowers/plans/2026-09-07-server-game-state-sync.md`
+- Commits `37c6649..4cb54af` (Tasks 1–8); esta secção = Task 9 (verificação + registo).
+
+#### Backend
+
+- `backend/migrations/0015_player_game_state.sql` — tabela `player_game_state`
+  (`user_id uuid PK → users(id) ON DELETE CASCADE`, `state jsonb NOT NULL`,
+  `updated_at timestamptz`). Espelhada em `db/schema.ts` (`playerGameState`).
+- Módulo `backend/src/gamestate/` — `routes.ts` (fino), `memoryService.ts` (dev/teste
+  sem `DATABASE_URL`), `pgRepository.ts` (upsert `onConflictDoUpdate`). `app.ts`
+  escolhe por presença de `DATABASE_URL`. Tag OpenAPI `gamestate`.
+- `GET /api/v1/me/state` → `200 { state: <object>|null, updatedAt: <iso>|null }`.
+- `PUT /api/v1/me/state` → `204`; body `{ state }` validado contra o `saveSchema`
+  **do cliente** (`src/game/persistence.ts`, agora exportado); `bodyLimit` 2 MiB;
+  `preHandler: requireAuth`; mutação sob `/api/v1/` → exige `X-CSRF-Token`.
+- Testes: `gamestate/routes.test.ts` (5, memória, corre no `npm test`) +
+  `gamestate/pgRepository.integration.test.ts` (4, PostgreSQL real — round-trip,
+  `updated_at` estritamente crescente, cascade ao apagar o utilizador).
+
+#### Frontend
+
+- `src/api/endpoints.ts` — `getGameState()` / `putGameState(state)`;
+  `GameStateEnvelope` em `types.ts`.
+- `src/game/auth/hydrate.ts` — **reescrito**: carrega o blob e faz **replace** do
+  estado local (deixou de fazer merge de `GET /me`). Devolve
+  `{ kind: 'loaded' | 'empty' | 'error' }`. Blob inválido → `empty` (tratado como
+  sem estado).
+- `src/game/auth/gameStateSync.ts` (novo) — `useGameStateSync({ player, enabled })`:
+  `PUT` debounced ~4 s após a última mudança de `player`; `fetch` keepalive em
+  `pagehide` / `visibilitychange:hidden`; `flushNow()` para o logout. `enabled:false`
+  → inerte.
+- `src/game/auth/AuthProvider.tsx` — nova prop `onBeforeLogout?: () => void |
+  Promise<void>`, aguardada **antes** de `endpoints.logout()`; **não** dispara na
+  expiração de sessão (`setLoggedOutHandler`).
+- `src/pages/Index.tsx` — `afterAuth` carrega o blob (replace) e, se o servidor não
+  tem estado (`empty`), adota o save local com um `PUT` (sem diálogo). `useGameStateSync`
+  montado; `onBeforeLogout={flushNow}`; `handleLoggedOut` desliga o sync + `resetProgress()`.
+
+#### Depreca a fatia de import da Task 13
+
+`src/game/auth/importFlow.ts`, `src/components/game/menu/ImportSaveDialog.tsx` e
+`POST /api/v1/migration/local/{preview,import}` deixam de ser usados no fluxo
+autenticado (o diálogo de 1º login foi removido do `Index.tsx`). Ficheiros e rotas
+mantidos por agora; remover numa limpeza posterior.
+
+#### Verificação (Task 9, 2026-09-07)
+
+- `npx tsc --noEmit -p tsconfig.app.json` ✅ · `npm run backend:typecheck` ✅ ·
+  `npm run lint` ✅ (0 erros, 12 avisos pré-existentes) · `npm test` ✅
+  **49 ficheiros, 263 testes** · `npm run build` ✅.
+- `npm run test:integration` ✅ **9 ficheiros, 49 testes** contra `postgres:16-alpine`
+  local (inclui `gamestate/pgRepository.integration.test.ts`).
+- **Smoke HTTP backend** (curl, stack `docker compose`): `GET /me/state` anónimo →
+  `401`; registo → `GET` devolve `{state:null}`; `PUT` sem `X-CSRF-Token` → `403
+  CSRF_FAILED`; `PUT` com header → `204`; `GET` devolve o envelope exacto (level 9,
+  coins 1234).
+- **Smoke browser** (Playwright, `http://localhost:8080`) — todos verdes:
+  1. registo → chip de conta, **sem diálogo de import**;
+  2. presente diário + roleta → `PUT /me/state` `204` debounced;
+  3. logout pelo UI → `PUT /me/state` `204` **e depois** `POST /auth/logout` `204`
+     (ordem certa), jogo reinicia para nível 1 / 0 moedas;
+  4. novo login → blob do servidor carregado, moedas restauradas (1150), sem diálogo;
+  5. reload mantém sessão e restaura o estado;
+  6. 1º login de conta nova com save local (1150 moedas) + servidor vazio → adota o
+     save via `PUT` (servidor fica com 1150), sem diálogo;
+  7. `GET /me/state` autenticado → envelope; anónimo → `401`.
+- Os contentores `backend` e `frontend` tiveram de ser reiniciados (`docker compose
+  restart`) para o `tsx watch` / Vite apanharem a migração 0015 e a remoção do
+  `ImportSaveDialog`.
+- **Não exercido de forma determinística**: o caminho keepalive em `pagehide`
+  (código presente, listeners registados; o plano remete-o para teste manual). O
+  debounce cobriu o mesmo `PUT` várias vezes.
+- **Pendente (utilizador)**: repetir o fluxo no próprio browser (fisgar um peixe
+  real → logout → login → peixe lembrado; fechar o separador → login → progresso
+  mantido) e rever o diff.
