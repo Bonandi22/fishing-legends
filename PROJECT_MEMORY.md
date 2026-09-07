@@ -1651,3 +1651,5 @@ Completa o multi-dispositivo do 10.2: um dispositivo apanha uma gravação de ou
   continuamente ativos há uma alternância lenta de ~1 `PUT`/45 s cada, sem perda de
   dados. Fecha-se fazendo o `replaceFromServer` um replace verdadeiro (não merge) ou
   na fatia C.
+- **Teste manual do utilizador**: confirmado a funcionar em 2 browsers em simultâneo
+  (2026-09-07).
