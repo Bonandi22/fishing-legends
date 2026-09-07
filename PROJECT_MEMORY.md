@@ -1257,3 +1257,251 @@ rede) fica intacto.
   completo: puxar → abrir → haul, 1440px).
 
 **Task 9 completa** — todas as telas do jogo repaginadas na linguagem "deep blue".
+
+### Task 10.1 — Fundação de auth (httpOnly cookies + proxy /api + cliente) — branch `feature/task-10-1-auth-foundation` — 2026-09-07
+
+Primeira fatia da Task 10: o frontend passa a ter **sessão real via cookies httpOnly**
+servidos same-origin. Ainda **não** consome o backend para o loop de jogo — o
+`localStorage` continua a ser a store viva. Só troca identidade/progresso na
+autenticação e importa o save local uma vez no 1º login.
+
+- **Spec**: `docs/superpowers/specs/2026-09-06-task-10-1-auth-foundation-design.md`
+- **Plano**: `docs/superpowers/plans/2026-09-06-task-10-1-auth-foundation.md`
+- Commits `f2508f3..772891d` (13 tasks de implementação); esta secção = Task 14
+  (verificação + registo).
+
+#### Backend — auth por cookie + CSRF
+
+- `@fastify/cookie@^11` adicionado. `config/env.ts` ganha `COOKIE_SECURE`
+  (default `true`) e `COOKIE_DOMAIN` (opcional).
+- `backend/src/auth/cookies.ts` (novo) — helpers `setAuthCookies` / `clearAuthCookies`
+  / `readAccessToken` / `readRefreshToken` / `readCsrfCookie` / `generateCsrfToken`
+  + tipo `CookieConfig`. `COOKIE_DOMAIN` só entra nos 3 cookies quando definido.
+
+  | Cookie | Conteúdo | Atributos |
+  |---|---|---|
+  | `dbl_at` | JWT de acesso | `HttpOnly; Secure=<COOKIE_SECURE>; SameSite=Lax; Path=/api; Max-Age=ACCESS_TOKEN_TTL_SECONDS` |
+  | `dbl_rt` | refresh token | `HttpOnly; Secure; SameSite=Strict; Path=/api/v1/auth; Max-Age=REFRESH_TOKEN_TTL_SECONDS` |
+  | `dbl_csrf` | 32 bytes aleatórios base64url (**não** HttpOnly) | `Secure; SameSite=Lax; Path=/; Max-Age=REFRESH_TOKEN_TTL_SECONDS` (Path=/ — o JS tem de o ler via document.cookie na SPA servida em /) |
+
+  Migração de cookie: browsers que autenticaram antes da mudança de `Path=/api`
+  para `Path=/` guardam um `dbl_csrf` legado em `Path=/api` que mascara o novo no
+  servidor (`cookie.parse` é first-wins) → `403 CSRF_FAILED` permanente, incluindo
+  no logout. Correção: `setAuthCookies` (register/login/refresh) e
+  `clearAuthCookies` (logout) emitem também `clearCookie('dbl_csrf', { path: '/api' })`,
+  pelo que um browser pré-fix se auto-corrige no próximo auth. Remover o clear
+  legado ~30 dias após o deploy (todas as sessões pré-fix já rodaram — ver
+  `TODO(remove after 2026-10-07)` em `backend/src/auth/cookies.ts`).
+
+- `auth/routes.ts`: `register` → `201 { user }` + 3 cookies; `login` → `200 { user }`
+  + 3 cookies; `refresh` → lê o cookie `dbl_rt` (o `refreshSchema` do body foi
+  removido), rotaciona, re-emite os 3 cookies, responde **204** sem body; `logout`
+  → limpa os 3 cookies, mantém `preHandler: requireAuth`, 204. `registerAuthRoutes`
+  ganhou um 3º parâmetro `cookieCfg`.
+- `auth/middleware.ts` `createRequireAuth`: lê o cookie `dbl_at` primeiro, com
+  fallback para `Authorization: Bearer` (mantido para clientes não-browser/testes).
+- `security/http.ts` — **CSRF double-submit** no hook `onRequest`: mutações
+  `POST|PUT|PATCH|DELETE` sob `/api/v1/` (exceto `/api/v1/auth/login` e
+  `/api/v1/auth/register`) exigem `X-CSRF-Token` == cookie `dbl_csrf`, senão
+  **403 `CSRF_FAILED`**. **Só é aplicado quando existe o cookie `dbl_csrf`** — uma
+  mutação sem cookie cai para o 401 da própria rota (preserva
+  `refresh`-sem-cookie → `401 INVALID_REFRESH_TOKEN`). `x-csrf-token` adicionado a
+  `access-control-allow-headers`. `CSRF_FAILED` → 403 em `http/errors.ts`.
+- `backend/src/testing/authClient.ts` (novo) — `registerAndAuth(app, overrides?)`:
+  cookie jar + CSRF/Idempotency-Key automáticos nas mutações. `app.test.ts`
+  totalmente migrado; mantido um teste explícito do fallback `Authorization: Bearer`.
+  **Nenhum `*.integration.test.ts` precisou de mudar** (exercitam repos/serviços PG
+  diretamente, não a auth HTTP).
+
+#### Proxy `/api` same-origin
+
+- `vite.config.ts`: proxy de dev `/api` → `process.env.VITE_API_BASE_URL ||
+  'http://localhost:8090'`, `changeOrigin`.
+- `docker/nginx.conf`: `location /api/` → `proxy_pass http://backend:8090` (antes de
+  `location /`).
+- `compose.yaml`: frontend `VITE_API_BASE_URL: http://backend:8090`.
+- `.env.example` / `.env.docker.example` (+ `.env.docker`, git-ignored) ganham
+  `COOKIE_SECURE=false` / `COOKIE_DOMAIN=`.
+
+#### Frontend — cliente API + contexto de auth + UI
+
+- `src/api/client.ts` (novo) — `apiFetch<T>(path, { method?, body?, idempotencyKey? })`:
+  base relativa `/api/v1`, `credentials: 'same-origin'`, `X-CSRF-Token` (do cookie
+  `dbl_csrf`) + `Idempotency-Key` nas mutações, um retry `401 → POST /auth/refresh →
+  repete` (de-dupado; não para paths `/auth/`; em falha de refresh chama o callback
+  de `setLoggedOutHandler` e lança), erro tipado `ApiError { status, code }`, `204 →
+  undefined`. `src/api/types.ts` escrito à mão (`ApiUser`, `PlayerProfile`,
+  `MigrationPreview`, `MigrationResult`).
+- `src/api/endpoints.ts` (novo) — `register` / `login` / `logout` / `getMe` /
+  `previewMigration` / `importMigration`.
+- `src/game/auth/AuthProvider.tsx` (novo) — `AuthProvider` + `useAuth()` →
+  `{ status: 'loading'|'anonymous'|'authenticated', user, login, register, logout }`.
+  `getMe()` no mount (qualquer rejeição → anonymous). `src/game/auth/countries.ts`
+  (novo) — `COUNTRIES` (16 bandeiras) + `flagToIso2` / `iso2ToFlag` (🌍 → `ZZ`),
+  movidos para fora de `account.ts`.
+- `src/game/auth/hydrate.ts` (novo) — `hydrateFromServer(replace)` one-shot: mapeia
+  `GET /me` → parcial de `PlayerState` (`level`, `xp`, `xpToNextLevel =
+  getXpForLevel(level)`, `totalFishCaught`, `coins`, `unlockedLocations`).
+  `useGameState` ganhou `replaceFromServer(partial)` (merge shallow + persist
+  existente). O `localStorage` continua a ser a store viva do jogo em 10.1.
+- `src/game/auth/importFlow.ts` (novo) — `maybeOfferImport` / `runImport`
+  (+ `IMPORT_DONE_KEY = 'dbl-import-done'`). `src/components/game/menu/
+  ImportSaveDialog.tsx` (novo). 1º login com save local e ainda não importado →
+  diálogo de preview → `POST /migration/local/import` → marca feito + re-hidrata.
+  "Agora não" **não** marca feito (re-oferecido no login seguinte).
+- `src/components/game/menu/AccountModal.tsx` — reescrita completa: 2 passos
+  (`signup`: email / password / username / país; `login`: email / password),
+  guiada por `useAuth()`, **birthdate removido**, mensagens de erro via i18n
+  `auth.err.<code>`. `account.ts` reduzido a apenas `TUTORIAL_KEY`.
+- `src/components/game/MainMenu.tsx` — chip de conta a partir de
+  `useAuth().user.username` (ou `menu.register` quando anónimo).
+- `src/pages/Index.tsx` — `<AuthProvider>` monta à volta de todo o render de
+  `IndexInner` (a cadeia de early-returns foi refatorada para um único valor
+  `content` primeiro, para o provider nunca remontar na navegação).
+  `onAuthenticated` → hidrata + eventualmente oferece import.
+- `src/game/i18n.tsx` — **19 chaves `auth.*` novas nos 6 idiomas**:
+  `auth.emailLabel`, `auth.passwordLabel`, `auth.passwordHint`, `auth.usernameLabel`,
+  `auth.countryLabel`, `auth.signupCta`, `auth.loginCta`, `auth.logoutCta`,
+  `auth.haveAccount`, `auth.needAccount`, `auth.importTitle`, `auth.importBody`,
+  `auth.importYes`, `auth.importNo`, e `auth.err.{VALIDATION,ACCOUNT,USERNAME,INVALID,NETWORK}`.
+
+#### Alteração 2026-09-07 — logout explícito reinicia o jogo local
+
+Decisão do utilizador, **desvia do spec original** ("logout keeps the local save"):
+o **logout explícito** (método `logout()` do `useAuth()`) reinicia o save local para
+o estado inicial — nível 1, 0 moedas, locais base, coleção / armazém / aquário
+vazios. Racional: o progresso da conta é do lado do servidor e a 10.2 torna o
+servidor autoritativo; deixar o save do jogador anterior visível após logout é
+enganoso. **A expiração de sessão / falha de refresh NÃO reinicia** (o
+`setLoggedOutHandler` continua só a pôr `status: 'anonymous'`) — o utilizador pode
+voltar a entrar e apagar-lhe o jogo aí seria hostil.
+
+- `AuthProvider` ganhou prop opcional `onLoggedOut?: () => void`, guardada em
+  `onLoggedOutRef` e chamada só no fim do `logout()` (depois de `setUser(null)` /
+  `setStatus('anonymous')`), nunca no caminho do `setLoggedOutHandler`.
+- `src/pages/Index.tsx` — `handleLoggedOut`: `resetProgress()` +
+  `localStorage.removeItem(IMPORT_DONE_KEY)` (para o import poder ser re-oferecido
+  num login futuro) + `setImportPreview(null)`. Passado como
+  `<AuthProvider onAuthenticated={afterAuth} onLoggedOut={handleLoggedOut}>`.
+- Testes: `AuthProvider.test.tsx` cobre "logout dispara `onLoggedOut` uma vez" e
+  "callback do `setLoggedOutHandler` vai a anonymous sem disparar `onLoggedOut`".
+  Não há teste de render do `Index.tsx` (desproporcionado); o fio fica coberto
+  pelo teste de callback + verificação manual.
+
+#### Fora de âmbito (10.2–10.5)
+
+Leituras contínuas de `/me` / `/wallet` / `/catalog` / `/leaderboard` / `/inventory`;
+escritas de economia/pesca via API; ranking/temporadas reais; geração de tipos a
+partir do OpenAPI; CSP da SPA.
+
+#### Verificação (Task 14, 2026-09-07)
+
+- `npx tsc --noEmit -p tsconfig.app.json` ✅ — "No errors found".
+- `npm run backend:typecheck` (`tsc -p tsconfig.backend.json`) ✅ — 0 erros.
+- `npm run lint` ✅ — **0 erros, 12 avisos** (todos `react-refresh/only-export-components`,
+  pré-existentes; `AuthProvider.tsx` acrescenta 1, a extração de `NetFishing` na
+  Task 9 tinha removido 1 → líquido 12).
+- `npm test` ✅ — **47 ficheiros, 222 testes** (inclui `backend/src/auth/{cookies,routes}.test.ts`,
+  `backend/src/security/{http,csrf}.test.ts`, `src/api/endpoints.test.ts`,
+  `src/game/auth/{hydrate,importFlow}.test.ts`).
+- `npm run build` ✅ — `vite build` em ~13s (aviso pré-existente de chunk > 500 kB).
+- `npm run test:integration` ✅ — **8 ficheiros, 45 testes**, contra `postgres:16-alpine`
+  local (`docker compose up -d postgres`; `backend:db:migrate` → "No pending
+  migrations"). Task 10.1 não tocou nenhum `*.integration.test.ts`.
+- **Smoke HTTP do backend** (stack via `docker compose up -d --build backend` —
+  a imagem tinha de ser reconstruída porque `@fastify/cookie` é nova): `register`
+  → `201` + `Set-Cookie` dos 3 cookies com os atributos da tabela acima (`Secure`
+  ausente porque `COOKIE_SECURE=false` no `.env.docker`); `logout` com cookie e sem
+  `X-CSRF-Token` → `403 CSRF_FAILED`; com header válido → `204`; `refresh` sem
+  cookie → `401 INVALID_REFRESH_TOKEN`.
+- **Pendente (utilizador)**: smoke do contentor **frontend** no browser em
+  `http://localhost:8080` (`docker compose up --build`) — cookies `dbl_at` /
+  `dbl_rt` / `dbl_csrf` visíveis, reload mantém sessão, logout limpa, diálogo de
+  import no 1º login, erro "já existe uma conta" com email repetido; e revisão do
+  diff.
+
+### Persistência de estado de jogo no servidor (núcleo do 10.2, feito na branch do 10.1) — 2026-09-07
+
+A conta passa a lembrar o progresso entre logout/login e entre dispositivos. O
+frontend carrega o `PlayerState` guardado no servidor ao autenticar e empurra-o
+continuamente enquanto joga. **Último-a-gravar-ganha**; guarda de versão/merge fica
+para o 10.2 completo.
+
+- **Spec**: `docs/superpowers/specs/2026-09-07-server-game-state-sync-design.md`
+- **Plano**: `docs/superpowers/plans/2026-09-07-server-game-state-sync.md`
+- Commits `37c6649..4cb54af` (Tasks 1–8); esta secção = Task 9 (verificação + registo).
+
+#### Backend
+
+- `backend/migrations/0015_player_game_state.sql` — tabela `player_game_state`
+  (`user_id uuid PK → users(id) ON DELETE CASCADE`, `state jsonb NOT NULL`,
+  `updated_at timestamptz`). Espelhada em `db/schema.ts` (`playerGameState`).
+- Módulo `backend/src/gamestate/` — `routes.ts` (fino), `memoryService.ts` (dev/teste
+  sem `DATABASE_URL`), `pgRepository.ts` (upsert `onConflictDoUpdate`). `app.ts`
+  escolhe por presença de `DATABASE_URL`. Tag OpenAPI `gamestate`.
+- `GET /api/v1/me/state` → `200 { state: <object>|null, updatedAt: <iso>|null }`.
+- `PUT /api/v1/me/state` → `204`; body `{ state }` validado contra o `saveSchema`
+  **do cliente** (`src/game/persistence.ts`, agora exportado); `bodyLimit` 2 MiB;
+  `preHandler: requireAuth`; mutação sob `/api/v1/` → exige `X-CSRF-Token`.
+- Testes: `gamestate/routes.test.ts` (5, memória, corre no `npm test`) +
+  `gamestate/pgRepository.integration.test.ts` (4, PostgreSQL real — round-trip,
+  `updated_at` estritamente crescente, cascade ao apagar o utilizador).
+
+#### Frontend
+
+- `src/api/endpoints.ts` — `getGameState()` / `putGameState(state)`;
+  `GameStateEnvelope` em `types.ts`.
+- `src/game/auth/hydrate.ts` — **reescrito**: carrega o blob e faz **replace** do
+  estado local (deixou de fazer merge de `GET /me`). Devolve
+  `{ kind: 'loaded' | 'empty' | 'error' }`. Blob inválido → `empty` (tratado como
+  sem estado).
+- `src/game/auth/gameStateSync.ts` (novo) — `useGameStateSync({ player, enabled })`:
+  `PUT` debounced ~4 s após a última mudança de `player`; `fetch` keepalive em
+  `pagehide` / `visibilitychange:hidden`; `flushNow()` para o logout. `enabled:false`
+  → inerte.
+- `src/game/auth/AuthProvider.tsx` — nova prop `onBeforeLogout?: () => void |
+  Promise<void>`, aguardada **antes** de `endpoints.logout()`; **não** dispara na
+  expiração de sessão (`setLoggedOutHandler`).
+- `src/pages/Index.tsx` — `afterAuth` carrega o blob (replace) e, se o servidor não
+  tem estado (`empty`), adota o save local com um `PUT` (sem diálogo). `useGameStateSync`
+  montado; `onBeforeLogout={flushNow}`; `handleLoggedOut` desliga o sync + `resetProgress()`.
+
+#### Depreca a fatia de import da Task 13
+
+`src/game/auth/importFlow.ts`, `src/components/game/menu/ImportSaveDialog.tsx` e
+`POST /api/v1/migration/local/{preview,import}` deixam de ser usados no fluxo
+autenticado (o diálogo de 1º login foi removido do `Index.tsx`). Ficheiros e rotas
+mantidos por agora; remover numa limpeza posterior.
+
+#### Verificação (Task 9, 2026-09-07)
+
+- `npx tsc --noEmit -p tsconfig.app.json` ✅ · `npm run backend:typecheck` ✅ ·
+  `npm run lint` ✅ (0 erros, 12 avisos pré-existentes) · `npm test` ✅
+  **49 ficheiros, 263 testes** · `npm run build` ✅.
+- `npm run test:integration` ✅ **9 ficheiros, 49 testes** contra `postgres:16-alpine`
+  local (inclui `gamestate/pgRepository.integration.test.ts`).
+- **Smoke HTTP backend** (curl, stack `docker compose`): `GET /me/state` anónimo →
+  `401`; registo → `GET` devolve `{state:null}`; `PUT` sem `X-CSRF-Token` → `403
+  CSRF_FAILED`; `PUT` com header → `204`; `GET` devolve o envelope exacto (level 9,
+  coins 1234).
+- **Smoke browser** (Playwright, `http://localhost:8080`) — todos verdes:
+  1. registo → chip de conta, **sem diálogo de import**;
+  2. presente diário + roleta → `PUT /me/state` `204` debounced;
+  3. logout pelo UI → `PUT /me/state` `204` **e depois** `POST /auth/logout` `204`
+     (ordem certa), jogo reinicia para nível 1 / 0 moedas;
+  4. novo login → blob do servidor carregado, moedas restauradas (1150), sem diálogo;
+  5. reload mantém sessão e restaura o estado;
+  6. 1º login de conta nova com save local (1150 moedas) + servidor vazio → adota o
+     save via `PUT` (servidor fica com 1150), sem diálogo;
+  7. `GET /me/state` autenticado → envelope; anónimo → `401`.
+- Os contentores `backend` e `frontend` tiveram de ser reiniciados (`docker compose
+  restart`) para o `tsx watch` / Vite apanharem a migração 0015 e a remoção do
+  `ImportSaveDialog`.
+- **Não exercido de forma determinística**: o caminho keepalive em `pagehide`
+  (código presente, listeners registados; o plano remete-o para teste manual). O
+  debounce cobriu o mesmo `PUT` várias vezes.
+- **Teste manual do utilizador**: confirmado a funcionar no browser dele
+  (`Bonandi22/deep-blue-lure#17`, 2026-09-07).
+- **PR aberto**: `Bonandi22/deep-blue-lure#17` — base `main`, junta a fundação de
+  auth 10.1 + esta sincronização de estado (34 commits). A aguardar revisão do diff
+  e decisão de merge.

@@ -17,6 +17,7 @@ const config: AppConfig = {
   rateLimitMax: 120,
   rateLimitWindowMs: 60_000,
   trustProxy: false,
+  cookieSecure: false,
 };
 
 let app: FastifyInstance;

@@ -1,8 +1,23 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
+import type { ReactNode } from 'react';
 import { render, screen, cleanup, fireEvent } from '@testing-library/react';
 import MainMenu from '@/components/game/MainMenu';
 import { I18nProvider } from '@/game/i18n';
 import { getXpForLevel, PlayerState } from '@/game/types';
+
+// MainMenu only needs useAuth() to not throw and to report a status. Stub the
+// module so these nav/world/chip tests stay fully synchronous — no getMe() on
+// mount, no async status transition mid-assertion. AuthProvider has its own suite.
+vi.mock('@/game/auth/AuthProvider', () => ({
+  AuthProvider: ({ children }: { children: ReactNode }) => children,
+  useAuth: () => ({
+    status: 'anonymous' as const,
+    user: null,
+    login: vi.fn(),
+    register: vi.fn(),
+    logout: vi.fn(),
+  }),
+}));
 
 function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
   return {
@@ -132,19 +147,10 @@ describe('MainMenu progress reset', () => {
   });
 });
 
-describe('MainMenu account modal', () => {
-  it('advances from credentials to username after saving a new account', async () => {
+describe('MainMenu account chip', () => {
+  it('shows the register label while anonymous', () => {
     renderMenu();
 
-    fireEvent.click(screen.getByRole('button', { name: /cadastro/i }));
-
-    fireEvent.change(screen.getByPlaceholderText(/email@/i), { target: { value: 'angler@example.com' } });
-    fireEvent.change(screen.getByPlaceholderText(/•+/), { target: { value: 'hunter2secret' } });
-    const birthdate = document.querySelector('input[type="date"]') as HTMLInputElement;
-    fireEvent.change(birthdate, { target: { value: '1990-01-01' } });
-
-    fireEvent.click(screen.getByRole('button', { name: /salvar conta/i }));
-
-    expect(await screen.findByText(/escolha um nome de usuário/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /cadastro/i })).toBeInTheDocument();
   });
 });

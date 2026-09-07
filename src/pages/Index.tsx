@@ -19,6 +19,11 @@ import DailyGifts from '@/components/game/DailyGifts';
 import { useGameState } from '@/game/useGameState';
 import { useBackgroundMusic } from '@/game/useBackgroundMusic';
 import { I18nProvider } from '@/game/i18n';
+import { AuthProvider } from '@/game/auth/AuthProvider';
+import { hydrateFromServer } from '@/game/auth/hydrate';
+import { useGameStateSync } from '@/game/auth/gameStateSync';
+import { putGameState } from '@/api/endpoints';
+import { SAVE_SCHEMA_VERSION } from '@/game/persistence';
 import { FishingLocation, Fish } from '@/game/types';
 
 type Screen = 'menu' | 'locations' | 'fishing' | 'collection' | 'warehouse' | 'submarine' | 'multiplier' | 'skins' | 'boatSkins' | 'roulette' | 'skinRoulette' | 'ranking' | 'aquarium' | 'dailyGifts' | 'net' | 'netShop';
@@ -30,8 +35,11 @@ const IndexInner = () => {
     buyBoatSkin, equipBoatSkin,
     addCoins, addSkin, addBoatSkin, spendCoins, addMultiplier, setLastRouletteDate,
     moveAquariumFishToSector, claimDailyGift, consumeNet, buyNet,
+    replaceFromServer,
   } = useGameState();
   const { isPlaying: musicPlaying, toggle: toggleMusic, trackId: musicTrack, setTrack: setMusicTrack } = useBackgroundMusic();
+  const [syncEnabled, setSyncEnabled] = useState(false);
+  const { flushNow } = useGameStateSync({ player, enabled: syncEnabled });
   const [screen, setScreen] = useState<Screen>('menu');
   const [selectedLocation, setSelectedLocation] = useState<FishingLocation | null>(null);
   const [world, setWorld] = useState<1 | 2 | 3>(() => {
@@ -63,74 +71,82 @@ const IndexInner = () => {
     catchFishBatch(catches.map(caught => ({ ...caught, location: locationId })), true);
   }, [catchFishBatch]);
 
+  let content: JSX.Element;
   if (screen === 'locations') {
-    return <LocationSelect playerLevel={player.level} unlockedLocations={player.unlockedLocations} world={world} onSelect={handleSelectLocation} onBack={() => setScreen('menu')} />;
-  }
-  if (screen === 'fishing' && selectedLocation) {
-    return <FishingScreen location={selectedLocation} player={player} onCatch={handleCatch} onBack={() => setScreen('locations')} onCastNet={() => { if ((player.nets ?? 0) > 0) { consumeNet(); setScreen('net'); } }} onOpenNetShop={() => setScreen('netShop')} />;
-  }
-  if (screen === 'net' && selectedLocation) {
-    return <NetFishing location={selectedLocation} player={player} onCatch={handleCatch} onCatchBatch={handleNetCatch} onUseNet={consumeNet} onOpenShop={() => setScreen('netShop')} onBack={() => setScreen('locations')} />;
-  }
-  if (screen === 'netShop') {
-    return <NetShop player={player} onBuy={buyNet} onBack={() => setScreen(selectedLocation ? 'fishing' : 'menu')} />;
-  }
-  if (screen === 'collection') {
-    return <Collection player={player} onBack={() => setScreen('menu')} />;
-  }
-  if (screen === 'warehouse') {
-    return <Warehouse player={player} onSell={sellWarehouse} onBack={() => setScreen('menu')} />;
-  }
-  if (screen === 'submarine') {
-    return <SubmarineFishing player={player} onCatch={handleCatch} onBack={() => setScreen('menu')} />;
-  }
-  if (screen === 'multiplier') {
-    return <MultiplierShop player={player} onBuy={buyMultiplier} onBack={() => setScreen('menu')} />;
-  }
-  if (screen === 'skins') {
-    return <SkinsShop player={player} onBuy={buySkin} onEquip={equipSkin} onBack={() => setScreen('menu')} onOpenBoatVisuals={() => setScreen('boatSkins')} />;
-  }
-  if (screen === 'boatSkins') {
-    return <BoatSkinsShop player={player} onBuy={buyBoatSkin} onEquip={equipBoatSkin} onBack={() => setScreen('skins')} />;
-  }
-  if (screen === 'roulette') {
-    return <Roulette player={player} onAddCoins={addCoins} onAddSkin={addSkin} onAddBoatSkin={addBoatSkin} onAddMultiplier={addMultiplier} onSetLastRouletteDate={setLastRouletteDate} onBack={() => setScreen('menu')} />;
-  }
-  if (screen === 'skinRoulette') {
-    return <SkinRoulette player={player} onAddSkin={addSkin} onAddBoatSkin={addBoatSkin} onSpend={spendCoins} onBack={() => setScreen('menu')} />;
-  }
-  if (screen === 'ranking') {
-    return <Ranking player={player} onBack={() => setScreen('menu')} />;
-  }
-  if (screen === 'aquarium') {
-    return <Aquarium player={player} onMoveToSector={moveAquariumFishToSector} onBack={() => setScreen('menu')} />;
-  }
-  if (screen === 'dailyGifts') {
-    return <DailyGifts player={player} onClaim={claimDailyGift} onBack={() => setScreen('menu')} />;
+    content = <LocationSelect playerLevel={player.level} unlockedLocations={player.unlockedLocations} world={world} onSelect={handleSelectLocation} onBack={() => setScreen('menu')} />;
+  } else if (screen === 'fishing' && selectedLocation) {
+    content = <FishingScreen location={selectedLocation} player={player} onCatch={handleCatch} onBack={() => setScreen('locations')} onCastNet={() => { if ((player.nets ?? 0) > 0) { consumeNet(); setScreen('net'); } }} onOpenNetShop={() => setScreen('netShop')} />;
+  } else if (screen === 'net' && selectedLocation) {
+    content = <NetFishing location={selectedLocation} player={player} onCatch={handleCatch} onCatchBatch={handleNetCatch} onUseNet={consumeNet} onOpenShop={() => setScreen('netShop')} onBack={() => setScreen('locations')} />;
+  } else if (screen === 'netShop') {
+    content = <NetShop player={player} onBuy={buyNet} onBack={() => setScreen(selectedLocation ? 'fishing' : 'menu')} />;
+  } else if (screen === 'collection') {
+    content = <Collection player={player} onBack={() => setScreen('menu')} />;
+  } else if (screen === 'warehouse') {
+    content = <Warehouse player={player} onSell={sellWarehouse} onBack={() => setScreen('menu')} />;
+  } else if (screen === 'submarine') {
+    content = <SubmarineFishing player={player} onCatch={handleCatch} onBack={() => setScreen('menu')} />;
+  } else if (screen === 'multiplier') {
+    content = <MultiplierShop player={player} onBuy={buyMultiplier} onBack={() => setScreen('menu')} />;
+  } else if (screen === 'skins') {
+    content = <SkinsShop player={player} onBuy={buySkin} onEquip={equipSkin} onBack={() => setScreen('menu')} onOpenBoatVisuals={() => setScreen('boatSkins')} />;
+  } else if (screen === 'boatSkins') {
+    content = <BoatSkinsShop player={player} onBuy={buyBoatSkin} onEquip={equipBoatSkin} onBack={() => setScreen('skins')} />;
+  } else if (screen === 'roulette') {
+    content = <Roulette player={player} onAddCoins={addCoins} onAddSkin={addSkin} onAddBoatSkin={addBoatSkin} onAddMultiplier={addMultiplier} onSetLastRouletteDate={setLastRouletteDate} onBack={() => setScreen('menu')} />;
+  } else if (screen === 'skinRoulette') {
+    content = <SkinRoulette player={player} onAddSkin={addSkin} onAddBoatSkin={addBoatSkin} onSpend={spendCoins} onBack={() => setScreen('menu')} />;
+  } else if (screen === 'ranking') {
+    content = <Ranking player={player} onBack={() => setScreen('menu')} />;
+  } else if (screen === 'aquarium') {
+    content = <Aquarium player={player} onMoveToSector={moveAquariumFishToSector} onBack={() => setScreen('menu')} />;
+  } else if (screen === 'dailyGifts') {
+    content = <DailyGifts player={player} onClaim={claimDailyGift} onBack={() => setScreen('menu')} />;
+  } else {
+    content = (
+      <MainMenu
+        player={player}
+        onPlay={() => setScreen('locations')}
+        onCollection={() => setScreen('collection')}
+        onWarehouse={() => setScreen('warehouse')}
+        onSubmarine={() => setScreen('submarine')}
+        onMultiplier={() => setScreen('multiplier')}
+        onSkins={() => setScreen('skins')}
+        onRoulette={() => setScreen('roulette')}
+        onSkinRoulette={() => setScreen('skinRoulette')}
+        onRanking={() => setScreen('ranking')}
+        onAquarium={() => setScreen('aquarium')}
+        onDailyGifts={() => setScreen('dailyGifts')}
+        onReset={resetProgress}
+        musicPlaying={musicPlaying}
+        onToggleMusic={toggleMusic}
+        musicTrack={musicTrack}
+        onSetMusicTrack={setMusicTrack}
+        world={world}
+        onSetWorld={setWorld}
+      />
+    );
   }
 
+  const afterAuth = async () => {
+    // The server blob is authoritative: load it and replace local state. On a first
+    // login with no server state, adopt the local save as the account's starting point.
+    const res = await hydrateFromServer(replaceFromServer);
+    setSyncEnabled(res.kind !== 'error');
+    if (res.kind === 'empty') {
+      await putGameState({ schemaVersion: SAVE_SCHEMA_VERSION, player }).catch(() => {});
+    }
+  };
+
+  const handleLoggedOut = () => {
+    setSyncEnabled(false);
+    resetProgress();
+  };
+
   return (
-    <MainMenu
-      player={player}
-      onPlay={() => setScreen('locations')}
-      onCollection={() => setScreen('collection')}
-      onWarehouse={() => setScreen('warehouse')}
-      onSubmarine={() => setScreen('submarine')}
-      onMultiplier={() => setScreen('multiplier')}
-      onSkins={() => setScreen('skins')}
-      onRoulette={() => setScreen('roulette')}
-      onSkinRoulette={() => setScreen('skinRoulette')}
-      onRanking={() => setScreen('ranking')}
-      onAquarium={() => setScreen('aquarium')}
-      onDailyGifts={() => setScreen('dailyGifts')}
-      onReset={resetProgress}
-      musicPlaying={musicPlaying}
-      onToggleMusic={toggleMusic}
-      musicTrack={musicTrack}
-      onSetMusicTrack={setMusicTrack}
-      world={world}
-      onSetWorld={setWorld}
-    />
+    <AuthProvider onAuthenticated={afterAuth} onBeforeLogout={flushNow} onLoggedOut={handleLoggedOut}>
+      {content}
+    </AuthProvider>
   );
 };
 

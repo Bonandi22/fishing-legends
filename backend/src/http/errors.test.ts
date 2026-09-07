@@ -49,6 +49,22 @@ describe('registerErrorHandling', () => {
     expect(response.json().error.code).toBe('IDEMPOTENCY_CONFLICT');
   });
 
+  it('maps a Fastify content-type parser error (empty JSON body) to 400 INVALID_REQUEST_BODY', async () => {
+    const app = Fastify({ logger: false });
+    registerErrorHandling(app);
+    app.post('/echo', async (req) => req.body);
+    apps.push(app);
+    const response = await app.inject({
+      method: 'POST', url: '/echo',
+      headers: { 'content-type': 'application/json' },
+      payload: '',
+    });
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toEqual({
+      error: { code: 'INVALID_REQUEST_BODY', message: 'Request body is missing or malformed' },
+    });
+  });
+
   it('falls back to 500 for an unknown error without leaking detail', async () => {
     const response = await appThrowing(new Error('some internal detail')).inject({ method: 'GET', url: '/boom' });
     expect(response.statusCode).toBe(500);

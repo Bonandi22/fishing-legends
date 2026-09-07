@@ -1,4 +1,5 @@
 import type { FastifyInstance, FastifyRequest } from 'fastify';
+import { readCsrfCookie } from '../auth/cookies.js';
 
 type SecurityOptions = {
   allowedOrigins: string[];
@@ -26,7 +27,7 @@ export function registerSecurityHooks(app: FastifyInstance, options: SecurityOpt
       }
       // No allowlist configured: emit no ACAO — the browser enforces same-origin.
     }
-    reply.header('access-control-allow-headers', 'authorization, content-type, idempotency-key');
+    reply.header('access-control-allow-headers', 'authorization, content-type, idempotency-key, x-csrf-token');
     reply.header('access-control-allow-methods', 'GET, POST, OPTIONS');
     reply.header('x-content-type-options', 'nosniff');
     reply.header('x-frame-options', 'DENY');
@@ -35,6 +36,18 @@ export function registerSecurityHooks(app: FastifyInstance, options: SecurityOpt
 
     if (request.method === 'OPTIONS') {
       return reply.status(204).send();
+    }
+
+    const isMutation = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(request.method);
+    const csrfExempt = request.url === '/api/v1/auth/login' || request.url === '/api/v1/auth/register';
+    const csrfCookie = readCsrfCookie(request);
+    // Double-submit only defends real sessions: with no dbl_csrf cookie there is
+    // nothing a browser attaches to forge, and the route's own auth returns 401.
+    if (isMutation && request.url.startsWith('/api/v1/') && !csrfExempt && csrfCookie) {
+      const header = request.headers['x-csrf-token'];
+      if (typeof header !== 'string' || header !== csrfCookie) {
+        return reply.status(403).send({ error: { code: 'CSRF_FAILED', message: 'CSRF token missing or invalid' } });
+      }
     }
 
     const key = clientKey(request);

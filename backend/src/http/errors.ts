@@ -44,6 +44,7 @@ const DOMAIN_ERRORS: Record<string, DomainErrorSpec> = {
   FISHING_SESSION_EXPIRED: { status: 410, message: 'The fishing session expired; start a new one' },
   NO_FISH_AVAILABLE: { status: 422, message: 'No fish are available at that location' },
   USERNAME_TAKEN: { status: 409, message: 'That username is already taken' },
+  CSRF_FAILED: { status: 403, message: 'CSRF token missing or invalid' },
 };
 
 export function registerErrorHandling(app: FastifyInstance): void {
@@ -67,6 +68,17 @@ export function registerErrorHandling(app: FastifyInstance): void {
       request.log.warn({ code: error.code }, error.message);
       return reply.status(error.statusCode).send({
         error: { code: error.code, message: error.message },
+      });
+    }
+
+    // Fastify content-type parser errors (empty/malformed JSON body, unsupported
+    // media type, body too large). These are client faults, not a 500.
+    if (
+      error && typeof (error as { code?: unknown }).code === 'string'
+      && String((error as { code: string }).code).startsWith('FST_ERR_CTP_')
+    ) {
+      return reply.status(400).send({
+        error: { code: 'INVALID_REQUEST_BODY', message: 'Request body is missing or malformed' },
       });
     }
 

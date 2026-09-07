@@ -1,6 +1,6 @@
 import { z } from 'zod';
-import { CaughtFish, MAX_LEVEL, NET_LIMIT, PlayerState } from './types';
-import { FISH, LOCATIONS } from './data';
+import { CaughtFish, MAX_LEVEL, NET_LIMIT, PlayerState } from './types.js';
+import { FISH, LOCATIONS } from './data.js';
 
 export const SAVE_SCHEMA_VERSION = 1;
 
@@ -65,7 +65,7 @@ const playerSchema = z.object({
   dailyGiftsWeek: z.number().int().min(1).optional(),
 }) as z.ZodType<PlayerState>;
 
-const saveSchema = z.object({
+export const saveSchema = z.object({
   schemaVersion: z.literal(SAVE_SCHEMA_VERSION),
   player: playerSchema,
 });

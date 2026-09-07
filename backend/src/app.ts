@@ -1,5 +1,6 @@
 import Fastify, { type FastifyInstance, type FastifyServerOptions } from 'fastify';
 import fastifySwagger from '@fastify/swagger';
+import cookie from '@fastify/cookie';
 import { jsonSchemaTransform, serializerCompiler, validatorCompiler } from 'fastify-type-provider-zod';
 import type { AppConfig } from './config/env.js';
 import { registerErrorHandling } from './http/errors.js';
@@ -33,6 +34,9 @@ import { createPgLeaderboardService } from './leaderboard/pgRepository.js';
 import { registerRewardsRoutes } from './rewards/routes.js';
 import { createMemoryRewardsService } from './rewards/memoryRepository.js';
 import { createPgRewardsService } from './rewards/pgRepository.js';
+import { registerGameStateRoutes } from './gamestate/routes.js';
+import { createMemoryGameStateService } from './gamestate/memoryService.js';
+import { createPgGameStateService } from './gamestate/pgRepository.js';
 import { registerSecurityHooks } from './security/http.js';
 import { registerSeasonsRoutes } from './seasons/routes.js';
 import { createMemorySeasonsService } from './seasons/service.js';
@@ -55,6 +59,7 @@ export async function createApp({ config }: AppDependencies): Promise<FastifyIns
     bodyLimit: 128 * 1024,
   };
   const app = Fastify(serverOptions);
+  await app.register(cookie);
   app.setValidatorCompiler(validatorCompiler);
   app.setSerializerCompiler(serializerCompiler);
   await app.register(fastifySwagger, {
@@ -65,6 +70,7 @@ export async function createApp({ config }: AppDependencies): Promise<FastifyIns
         { name: 'system' }, { name: 'auth' }, { name: 'players' }, { name: 'catalog' },
         { name: 'fishing' }, { name: 'economy' }, { name: 'inventory' },
         { name: 'migration' }, { name: 'leaderboard' }, { name: 'rewards' }, { name: 'seasons' },
+        { name: 'gamestate' },
       ],
     },
     transform: jsonSchemaTransform,
@@ -87,6 +93,12 @@ export async function createApp({ config }: AppDependencies): Promise<FastifyIns
     accessTokenTtlSeconds: config.accessTokenTtlSeconds,
     refreshTokenTtlSeconds: config.refreshTokenTtlSeconds,
   });
+  const cookieCfg = {
+    secure: config.cookieSecure,
+    domain: config.cookieDomain,
+    accessTtlSeconds: config.accessTokenTtlSeconds,
+    refreshTtlSeconds: config.refreshTokenTtlSeconds,
+  };
   app.decorateRequest('userId', '');
   app.decorate('requireAuth', createRequireAuth(authService));
   const playerRepository = database
@@ -98,12 +110,14 @@ export async function createApp({ config }: AppDependencies): Promise<FastifyIns
     : createMemoryLeaderboardService(playerRepository);
   const rewardsService = database ? createPgRewardsService(database) : createMemoryRewardsService();
   const seasonsService = database ? createPgSeasonsService(database) : createMemorySeasonsService();
-  void registerAuthRoutes(app, authService);
+  const gameStateService = database ? createPgGameStateService(database) : createMemoryGameStateService();
+  void registerAuthRoutes(app, authService, cookieCfg);
   registerPlayerRoutes(app, playerRepository);
   registerMigrationRoutes(app, migrationService);
   registerLeaderboardRoutes(app, leaderboardService);
   registerRewardsRoutes(app, rewardsService);
   registerSeasonsRoutes(app, seasonsService);
+  registerGameStateRoutes(app, gameStateService);
   const catalogService = createCatalogService();
   registerCatalogRoutes(app, catalogService);
   const economyService = database ? createPgEconomyService(database) : createMemoryEconomyService();
