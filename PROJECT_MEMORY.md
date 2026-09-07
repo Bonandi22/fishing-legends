@@ -1284,6 +1284,15 @@ autenticação e importa o save local uma vez no 1º login.
   | `dbl_rt` | refresh token | `HttpOnly; Secure; SameSite=Strict; Path=/api/v1/auth; Max-Age=REFRESH_TOKEN_TTL_SECONDS` |
   | `dbl_csrf` | 32 bytes aleatórios base64url (**não** HttpOnly) | `Secure; SameSite=Lax; Path=/; Max-Age=REFRESH_TOKEN_TTL_SECONDS` (Path=/ — o JS tem de o ler via document.cookie na SPA servida em /) |
 
+  Migração de cookie: browsers que autenticaram antes da mudança de `Path=/api`
+  para `Path=/` guardam um `dbl_csrf` legado em `Path=/api` que mascara o novo no
+  servidor (`cookie.parse` é first-wins) → `403 CSRF_FAILED` permanente, incluindo
+  no logout. Correção: `setAuthCookies` (register/login/refresh) e
+  `clearAuthCookies` (logout) emitem também `clearCookie('dbl_csrf', { path: '/api' })`,
+  pelo que um browser pré-fix se auto-corrige no próximo auth. Remover o clear
+  legado ~30 dias após o deploy (todas as sessões pré-fix já rodaram — ver
+  `TODO(remove after 2026-10-07)` em `backend/src/auth/cookies.ts`).
+
 - `auth/routes.ts`: `register` → `201 { user }` + 3 cookies; `login` → `200 { user }`
   + 3 cookies; `refresh` → lê o cookie `dbl_rt` (o `refreshSchema` do body foi
   removido), rotaciona, re-emite os 3 cookies, responde **204** sem body; `logout`

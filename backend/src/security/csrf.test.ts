@@ -95,6 +95,27 @@ describe('CSRF double-submit', () => {
     expect(res.statusCode).not.toBe(403);
   });
 
+  it('a stale dbl_csrf at the legacy path does not permanently break mutations', async () => {
+    const a = await app();
+    const reg = await a.inject({ method: 'POST', url: '/api/v1/auth/register', payload: creds });
+    expect(reg.statusCode).toBe(201);
+    const setCookies = ([] as string[]).concat(reg.headers['set-cookie'] as string[]);
+
+    // The register/login response must clear the pre-fix dbl_csrf at Path=/api so a
+    // browser that authenticated before commit 6f754f5 self-heals on its next auth.
+    expect(setCookies.some(c => /^dbl_csrf=;/.test(c) && /Path=\/api/i.test(c))).toBe(true);
+    // ...while still setting the current dbl_csrf at Path=/.
+    expect(setCookies.some(c => /^dbl_csrf=[^;]+;/.test(c) && /Path=\/(;|\s|$)/i.test(c))).toBe(true);
+
+    // Once the legacy cookie is gone, a request carrying only the new cookie logs out cleanly.
+    const jar = cookieJar(reg.headers['set-cookie']);
+    const res = await a.inject({
+      method: 'POST', url: '/api/v1/auth/logout',
+      headers: { cookie: `dbl_at=${jar.dbl_at}; dbl_csrf=${jar.dbl_csrf}`, 'x-csrf-token': jar.dbl_csrf },
+    });
+    expect(res.statusCode).toBe(204);
+  });
+
   it('skips CSRF when there is no dbl_csrf cookie (route auth still runs)', async () => {
     const a = await app();
     const res = await a.inject({ method: 'POST', url: '/api/v1/auth/refresh' });

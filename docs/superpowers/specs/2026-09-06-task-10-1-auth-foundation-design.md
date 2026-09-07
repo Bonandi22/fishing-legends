@@ -67,7 +67,7 @@ apiFetch() ──cookies (dbl_at)──▶ requireAuth ──▶ rota
 |---|---|---|
 | `dbl_at` | access token (JWT) | `HttpOnly; Secure=COOKIE_SECURE; SameSite=Lax; Path=/api; Max-Age=ACCESS_TOKEN_TTL_SECONDS` |
 | `dbl_rt` | refresh token | `HttpOnly; Secure=COOKIE_SECURE; SameSite=Strict; Path=/api/v1/auth; Max-Age=REFRESH_TOKEN_TTL_SECONDS` |
-| `dbl_csrf` | random 32 bytes base64url | `Secure=COOKIE_SECURE; SameSite=Lax; Path=/api` (**não** HttpOnly — o JS lê-o) — **Path=/ na implementação** — um cookie em Path=/api não é legível por document.cookie numa SPA servida em /. |
+| `dbl_csrf` | random 32 bytes base64url | `Secure=COOKIE_SECURE; SameSite=Lax; Path=/api` (**não** HttpOnly — o JS lê-o) — **Path=/ na implementação** — um cookie em Path=/api não é legível por document.cookie numa SPA servida em /. Correção posterior: cada auth (register/login/refresh) **e** o logout emitem também um `clearCookie('dbl_csrf', { path: '/api' })` para expulsar um cookie legado gravado antes da mudança de Path (o `cookie.parse` é first-wins e o antigo, de path mais longo, mascarava o novo → 403 CSRF_FAILED em todas as mutações). Removível ~30 dias após o deploy da correção. |
 
 **`auth/routes.ts`:**
 - `register` / `login` → em sucesso: `reply.setCookie` para os 3 cookies; corpo

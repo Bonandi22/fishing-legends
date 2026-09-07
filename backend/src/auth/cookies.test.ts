@@ -8,10 +8,10 @@ import type { FastifyReply, FastifyRequest } from 'fastify';
 const cfg: CookieConfig = { secure: true, accessTtlSeconds: 900, refreshTtlSeconds: 2_592_000 };
 
 function fakeReply() {
-  const calls: Array<{ name: string; value: string; opts: Record<string, unknown> }> = [];
+  const calls: Array<{ name: string; value: string; opts: Record<string, unknown>; op: 'set' | 'clear' }> = [];
   const reply = {
-    setCookie: (name: string, value: string, opts: Record<string, unknown>) => { calls.push({ name, value, opts }); return reply; },
-    clearCookie: (name: string, opts: Record<string, unknown>) => { calls.push({ name, value: '', opts }); return reply; },
+    setCookie: (name: string, value: string, opts: Record<string, unknown>) => { calls.push({ name, value, opts, op: 'set' }); return reply; },
+    clearCookie: (name: string, opts: Record<string, unknown>) => { calls.push({ name, value: '', opts, op: 'clear' }); return reply; },
   } as unknown as FastifyReply;
   return { reply, calls };
 }
@@ -36,9 +36,14 @@ describe('cookies', () => {
     expect(rt.value).toBe('RT');
     expect(rt.opts).toMatchObject({ httpOnly: true, secure: true, sameSite: 'strict', path: '/api/v1/auth', maxAge: 2_592_000 });
 
-    const csrfCookie = calls.find(c => c.name === CSRF_COOKIE)!;
+    const csrfCookie = calls.find(c => c.name === CSRF_COOKIE && c.op === 'set')!;
     expect(csrfCookie.value).toBe(csrf);
     expect(csrfCookie.opts).toMatchObject({ httpOnly: false, secure: true, sameSite: 'lax', path: '/' });
+
+    // Migration self-heal: the pre-fix dbl_csrf at Path=/api is cleared on every auth.
+    const legacyClear = calls.find(c => c.name === CSRF_COOKIE && c.op === 'clear')!;
+    expect(legacyClear).toBeDefined();
+    expect(legacyClear.opts).toMatchObject({ path: '/api', secure: true });
   });
 
   it('adds domain only when set', () => {
@@ -47,11 +52,14 @@ describe('cookies', () => {
     expect(calls.every(c => c.opts.domain === 'example.test')).toBe(true);
   });
 
-  it('clearAuthCookies clears all three on their paths', () => {
+  it('clearAuthCookies clears all three on their paths, plus the legacy dbl_csrf at /api', () => {
     const { reply, calls } = fakeReply();
     clearAuthCookies(reply, cfg);
-    expect(calls.map(c => c.name).sort()).toEqual([AT_COOKIE, CSRF_COOKIE, RT_COOKIE].sort());
+    expect(calls.every(c => c.op === 'clear')).toBe(true);
+    expect(calls.find(c => c.name === AT_COOKIE)!.opts).toMatchObject({ path: '/api' });
     expect(calls.find(c => c.name === RT_COOKIE)!.opts).toMatchObject({ path: '/api/v1/auth' });
+    const csrfPaths = calls.filter(c => c.name === CSRF_COOKIE).map(c => c.opts.path).sort();
+    expect(csrfPaths).toEqual(['/', '/api']);
   });
 
   it('reads tokens from request.cookies', () => {
