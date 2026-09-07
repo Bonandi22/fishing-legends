@@ -24,6 +24,6 @@ export function importMigration(save: unknown, idempotencyKey: string): Promise<
 export function getGameState(): Promise<GameStateEnvelope> {
   return apiFetch('/me/state');
 }
-export function putGameState(state: unknown): Promise<void> {
-  return apiFetch('/me/state', { method: 'PUT', body: { state } });
+export function putGameState(state: unknown, baseVersion: number | null): Promise<{ version: number }> {
+  return apiFetch('/me/state', { method: 'PUT', body: { state, baseVersion } });
 }

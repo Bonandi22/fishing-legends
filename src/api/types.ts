@@ -32,4 +32,5 @@ export interface MigrationResult {
 export interface GameStateEnvelope {
   state: unknown;
   updatedAt: string | null;
+  version: number | null;
 }
