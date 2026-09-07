@@ -9,7 +9,7 @@ import DepthGauge from './menu/DepthGauge';
 import WorldDial from './menu/WorldDial';
 import HubList, { HubItem } from './menu/HubList';
 import AccountModal from './menu/AccountModal';
-import { Account, loadAccount } from './menu/account';
+import { useAuth } from '@/game/auth/AuthProvider';
 
 interface Props {
   player: PlayerState;
@@ -58,9 +58,9 @@ export default function MainMenu({
 }: Props) {
   const { t } = useI18n();
   const reduce = useReducedMotion();
+  const { status, user } = useAuth();
 
   const [accountOpen, setAccountOpen] = useState(false);
-  const [account, setAccount] = useState<Account | null>(loadAccount);
 
   const today = new Date().toISOString().slice(0, 10);
   const giftAvailable = player.dailyGiftsLastClaim !== today;
@@ -179,11 +179,7 @@ export default function MainMenu({
               size="sm"
               className="gap-1.5 border-lure/25 bg-menu-panel/60"
             >
-              {account
-                ? account.username
-                  ? `${account.country || ''} ${account.username}`.trim()
-                  : account.email
-                : t('menu.register')}
+              {status === 'authenticated' && user ? user.username : t('menu.register')}
             </Button>
             {player.level > 1 && (
               <Button onClick={onReset} variant="ghost" size="sm" className="text-muted-foreground">
@@ -194,12 +190,7 @@ export default function MainMenu({
         </div>
       </div>
 
-      <AccountModal
-        open={accountOpen}
-        onClose={() => setAccountOpen(false)}
-        account={account}
-        onAccountChange={setAccount}
-      />
+      <AccountModal open={accountOpen} onClose={() => setAccountOpen(false)} />
     </div>
   );
 }

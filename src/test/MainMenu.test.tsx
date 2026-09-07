@@ -2,6 +2,9 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { render, screen, cleanup, fireEvent } from '@testing-library/react';
 import MainMenu from '@/components/game/MainMenu';
 import { I18nProvider } from '@/game/i18n';
+import { AuthProvider } from '@/game/auth/AuthProvider';
+import * as endpoints from '@/api/endpoints';
+import { ApiError } from '@/api/client';
 import { getXpForLevel, PlayerState } from '@/game/types';
 
 function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
@@ -25,13 +28,15 @@ function renderMenu(overrides: Partial<PlayerState> = {}) {
   };
   render(
     <I18nProvider>
-      <MainMenu
-        player={makePlayer(overrides)}
-        musicPlaying={false}
-        musicTrack="calm"
-        world={1}
-        {...handlers}
-      />
+      <AuthProvider>
+        <MainMenu
+          player={makePlayer(overrides)}
+          musicPlaying={false}
+          musicTrack="calm"
+          world={1}
+          {...handlers}
+        />
+      </AuthProvider>
     </I18nProvider>,
   );
   return handlers;
@@ -40,6 +45,8 @@ function renderMenu(overrides: Partial<PlayerState> = {}) {
 beforeEach(() => {
   localStorage.clear();
   cleanup();
+  vi.restoreAllMocks();
+  vi.spyOn(endpoints, 'getMe').mockRejectedValue(new ApiError(401, 'X', ''));
 });
 
 describe('MainMenu navigation', () => {
@@ -132,19 +139,10 @@ describe('MainMenu progress reset', () => {
   });
 });
 
-describe('MainMenu account modal', () => {
-  it('advances from credentials to username after saving a new account', async () => {
+describe('MainMenu account chip', () => {
+  it('shows the register label while anonymous', () => {
     renderMenu();
 
-    fireEvent.click(screen.getByRole('button', { name: /cadastro/i }));
-
-    fireEvent.change(screen.getByPlaceholderText(/email@/i), { target: { value: 'angler@example.com' } });
-    fireEvent.change(screen.getByPlaceholderText(/•+/), { target: { value: 'hunter2secret' } });
-    const birthdate = document.querySelector('input[type="date"]') as HTMLInputElement;
-    fireEvent.change(birthdate, { target: { value: '1990-01-01' } });
-
-    fireEvent.click(screen.getByRole('button', { name: /salvar conta/i }));
-
-    expect(await screen.findByText(/escolha um nome de usuário/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /cadastro/i })).toBeInTheDocument();
   });
 });

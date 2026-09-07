@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import type { ApiUser } from '@/api/types';
-import { ApiError, setLoggedOutHandler } from '@/api/client';
+import { setLoggedOutHandler } from '@/api/client';
 import * as endpoints from '@/api/endpoints';
 
 export type AuthStatus = 'loading' | 'anonymous' | 'authenticated';
@@ -32,7 +32,7 @@ export function AuthProvider({ children, onAuthenticated }: { children: ReactNod
     let alive = true;
     endpoints.getMe()
       .then(({ user: p }) => { if (alive) void enter({ id: p.userId, email: p.email, username: p.username, country: p.country }); })
-      .catch((e: unknown) => { if (alive && e instanceof ApiError) { setUser(null); setStatus('anonymous'); } });
+      .catch(() => { if (alive) { setUser(null); setStatus('anonymous'); } });
     return () => { alive = false; };
   }, [enter]);
 

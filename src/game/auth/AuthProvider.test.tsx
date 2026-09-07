@@ -26,6 +26,13 @@ describe('AuthProvider', () => {
     await waitFor(() => expect(screen.getByTestId('status').textContent).toBe('anonymous'));
   });
 
+  it('goes anonymous when /me rejects with a non-ApiError (offline start)', async () => {
+    vi.spyOn(endpoints, 'getMe').mockRejectedValue(new TypeError('Failed to fetch'));
+    render(<AuthProvider><Probe /></AuthProvider>);
+    expect(screen.getByTestId('status').textContent).toBe('loading');
+    await waitFor(() => expect(screen.getByTestId('status').textContent).toBe('anonymous'));
+  });
+
   it('is authenticated when /me returns a user', async () => {
     vi.spyOn(endpoints, 'getMe').mockResolvedValue({ user: { userId: 'u1', username: 'Angler', email: 'e@x.com', country: 'BR' } } as never);
     render(<AuthProvider><Probe /></AuthProvider>);
