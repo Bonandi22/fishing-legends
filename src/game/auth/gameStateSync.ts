@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef } from 'react';
 import type { PlayerState } from '@/game/types';
-import { SAVE_SCHEMA_VERSION } from '@/game/persistence';
+import { SAVE_SCHEMA_VERSION, saveSchema } from '@/game/persistence';
 import { ApiError } from '@/api/client';
 import { getGameState, putGameState } from '@/api/endpoints';
 import { hydrateFromServer, type HydrateResult } from './hydrate';
@@ -64,7 +64,11 @@ export function useGameStateSync({
   player: PlayerState;
   enabled: boolean;
   replace: (updater: (prev: PlayerState) => Partial<PlayerState>) => void;
-}): { flushNow: () => Promise<void>; start: () => Promise<HydrateResult['kind']> } {
+}): {
+  flushNow: () => Promise<void>;
+  start: () => Promise<HydrateResult['kind']>;
+  applyServerResult: (result: { state: unknown; version: number | null }) => void;
+} {
   const playerRef = useRef(player);
   playerRef.current = player;
   const enabledRef = useRef(enabled);
@@ -89,18 +93,41 @@ export function useGameStateSync({
     }
   }, []);
 
+  /**
+   * Adopt a full server player blob as the new local truth: replace local state,
+   * seed the optimistic-concurrency base version, and mark the blob as already sent
+   * so the debounce that fires after the re-render does not push it straight back.
+   */
+  const adoptServerState = useCallback((player: PlayerState, version: number | null) => {
+    replaceRef.current(() => player);
+    baseVersion.current = version;
+    lastSent.current = stableStringify({ schemaVersion: SAVE_SCHEMA_VERSION, player });
+  }, []);
+
   const resync = useCallback(async () => {
     const res = await hydrateFromServer(replaceRef.current);
-    if (res.kind === 'loaded') {
+    if (res.kind === 'loaded' && res.player) {
+      // `hydrateFromServer` already called `replace`; re-applying the identical full
+      // player through `adoptServerState` is a no-op for `replaceFromServer`'s merge.
+      adoptServerState(res.player, res.version);
+    } else if (res.kind === 'loaded') {
       baseVersion.current = res.version;
-      // Mark the just-applied server state as already sent, so the debounce that
-      // fires after `replace()` re-renders does not push it straight back.
-      lastSent.current = res.player
-        ? stableStringify({ schemaVersion: SAVE_SCHEMA_VERSION, player: res.player })
-        : null;
+      lastSent.current = null;
     }
     return res;
-  }, []);
+  }, [adoptServerState]);
+
+  const applyServerResult = useCallback(
+    (result: { state: unknown; version: number | null }) => {
+      const parsed = saveSchema.safeParse(result.state);
+      if (!parsed.success) {
+        console.warn('server economy result failed validation; ignoring');
+        return;
+      }
+      adoptServerState(parsed.data.player, result.version);
+    },
+    [adoptServerState],
+  );
 
   /** Send the current envelope once. Best-effort: resolves on any failure. */
   const push = useCallback(async () => {
@@ -220,5 +247,5 @@ export function useGameStateSync({
     };
   }, [envelope]);
 
-  return { flushNow, start };
+  return { flushNow, start, applyServerResult };
 }
