@@ -2,7 +2,12 @@ import type { PlayerState } from '@/game/types';
 import { saveSchema } from '@/game/persistence';
 import { getGameState } from '@/api/endpoints';
 
-export type HydrateResult = { kind: 'loaded' | 'empty' | 'error'; version: number | null };
+export type HydrateResult = {
+  kind: 'loaded' | 'empty' | 'error';
+  version: number | null;
+  /** The player state that was applied — only on `loaded`. Lets callers avoid re-pushing it. */
+  player?: PlayerState;
+};
 
 /**
  * Loads the account's saved game state from the server and REPLACES local state.
@@ -30,5 +35,5 @@ export async function hydrateFromServer(
     return { kind: 'empty', version: null };
   }
   replace(() => parsed.data.player);
-  return { kind: 'loaded', version };
+  return { kind: 'loaded', version, player: parsed.data.player };
 }
