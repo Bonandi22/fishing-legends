@@ -21,7 +21,8 @@ import { useBackgroundMusic } from '@/game/useBackgroundMusic';
 import { I18nProvider } from '@/game/i18n';
 import { AuthProvider } from '@/game/auth/AuthProvider';
 import { useGameStateSync } from '@/game/auth/gameStateSync';
-import { sellWarehouse as sellWarehouseApi } from '@/api/endpoints';
+import { sellWarehouse as sellWarehouseApi, purchaseNet as purchaseNetApi } from '@/api/endpoints';
+import type { GameStateEnvelope } from '@/api/types';
 import { FishingLocation, Fish } from '@/game/types';
 
 type Screen = 'menu' | 'locations' | 'fishing' | 'collection' | 'warehouse' | 'submarine' | 'multiplier' | 'skins' | 'boatSkins' | 'roulette' | 'skinRoulette' | 'ranking' | 'aquarium' | 'dailyGifts' | 'net' | 'netShop';
@@ -37,7 +38,7 @@ const IndexInner = () => {
   } = useGameState();
   const { isPlaying: musicPlaying, toggle: toggleMusic, trackId: musicTrack, setTrack: setMusicTrack } = useBackgroundMusic();
   const [syncEnabled, setSyncEnabled] = useState(false);
-  const [selling, setSelling] = useState(false);
+  const [busyOp, setBusyOp] = useState<null | 'sell' | 'net'>(null);
   const { flushNow, start: startSync, applyServerResult } = useGameStateSync({ player, enabled: syncEnabled, replace: replaceFromServer });
   const [screen, setScreen] = useState<Screen>('menu');
   const [selectedLocation, setSelectedLocation] = useState<FishingLocation | null>(null);
@@ -70,23 +71,36 @@ const IndexInner = () => {
     catchFishBatch(catches.map(caught => ({ ...caught, location: locationId })), true);
   }, [catchFishBatch]);
 
-  const handleSellWarehouse = useCallback(async () => {
-    if (!syncEnabled) { sellWarehouse(); return; }
-    setSelling(true);
+  // A value-granting economy op: anonymous / degraded → the local pure rule;
+  // authenticated → flush any pending local mutation FIRST (else the server runs
+  // the op on a stale blob and `applyServerResult` overwrites the un-pushed
+  // change), then the server op, then adopt its authoritative result. Failure is
+  // silent (no toast surface) and leaves local state untouched.
+  const runEconomyOp = useCallback(async (
+    op: 'sell' | 'net',
+    local: () => void,
+    api: (idempotencyKey: string) => Promise<GameStateEnvelope>,
+  ) => {
+    if (!syncEnabled) { local(); return; }
+    setBusyOp(op);
     try {
-      // Persist any pending local mutation (e.g. a fish caught within the last
-      // debounce window) BEFORE the server sells: otherwise the server runs the
-      // sale on a stale blob and `applyServerResult` overwrites the un-pushed
-      // fish. `flushNow` no-ops when nothing is dirty; a version conflict inside
-      // it self-heals via `resync`.
       await flushNow();
-      applyServerResult(await sellWarehouseApi(crypto.randomUUID()));
+      applyServerResult(await api(crypto.randomUUID()));
     } catch {
-      console.warn('warehouse sell failed; state unchanged');
+      console.warn(`economy op "${op}" failed; state unchanged`);
     } finally {
-      setSelling(false);
+      setBusyOp(null);
     }
-  }, [syncEnabled, sellWarehouse, flushNow, applyServerResult]);
+  }, [syncEnabled, flushNow, applyServerResult]);
+
+  const handleSellWarehouse = useCallback(
+    () => runEconomyOp('sell', sellWarehouse, sellWarehouseApi),
+    [runEconomyOp, sellWarehouse],
+  );
+  const handleBuyNet = useCallback(
+    () => runEconomyOp('net', buyNet, purchaseNetApi),
+    [runEconomyOp, buyNet],
+  );
 
   let content: JSX.Element;
   if (screen === 'locations') {
@@ -96,11 +110,11 @@ const IndexInner = () => {
   } else if (screen === 'net' && selectedLocation) {
     content = <NetFishing location={selectedLocation} player={player} onCatch={handleCatch} onCatchBatch={handleNetCatch} onUseNet={consumeNet} onOpenShop={() => setScreen('netShop')} onBack={() => setScreen('locations')} />;
   } else if (screen === 'netShop') {
-    content = <NetShop player={player} onBuy={buyNet} onBack={() => setScreen(selectedLocation ? 'fishing' : 'menu')} />;
+    content = <NetShop player={player} onBuy={handleBuyNet} buying={busyOp === 'net'} onBack={() => setScreen(selectedLocation ? 'fishing' : 'menu')} />;
   } else if (screen === 'collection') {
     content = <Collection player={player} onBack={() => setScreen('menu')} />;
   } else if (screen === 'warehouse') {
-    content = <Warehouse player={player} onSell={handleSellWarehouse} selling={selling} onBack={() => setScreen('menu')} />;
+    content = <Warehouse player={player} onSell={handleSellWarehouse} selling={busyOp === 'sell'} onBack={() => setScreen('menu')} />;
   } else if (screen === 'submarine') {
     content = <SubmarineFishing player={player} onCatch={handleCatch} onBack={() => setScreen('menu')} />;
   } else if (screen === 'multiplier') {

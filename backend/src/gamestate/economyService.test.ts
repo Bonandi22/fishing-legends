@@ -84,3 +84,79 @@ describe('memory game-state economy service — sellWarehouse', () => {
   // same-key" and "concurrent different keys" cases in
   // economyService.integration.test.ts assert it against a real PostgreSQL.
 });
+
+const withCoins = (over: Record<string, unknown> = {}) => ({
+  schemaVersion: SAVE_SCHEMA_VERSION,
+  player: {
+    level: 3, xp: 0, xpToNextLevel: 300, totalFishCaught: 0,
+    collection: [], unlockedLocations: ['atlantic'], heaviestFish: null, warehouse: [],
+    coins: 10_000, activeSkin: 'default', ownedSkins: ['default'], activeBoatSkin: 'classic', ownedBoatSkins: ['classic'],
+    luckMultiplierEnd: null, strengthMultiplierEnd: null, lastRouletteDate: null,
+    aquariumWarehouse: [], aquariumSectors: { 1: [], 2: [], 3: [], 4: [], 5: [] },
+    dailyGiftsLastClaim: null, dailyGiftsDay: 1, dailyGiftsWeek: 1, nets: 0,
+    ...over,
+  },
+});
+
+describe('memory game-state economy service — purchaseNet', () => {
+  it('buys a net: -5000 coins, +1 net, version bump', async () => {
+    const store = createMemoryGameStateStore();
+    store.set('u1', { state: withCoins({ coins: 8_000, nets: 2 }), updatedAt: 'now', version: 3 });
+    const svc = createMemoryGameStateEconomyService(store);
+
+    const res = await svc.purchaseNet('u1', 'net-key-aaaaaaaaaaaa');
+
+    expect(res.version).toBe(4);
+    expect(res.state.player.coins).toBe(3_000);
+    expect(res.state.player.nets).toBe(3);
+    expect(store.get('u1')!.version).toBe(4);
+  });
+
+  it('replays the same key without charging twice', async () => {
+    const store = createMemoryGameStateStore();
+    store.set('u1', { state: withCoins({ coins: 8_000, nets: 0 }), updatedAt: 'now', version: 1 });
+    const svc = createMemoryGameStateEconomyService(store);
+
+    const first = await svc.purchaseNet('u1', 'net-key-bbbbbbbbbbbb');
+    const replay = await svc.purchaseNet('u1', 'net-key-bbbbbbbbbbbb');
+
+    expect(replay).toEqual(first);
+    expect(store.get('u1')!.state).toBeDefined();
+    expect(store.get('u1')!.version).toBe(2); // not 3
+  });
+
+  it('rejects INSUFFICIENT_FUNDS below the net price', async () => {
+    const store = createMemoryGameStateStore();
+    store.set('u1', { state: withCoins({ coins: 4_999, nets: 0 }), updatedAt: 'now', version: 1 });
+    const svc = createMemoryGameStateEconomyService(store);
+    await expect(svc.purchaseNet('u1', 'net-key-cccccccccccc')).rejects.toThrow('INSUFFICIENT_FUNDS');
+    expect(store.get('u1')!.version).toBe(1);
+  });
+
+  it('rejects NET_LIMIT_REACHED at the cap', async () => {
+    const store = createMemoryGameStateStore();
+    store.set('u1', { state: withCoins({ coins: 1_000_000, nets: 10 }), updatedAt: 'now', version: 1 });
+    const svc = createMemoryGameStateEconomyService(store);
+    await expect(svc.purchaseNet('u1', 'net-key-dddddddddddd')).rejects.toThrow('NET_LIMIT_REACHED');
+    expect(store.get('u1')!.version).toBe(1);
+  });
+
+  it('rejects a user with no blob with GAME_STATE_NOT_FOUND', async () => {
+    const svc = createMemoryGameStateEconomyService(createMemoryGameStateStore());
+    await expect(svc.purchaseNet('ghost', 'net-key-eeeeeeeeeeee')).rejects.toThrow('GAME_STATE_NOT_FOUND');
+  });
+
+  it('F2: a net purchase does NOT replay a warehouse sell recorded under the same key', async () => {
+    const store = createMemoryGameStateStore();
+    store.set('u1', { state: withCoins({ coins: 8_000, nets: 0, warehouse: [{ fish: FISH[0], weight: 2, location: 'atlantic', timestamp: 1 }] }), updatedAt: 'now', version: 1 });
+    const svc = createMemoryGameStateEconomyService(store);
+
+    const key = 'shared-key-1234567890';
+    await svc.sellWarehouse('u1', key);          // records under `${u1}:warehouse_sell:${key}`
+    const net = await svc.purchaseNet('u1', key); // must run fresh, not replay the sell
+
+    expect(net.state.player.nets).toBe(1);
+    expect(net.state.player.warehouse).toEqual([]); // sale already cleared it
+    expect(store.get('u1')!.version).toBe(3);       // sell -> 2, net -> 3
+  });
+});

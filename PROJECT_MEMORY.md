@@ -1764,5 +1764,38 @@ economia estarem todas migradas.
   `npm test` ✅ **50 ficheiros, 288 testes** · `build` ✅ ·
   `test:integration` ✅ **10 ficheiros, 55 testes** (Postgres local, migrações já
   aplicadas).
-- **Smoke browser na stack Docker**: deferido para o controlador da sessão SDD
-  (passo 6 do brief).
+- **Smoke browser na stack Docker** (controlador SDD): venda pelo UI → `POST
+  .../warehouse/sell` 200, +20 moedas, armazém vazio, sem `PUT` redundante; armazém
+  vazio → 422; 0 erros de consola.
+
+### Task 10.3 fatia 2 — compra de rede server-autoritativa — 2026-09-08
+
+Segunda op do padrão (ordem acordada: rede → multiplicador → skin). Branch
+`feature/task-10-3-economy-net-purchase`. Executada inline (bounded, padrão provado).
+
+- **`GameStateEconomyService.purchaseNet(userId, key)`** — mesma forma transacional que
+  `sellWarehouse`. `computeNetPurchase` verifica `NET_LIMIT_REACHED` (nets ≥ 10) e
+  `INSUFFICIENT_FUNDS` (coins < `NET_PRICE` = 5000) **antes** de delegar em
+  `stateRules.buyNet`. Ambos os erros já mapeados a 409.
+- **Runner partilhado**: `economyService.ts` fatorou `runMemoryOp` / `runPgOp` — as duas
+  ops (venda, compra de rede) passam por eles, com a identidade de replay
+  `(userId, operation, idempotencyKey)`. Os slices 3–7 só acrescentam um `compute*` +
+  uma linha de rota.
+- **`POST /api/v1/me/economy/nets/purchase`** — `requireAuth` + CSRF + `Idempotency-Key`,
+  sem body → `200 { state, version }`.
+- **Migração `0018_game_state_operations_op_pk.sql`** — a PK de `game_state_operations`
+  passa a `(user_id, idempotency_key, operation)` (era `(user_id, idempotency_key)`).
+  Fecha o follow-up da fatia 1: uma `Idempotency-Key` reutilizada entre endpoints
+  corre a 2ª op de fresco em vez de `23505`. Nome do constraint mantido
+  (`..._idempotency_pk`, contém "idempotency" → mapeia a `IDEMPOTENCY_CONFLICT`).
+- **Frontend**: `endpoints.purchaseNet`; `NetShop` ganha `buying?: boolean`; `Index.tsx`
+  fatorou `runEconomyOp(op, local, api)` — **flush → op no servidor → applyServerResult**,
+  fallback local quando `!syncEnabled` — partilhado por `handleSellWarehouse` e
+  `handleBuyNet`. `busyOp: null | 'sell' | 'net'` substitui `selling`.
+- Testes: `economyService.test.ts` (+6 — compra, replay, sem fundos, no limite, not-found,
+  F2 cross-op real), `economyRoutes.test.ts` (+5), `economyService.integration.test.ts`
+  (+4 — txn, replay, concorrente mesma-chave, F2 cross-op contra PG real),
+  `endpoints.test.ts` (+1), `test/NetShop.test.tsx` (+1 disabled while buying).
+- Verificação: `tsc app` ✅ · `backend:typecheck` ✅ · `lint` ✅ 0 erros · `npm test` ✅
+  **302** · `build` ✅ · `test:integration` ✅ **61** (Postgres local, migração 0018
+  aplicada).
