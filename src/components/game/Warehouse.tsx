@@ -11,9 +11,10 @@ interface Props {
   player: PlayerState;
   onSell: () => void;
   onBack: () => void;
+  selling?: boolean;
 }
 
-export default function Warehouse({ player, onSell, onBack }: Props) {
+export default function Warehouse({ player, onSell, onBack, selling = false }: Props) {
   const { t } = useI18n();
   const warehouse = player.warehouse;
 
@@ -25,6 +26,7 @@ export default function Warehouse({ player, onSell, onBack }: Props) {
     warehouse.length > 0 ? (
       <Button
         onClick={onSell}
+        disabled={selling || warehouse.length === 0}
         size="lg"
         className="h-14 w-full bg-lure text-base font-black uppercase tracking-wide text-lure-foreground shadow-[0_0_30px_hsl(var(--lure)/0.4)] hover:bg-lure/90"
       >

@@ -21,6 +21,7 @@ import { useBackgroundMusic } from '@/game/useBackgroundMusic';
 import { I18nProvider } from '@/game/i18n';
 import { AuthProvider } from '@/game/auth/AuthProvider';
 import { useGameStateSync } from '@/game/auth/gameStateSync';
+import { sellWarehouse as sellWarehouseApi } from '@/api/endpoints';
 import { FishingLocation, Fish } from '@/game/types';
 
 type Screen = 'menu' | 'locations' | 'fishing' | 'collection' | 'warehouse' | 'submarine' | 'multiplier' | 'skins' | 'boatSkins' | 'roulette' | 'skinRoulette' | 'ranking' | 'aquarium' | 'dailyGifts' | 'net' | 'netShop';
@@ -36,7 +37,8 @@ const IndexInner = () => {
   } = useGameState();
   const { isPlaying: musicPlaying, toggle: toggleMusic, trackId: musicTrack, setTrack: setMusicTrack } = useBackgroundMusic();
   const [syncEnabled, setSyncEnabled] = useState(false);
-  const { flushNow, start: startSync } = useGameStateSync({ player, enabled: syncEnabled, replace: replaceFromServer });
+  const [selling, setSelling] = useState(false);
+  const { flushNow, start: startSync, applyServerResult } = useGameStateSync({ player, enabled: syncEnabled, replace: replaceFromServer });
   const [screen, setScreen] = useState<Screen>('menu');
   const [selectedLocation, setSelectedLocation] = useState<FishingLocation | null>(null);
   const [world, setWorld] = useState<1 | 2 | 3>(() => {
@@ -68,6 +70,18 @@ const IndexInner = () => {
     catchFishBatch(catches.map(caught => ({ ...caught, location: locationId })), true);
   }, [catchFishBatch]);
 
+  const handleSellWarehouse = useCallback(async () => {
+    if (!syncEnabled) { sellWarehouse(); return; }
+    setSelling(true);
+    try {
+      applyServerResult(await sellWarehouseApi(crypto.randomUUID()));
+    } catch {
+      console.warn('warehouse sell failed; state unchanged');
+    } finally {
+      setSelling(false);
+    }
+  }, [syncEnabled, sellWarehouse, applyServerResult]);
+
   let content: JSX.Element;
   if (screen === 'locations') {
     content = <LocationSelect playerLevel={player.level} unlockedLocations={player.unlockedLocations} world={world} onSelect={handleSelectLocation} onBack={() => setScreen('menu')} />;
@@ -80,7 +94,7 @@ const IndexInner = () => {
   } else if (screen === 'collection') {
     content = <Collection player={player} onBack={() => setScreen('menu')} />;
   } else if (screen === 'warehouse') {
-    content = <Warehouse player={player} onSell={sellWarehouse} onBack={() => setScreen('menu')} />;
+    content = <Warehouse player={player} onSell={handleSellWarehouse} selling={selling} onBack={() => setScreen('menu')} />;
   } else if (screen === 'submarine') {
     content = <SubmarineFishing player={player} onCatch={handleCatch} onBack={() => setScreen('menu')} />;
   } else if (screen === 'multiplier') {
