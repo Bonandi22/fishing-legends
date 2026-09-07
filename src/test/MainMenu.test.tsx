@@ -1,11 +1,23 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
+import type { ReactNode } from 'react';
 import { render, screen, cleanup, fireEvent } from '@testing-library/react';
 import MainMenu from '@/components/game/MainMenu';
 import { I18nProvider } from '@/game/i18n';
-import { AuthProvider } from '@/game/auth/AuthProvider';
-import * as endpoints from '@/api/endpoints';
-import { ApiError } from '@/api/client';
 import { getXpForLevel, PlayerState } from '@/game/types';
+
+// MainMenu only needs useAuth() to not throw and to report a status. Stub the
+// module so these nav/world/chip tests stay fully synchronous — no getMe() on
+// mount, no async status transition mid-assertion. AuthProvider has its own suite.
+vi.mock('@/game/auth/AuthProvider', () => ({
+  AuthProvider: ({ children }: { children: ReactNode }) => children,
+  useAuth: () => ({
+    status: 'anonymous' as const,
+    user: null,
+    login: vi.fn(),
+    register: vi.fn(),
+    logout: vi.fn(),
+  }),
+}));
 
 function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
   return {
@@ -28,15 +40,13 @@ function renderMenu(overrides: Partial<PlayerState> = {}) {
   };
   render(
     <I18nProvider>
-      <AuthProvider>
-        <MainMenu
-          player={makePlayer(overrides)}
-          musicPlaying={false}
-          musicTrack="calm"
-          world={1}
-          {...handlers}
-        />
-      </AuthProvider>
+      <MainMenu
+        player={makePlayer(overrides)}
+        musicPlaying={false}
+        musicTrack="calm"
+        world={1}
+        {...handlers}
+      />
     </I18nProvider>,
   );
   return handlers;
@@ -45,8 +55,6 @@ function renderMenu(overrides: Partial<PlayerState> = {}) {
 beforeEach(() => {
   localStorage.clear();
   cleanup();
-  vi.restoreAllMocks();
-  vi.spyOn(endpoints, 'getMe').mockRejectedValue(new ApiError(401, 'X', ''));
 });
 
 describe('MainMenu navigation', () => {
