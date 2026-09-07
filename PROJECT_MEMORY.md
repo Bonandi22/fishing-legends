@@ -1663,8 +1663,12 @@ economia seguintes.
 
 - **Spec** (autoridade): `docs/superpowers/specs/2026-09-07-server-economy-warehouse-sell.md`
 - **Plano**: `docs/superpowers/plans/2026-09-07-server-economy-warehouse-sell.md`
-- **Ledger SDD**: `.superpowers/sdd/2026-09-07-server-economy-warehouse-sell/`
-- Branch `feature/task-10-3-economy-warehouse-sell`. Tarefas 1–7 do plano.
+- **Integrado na `main`**: PR `Bonandi22/deep-blue-lure#21` merged em `210ba71`
+  (merge commit). Execução SDD (7 tasks + review whole-branch + vaga de correção,
+  todos com review limpo). `main` verde: `npm test` 289, `test:integration` 57,
+  `tsc` app + backend limpos. Branch `feature/task-10-3-economy-warehouse-sell`
+  (local + remota) apagada.
+- Tarefas 1–7 do plano.
 
 #### Backend
 
