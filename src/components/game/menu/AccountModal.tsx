@@ -27,8 +27,18 @@ export default function AccountModal({ open, onClose }: Props) {
 
   const dismissTutorial = () => { localStorage.setItem(TUTORIAL_KEY, '1'); setTutorialVisible(false); };
 
+  // Client-side signup validation — mirrors the backend registerSchema so we
+  // never fire a request the server will reject with VALIDATION_ERROR.
+  const emailTrimmed = email.trim();
+  const usernameTrimmed = username.trim();
+  const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailTrimmed);
+  const passwordValid = password.length >= 12 && password.length <= 128;
+  const usernameValid = /^[a-zA-Z0-9_]{3,20}$/.test(usernameTrimmed);
+  const signupValid = emailValid && passwordValid && usernameValid;
+
   const errText = (e: unknown): string => {
     if (e instanceof ApiError) {
+      if (e.code === 'VALIDATION_ERROR' && mode === 'signup') return t('auth.err.SIGNUP_INVALID');
       const key = `auth.err.${e.code}` as const;
       const msg = t(key as never);
       // An unmapped code is not necessarily a bad form — stay neutral.
@@ -91,15 +101,23 @@ export default function AccountModal({ open, onClose }: Props) {
 
                 <label className="block text-xs text-muted-foreground" htmlFor="acc-email">{t('auth.emailLabel')}</label>
                 <Input id="acc-email" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="email@exemplo.com" />
+                {mode === 'signup' && emailTrimmed.length > 0 && !emailValid && (
+                  <p className="text-xs text-destructive">{t('auth.emailHint')}</p>
+                )}
 
                 <label className="block text-xs text-muted-foreground" htmlFor="acc-pw">{t('auth.passwordLabel')}</label>
-                <Input id="acc-pw" type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" />
-                {mode === 'signup' && <p className="text-xs text-muted-foreground">{t('auth.passwordHint')}</p>}
+                <Input id="acc-pw" type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••"
+                  minLength={mode === 'signup' ? 12 : undefined} maxLength={mode === 'signup' ? 128 : undefined} />
+                {mode === 'signup' && (
+                  <p className={`text-xs ${password.length > 0 && !passwordValid ? 'text-destructive' : 'text-muted-foreground'}`}>{t('auth.passwordHint')}</p>
+                )}
 
                 {mode === 'signup' && (
                   <>
                     <label className="block text-xs text-muted-foreground" htmlFor="acc-user">{t('auth.usernameLabel')}</label>
-                    <Input id="acc-user" type="text" value={username} onChange={e => setUsername(e.target.value)} maxLength={20} placeholder="MyAngler" />
+                    <Input id="acc-user" type="text" value={username} onChange={e => setUsername(e.target.value)} maxLength={20}
+                      pattern="[a-zA-Z0-9_]+" inputMode="text" placeholder="MyAngler" />
+                    <p className={`text-xs ${usernameTrimmed.length > 0 && !usernameValid ? 'text-destructive' : 'text-muted-foreground'}`}>{t('auth.usernameHint')}</p>
                     <span className="block text-xs text-muted-foreground">{t('auth.countryLabel')}</span>
                     <div className="grid grid-cols-8 gap-1.5">
                       {COUNTRIES.map(c => (
@@ -110,7 +128,7 @@ export default function AccountModal({ open, onClose }: Props) {
                   </>
                 )}
 
-                <Button onClick={submit} disabled={busy || !email || !password || (mode === 'signup' && !username.trim())} className="w-full">
+                <Button onClick={submit} disabled={busy || !email || !password || (mode === 'signup' && !signupValid)} className="w-full">
                   {mode === 'signup' ? t('auth.signupCta') : t('auth.loginCta')}
                 </Button>
                 <button type="button" onClick={() => { setMode(mode === 'signup' ? 'login' : 'signup'); setError(null); }}

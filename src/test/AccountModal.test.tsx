@@ -44,6 +44,36 @@ describe('AccountModal', () => {
     ));
   });
 
+  it('signup: submit disabled with an 11-char password, enabled at 12', async () => {
+    renderModal();
+    fireEvent.change(await screen.findByLabelText(/e-mail/i), { target: { value: 'e@x.com' } });
+    fireEvent.change(screen.getByLabelText(/nome de utilizador/i), { target: { value: 'Angler' } });
+    fireEvent.change(screen.getByLabelText(/palavra-passe/i), { target: { value: 'a'.repeat(11) } });
+    expect(screen.getByRole('button', { name: /criar conta/i })).toBeDisabled();
+    fireEvent.change(screen.getByLabelText(/palavra-passe/i), { target: { value: 'a'.repeat(12) } });
+    expect(screen.getByRole('button', { name: /criar conta/i })).toBeEnabled();
+  });
+
+  it('signup: submit disabled with a spaced username, enabled with "my_angler"', async () => {
+    renderModal();
+    fireEvent.change(await screen.findByLabelText(/e-mail/i), { target: { value: 'e@x.com' } });
+    fireEvent.change(screen.getByLabelText(/palavra-passe/i), { target: { value: 'a-strong-password' } });
+    fireEvent.change(screen.getByLabelText(/nome de utilizador/i), { target: { value: 'my angler' } });
+    expect(screen.getByRole('button', { name: /criar conta/i })).toBeDisabled();
+    fireEvent.change(screen.getByLabelText(/nome de utilizador/i), { target: { value: 'my_angler' } });
+    expect(screen.getByRole('button', { name: /criar conta/i })).toBeEnabled();
+  });
+
+  it('login: submit is not gated by signup rules (short password ok to attempt)', async () => {
+    const login = vi.spyOn(endpoints, 'login').mockResolvedValue({ user: { id: 'u1', username: 'Angler', email: 'e@x.com', country: 'BR' } } as never);
+    renderModal();
+    fireEvent.click(await screen.findByRole('button', { name: /já tenho conta/i }));
+    fireEvent.change(screen.getByLabelText(/e-mail/i), { target: { value: 'e@x.com' } });
+    fireEvent.change(screen.getByLabelText(/palavra-passe/i), { target: { value: 'short' } });
+    fireEvent.click(screen.getByRole('button', { name: /^entrar$/i }));
+    await waitFor(() => expect(login).toHaveBeenCalledWith({ email: 'e@x.com', password: 'short' }));
+  });
+
   it('shows a mapped error message on invalid credentials', async () => {
     vi.spyOn(endpoints, 'login').mockRejectedValue(new ApiError(401, 'INVALID_CREDENTIALS', 'x'));
     renderModal();
