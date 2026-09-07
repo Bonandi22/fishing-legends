@@ -200,6 +200,10 @@ export function useGameState() {
     setPlayer(applyNetPurchase);
   }, []);
 
+  const replaceFromServer = useCallback((partial: Partial<PlayerState>) => {
+    setPlayer(prev => ({ ...prev, ...partial }));
+  }, []);
+
   const resetProgress = useCallback(() => {
     setPlayer({ ...defaultState, aquariumSectors: { 1:[],2:[],3:[],4:[],5:[] } });
   }, []);
@@ -210,5 +214,6 @@ export function useGameState() {
     buyBoatSkin, equipBoatSkin,
     addCoins, addSkin, addBoatSkin, spendCoins, addMultiplier, setLastRouletteDate,
     moveAquariumFishToSector, claimDailyGift, consumeNet, buyNet, catchFishBatch,
+    replaceFromServer,
   };
 }
