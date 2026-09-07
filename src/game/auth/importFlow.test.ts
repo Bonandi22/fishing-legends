@@ -16,6 +16,22 @@ describe('importFlow', () => {
     expect(onPreview).toHaveBeenCalledWith(expect.objectContaining({ summary: { accepted: 2, rejected: 0 } }));
   });
 
+  it('derives localLevel/localCoins from the raw save, not live state', async () => {
+    localStorage.setItem('fishing-game-state', save);
+    vi.spyOn(endpoints, 'previewMigration').mockResolvedValue({ sourceVersion: 1, summary: { accepted: 2, rejected: 0 }, rejected: [] });
+    const onPreview = vi.fn();
+    await maybeOfferImport({ onPreview });
+    expect(onPreview).toHaveBeenCalledWith(expect.objectContaining({ localLevel: 3, localCoins: 50 }));
+  });
+
+  it('falls back to 0 when the save has no readable level/coins', async () => {
+    localStorage.setItem('fishing-game-state', JSON.stringify({ schemaVersion: 1 }));
+    vi.spyOn(endpoints, 'previewMigration').mockResolvedValue({ sourceVersion: 1, summary: { accepted: 0, rejected: 0 }, rejected: [] });
+    const onPreview = vi.fn();
+    await maybeOfferImport({ onPreview });
+    expect(onPreview).toHaveBeenCalledWith(expect.objectContaining({ localLevel: 0, localCoins: 0 }));
+  });
+
   it('does nothing when there is no local save', async () => {
     const onPreview = vi.fn();
     await maybeOfferImport({ onPreview });

@@ -21,9 +21,8 @@ import { useBackgroundMusic } from '@/game/useBackgroundMusic';
 import { I18nProvider } from '@/game/i18n';
 import { AuthProvider } from '@/game/auth/AuthProvider';
 import { hydrateFromServer } from '@/game/auth/hydrate';
-import { maybeOfferImport, runImport } from '@/game/auth/importFlow';
+import { maybeOfferImport, runImport, type ImportPreview } from '@/game/auth/importFlow';
 import ImportSaveDialog from '@/components/game/menu/ImportSaveDialog';
-import type { MigrationPreview } from '@/api/types';
 import { FishingLocation, Fish } from '@/game/types';
 
 type Screen = 'menu' | 'locations' | 'fishing' | 'collection' | 'warehouse' | 'submarine' | 'multiplier' | 'skins' | 'boatSkins' | 'roulette' | 'skinRoulette' | 'ranking' | 'aquarium' | 'dailyGifts' | 'net' | 'netShop';
@@ -126,18 +125,25 @@ const IndexInner = () => {
     );
   }
 
-  const [importPreview, setImportPreview] = useState<(MigrationPreview & { raw: unknown }) | null>(null);
+  const [importPreview, setImportPreview] = useState<ImportPreview | null>(null);
 
   const afterAuth = async () => {
-    await hydrateFromServer(replaceFromServer).catch(() => {});
+    // Offer the import BEFORE hydrating: the dialog describes the local save, and
+    // reading it must not race a hydrate-driven state/localStorage write.
     await maybeOfferImport({ onPreview: setImportPreview });
+    await hydrateFromServer(replaceFromServer).catch(() => {});
   };
 
   const confirmImport = async () => {
     if (!importPreview) return;
-    await runImport(importPreview.raw).catch(() => {});
+    let imported = true;
+    // Silent on failure by design: there is no toast surface yet (out of scope for
+    // 10.1). We still dismiss the dialog so the user is not stuck, and we skip the
+    // re-hydrate — afterAuth already hydrated, and re-running it on a failed import
+    // would only look like the import had succeeded.
+    await runImport(importPreview.raw).catch(() => { imported = false; });
     setImportPreview(null);
-    await hydrateFromServer(replaceFromServer).catch(() => {});
+    if (imported) await hydrateFromServer(replaceFromServer).catch(() => {});
   };
 
   return (
@@ -145,8 +151,6 @@ const IndexInner = () => {
       {content}
       <ImportSaveDialog
         preview={importPreview}
-        localLevel={player.level}
-        localCoins={player.coins}
         onImport={confirmImport}
         onDismiss={() => setImportPreview(null)}
       />

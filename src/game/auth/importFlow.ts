@@ -11,15 +11,33 @@ function readLocalSave(): unknown | null {
   try { return JSON.parse(raw); } catch { return null; }
 }
 
+export type ImportPreview = MigrationPreview & {
+  raw: unknown;
+  localLevel: number;
+  localCoins: number;
+};
+
+/**
+ * Reads `level`/`coins` off the raw save envelope (`{ schemaVersion, player: {...} }`,
+ * see persistence.ts). The dialog must describe the LOCAL save, not whatever the
+ * live in-memory state happens to be by the time it renders.
+ */
+function localStats(raw: unknown): { localLevel: number; localCoins: number } {
+  const player = (raw as { player?: unknown } | null)?.player as
+    { level?: unknown; coins?: unknown } | undefined;
+  const num = (v: unknown): number => (typeof v === 'number' && Number.isFinite(v) ? v : 0);
+  return { localLevel: num(player?.level), localCoins: num(player?.coins) };
+}
+
 export async function maybeOfferImport(deps: {
-  onPreview: (p: MigrationPreview & { raw: unknown }) => void;
+  onPreview: (p: ImportPreview) => void;
 }): Promise<void> {
   if (localStorage.getItem(IMPORT_DONE_KEY) === '1') return;
   const raw = readLocalSave();
   if (!raw) return;
   try {
     const preview = await previewMigration(raw);
-    deps.onPreview({ ...preview, raw });
+    deps.onPreview({ ...preview, raw, ...localStats(raw) });
   } catch {
     // preview failed (invalid save / offline) — skip silently, offer again next login
   }

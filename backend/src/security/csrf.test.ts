@@ -69,6 +69,32 @@ describe('CSRF double-submit', () => {
     expect(res.statusCode).toBe(200);
   });
 
+  it('protects a normal authenticated mutation without X-CSRF-Token (Ruling F)', async () => {
+    const a = await app();
+    const reg = await a.inject({ method: 'POST', url: '/api/v1/auth/register', payload: creds });
+    const jar = cookieJar(reg.headers['set-cookie']);
+    const res = await a.inject({
+      method: 'POST', url: '/api/v1/migration/local/preview',
+      cookies: { dbl_at: jar.dbl_at, dbl_csrf: jar.dbl_csrf },
+      payload: { schemaVersion: 1, player: {} },
+    });
+    expect(res.statusCode).toBe(403);
+    expect(res.json().error.code).toBe('CSRF_FAILED');
+  });
+
+  it('lets the same mutation through with a matching X-CSRF-Token', async () => {
+    const a = await app();
+    const reg = await a.inject({ method: 'POST', url: '/api/v1/auth/register', payload: creds });
+    const jar = cookieJar(reg.headers['set-cookie']);
+    const res = await a.inject({
+      method: 'POST', url: '/api/v1/migration/local/preview',
+      cookies: { dbl_at: jar.dbl_at, dbl_csrf: jar.dbl_csrf },
+      headers: { 'x-csrf-token': jar.dbl_csrf },
+      payload: { schemaVersion: 1, player: {} },
+    });
+    expect(res.statusCode).not.toBe(403);
+  });
+
   it('skips CSRF when there is no dbl_csrf cookie (route auth still runs)', async () => {
     const a = await app();
     const res = await a.inject({ method: 'POST', url: '/api/v1/auth/refresh' });

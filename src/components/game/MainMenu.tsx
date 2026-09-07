@@ -10,6 +10,7 @@ import WorldDial from './menu/WorldDial';
 import HubList, { HubItem } from './menu/HubList';
 import AccountModal from './menu/AccountModal';
 import { useAuth } from '@/game/auth/AuthProvider';
+import { iso2ToFlag } from '@/game/auth/countries';
 
 interface Props {
   player: PlayerState;
@@ -179,7 +180,7 @@ export default function MainMenu({
               size="sm"
               className="gap-1.5 border-lure/25 bg-menu-panel/60"
             >
-              {status === 'authenticated' && user ? user.username : t('menu.register')}
+              {status === 'authenticated' && user ? `${iso2ToFlag(user.country)} ${user.username}` : t('menu.register')}
             </Button>
             {player.level > 1 && (
               <Button onClick={onReset} variant="ghost" size="sm" className="text-muted-foreground">

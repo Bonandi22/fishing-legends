@@ -19,8 +19,14 @@ async function doRefresh(): Promise<boolean> {
   const headers: Record<string, string> = {};
   const t = csrfToken();
   if (t) headers['X-CSRF-Token'] = t;
-  const res = await fetch('/api/v1/auth/refresh', { method: 'POST', credentials: 'same-origin', headers });
-  return res.ok;
+  try {
+    const res = await fetch('/api/v1/auth/refresh', { method: 'POST', credentials: 'same-origin', headers });
+    return res.ok;
+  } catch {
+    // Offline / DNS / abort: treat exactly like a rejected refresh so the caller
+    // gets a typed ApiError instead of a raw TypeError.
+    return false;
+  }
 }
 
 interface Opts { method?: string; body?: unknown; idempotencyKey?: string; }

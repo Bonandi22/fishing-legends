@@ -64,6 +64,17 @@ describe('apiFetch', () => {
     setLoggedOutHandler(() => {});
   });
 
+  it('on 401 where the refresh request itself throws: logs out with an ApiError', async () => {
+    const onOut = vi.fn();
+    setLoggedOutHandler(onOut);
+    g.fetch
+      .mockResolvedValueOnce(jsonResponse(401, { error: { code: 'INVALID_ACCESS_TOKEN', message: '' } }))
+      .mockRejectedValueOnce(new TypeError('Failed to fetch'));
+    await expect(apiFetch('/me')).rejects.toBeInstanceOf(ApiError);
+    expect(onOut).toHaveBeenCalledTimes(1);
+    setLoggedOutHandler(() => {});
+  });
+
   it('does not refresh-retry a 401 from an /auth/ route', async () => {
     g.fetch.mockResolvedValueOnce(jsonResponse(401, { error: { code: 'INVALID_CREDENTIALS', message: '' } }));
     await expect(apiFetch('/auth/login', { method: 'POST', body: {} })).rejects.toMatchObject({ code: 'INVALID_CREDENTIALS' });

@@ -1,17 +1,15 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { useI18n } from '@/game/i18n';
-import type { MigrationPreview } from '@/api/types';
+import type { ImportPreview } from '@/game/auth/importFlow';
 
 interface Props {
-  preview: (MigrationPreview & { raw: unknown }) | null;
-  localLevel: number;
-  localCoins: number;
+  preview: ImportPreview | null;
   onImport: () => void;
   onDismiss: () => void;
 }
 
-export default function ImportSaveDialog({ preview, localLevel, localCoins, onImport, onDismiss }: Props) {
+export default function ImportSaveDialog({ preview, onImport, onDismiss }: Props) {
   const { t } = useI18n();
   return (
     <AnimatePresence>
@@ -30,8 +28,8 @@ export default function ImportSaveDialog({ preview, localLevel, localCoins, onIm
             <h2 className="mb-2 font-display text-xl font-bold text-foreground">{t('auth.importTitle')}</h2>
             <p className="mb-5 text-sm text-muted-foreground">
               {t('auth.importBody')
-                .replace('{level}', String(localLevel))
-                .replace('{coins}', String(localCoins))
+                .replace('{level}', String(preview.localLevel))
+                .replace('{coins}', String(preview.localCoins))
                 .replace('{fish}', String(preview.summary.accepted))}
             </p>
             <div className="flex gap-3">

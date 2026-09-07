@@ -200,8 +200,11 @@ export function useGameState() {
     setPlayer(applyNetPurchase);
   }, []);
 
-  const replaceFromServer = useCallback((partial: Partial<PlayerState>) => {
-    setPlayer(prev => ({ ...prev, ...partial }));
+  // Takes an updater so the caller can merge against the CURRENT local state.
+  // The server is not authoritative over local progress in 10.1 — hydration must
+  // never overwrite fields the caller decided to keep (see auth/hydrate.ts).
+  const replaceFromServer = useCallback((updater: (prev: PlayerState) => Partial<PlayerState>) => {
+    setPlayer(prev => ({ ...prev, ...updater(prev) }));
   }, []);
 
   const resetProgress = useCallback(() => {

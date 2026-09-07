@@ -31,7 +31,8 @@ export default function AccountModal({ open, onClose }: Props) {
     if (e instanceof ApiError) {
       const key = `auth.err.${e.code}` as const;
       const msg = t(key as never);
-      return msg === key ? t('auth.err.VALIDATION_ERROR') : msg;
+      // An unmapped code is not necessarily a bad form — stay neutral.
+      return msg === key ? t('auth.err.GENERIC') : msg;
     }
     return t('auth.err.NETWORK');
   };

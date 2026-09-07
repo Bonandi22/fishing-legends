@@ -24,6 +24,14 @@ function cookieJar(setCookie: string | string[] | undefined): Record<string, str
   return jar;
 }
 
+/** Asserts the response clears dbl_at, dbl_rt and dbl_csrf. */
+function expectCleared(setCookie: string | string[] | undefined): void {
+  const joined = (Array.isArray(setCookie) ? setCookie : setCookie ? [setCookie] : []).join(';');
+  expect(joined).toMatch(/dbl_at=;/);
+  expect(joined).toMatch(/dbl_rt=;/);
+  expect(joined).toMatch(/dbl_csrf=;/);
+}
+
 describe('auth routes with cookies', () => {
   it('register sets dbl_at, dbl_rt, dbl_csrf and returns only { user }', async () => {
     const a = await app();
@@ -59,6 +67,32 @@ describe('auth routes with cookies', () => {
     expect(res.json().error.code).toBe('INVALID_REFRESH_TOKEN');
   });
 
+  it('a failed refresh clears all three cookies (I3)', async () => {
+    const a = await app();
+    const reg = await a.inject({ method: 'POST', url: '/api/v1/auth/register', payload: creds });
+    const jar = cookieJar(reg.headers['set-cookie']);
+    // Rotate once, then replay the now-stale token to force REFRESH_TOKEN_REUSED.
+    await a.inject({
+      method: 'POST', url: '/api/v1/auth/refresh',
+      cookies: { dbl_rt: jar.dbl_rt, dbl_csrf: jar.dbl_csrf },
+      headers: { 'x-csrf-token': jar.dbl_csrf },
+    });
+    const res = await a.inject({
+      method: 'POST', url: '/api/v1/auth/refresh',
+      cookies: { dbl_rt: jar.dbl_rt, dbl_csrf: jar.dbl_csrf },
+      headers: { 'x-csrf-token': jar.dbl_csrf },
+    });
+    expect(res.statusCode).toBeGreaterThanOrEqual(400);
+    expectCleared(res.headers['set-cookie']);
+  });
+
+  it('a refresh with no cookie at all still clears the cookies (I3)', async () => {
+    const a = await app();
+    const res = await a.inject({ method: 'POST', url: '/api/v1/auth/refresh' });
+    expect(res.statusCode).toBe(401);
+    expectCleared(res.headers['set-cookie']);
+  });
+
   it('logout clears the cookies', async () => {
     const a = await app();
     const reg = await a.inject({ method: 'POST', url: '/api/v1/auth/register', payload: creds });
@@ -69,16 +103,44 @@ describe('auth routes with cookies', () => {
       headers: { 'x-csrf-token': jar.dbl_csrf },
     });
     expect(res.statusCode).toBe(204);
-    const cleared = res.headers['set-cookie'] as string[];
-    expect(cleared.join(';')).toMatch(/dbl_at=;/);
+    expectCleared(res.headers['set-cookie']);
   });
 
-  it('requireAuth still accepts a Bearer token (fallback)', async () => {
+  it('logout succeeds without an access token (expired/absent dbl_at) (C3)', async () => {
     const a = await app();
-    // Use the memory login helper directly is not exposed; instead assert /me works with a cookie.
     const reg = await a.inject({ method: 'POST', url: '/api/v1/auth/register', payload: creds });
     const jar = cookieJar(reg.headers['set-cookie']);
-    const me = await a.inject({ method: 'GET', url: '/api/v1/me', cookies: { dbl_at: jar.dbl_at } });
+    const res = await a.inject({
+      method: 'POST', url: '/api/v1/auth/logout',
+      cookies: { dbl_rt: jar.dbl_rt, dbl_csrf: jar.dbl_csrf },
+      headers: { 'x-csrf-token': jar.dbl_csrf },
+    });
+    expect(res.statusCode).toBe(204);
+    expectCleared(res.headers['set-cookie']);
+  });
+
+  it('logout with a garbage access token still 204s and clears (C3)', async () => {
+    const a = await app();
+    const reg = await a.inject({ method: 'POST', url: '/api/v1/auth/register', payload: creds });
+    const jar = cookieJar(reg.headers['set-cookie']);
+    const res = await a.inject({
+      method: 'POST', url: '/api/v1/auth/logout',
+      cookies: { dbl_at: 'not.a.jwt', dbl_rt: jar.dbl_rt, dbl_csrf: jar.dbl_csrf },
+      headers: { 'x-csrf-token': jar.dbl_csrf },
+    });
+    expect(res.statusCode).toBe(204);
+    expectCleared(res.headers['set-cookie']);
+  });
+
+  it('requireAuth accepts a Bearer token with no cookies at all (I5)', async () => {
+    const a = await app();
+    const reg = await a.inject({ method: 'POST', url: '/api/v1/auth/register', payload: creds });
+    const jar = cookieJar(reg.headers['set-cookie']);
+    // The dbl_at cookie value IS the raw access-token JWT.
+    const me = await a.inject({
+      method: 'GET', url: '/api/v1/me',
+      headers: { authorization: `Bearer ${jar.dbl_at}` },
+    });
     expect(me.statusCode).toBe(200);
     expect(me.json().user).toMatchObject({ email: 'a@example.com' });
   });
