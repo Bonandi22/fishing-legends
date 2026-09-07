@@ -24,3 +24,6 @@ export function putGameState(state: unknown, baseVersion: number | null): Promis
 export function sellWarehouse(idempotencyKey: string): Promise<GameStateEnvelope> {
   return apiFetch('/me/economy/warehouse/sell', { method: 'POST', idempotencyKey });
 }
+export function purchaseNet(idempotencyKey: string): Promise<GameStateEnvelope> {
+  return apiFetch('/me/economy/nets/purchase', { method: 'POST', idempotencyKey });
+}

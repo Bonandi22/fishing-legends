@@ -9,9 +9,10 @@ interface Props {
   player: PlayerState;
   onBuy: () => void;
   onBack: () => void;
+  buying?: boolean;
 }
 
-export default function NetShop({ player, onBuy, onBack }: Props) {
+export default function NetShop({ player, onBuy, onBack, buying = false }: Props) {
   const { t } = useI18n();
   const nets = player.nets ?? 0;
   const full = nets >= NET_LIMIT;
@@ -48,7 +49,7 @@ export default function NetShop({ player, onBuy, onBack }: Props) {
         <Button
           size="lg"
           onClick={onBuy}
-          disabled={full || !canAfford}
+          disabled={full || !canAfford || buying}
           className="w-full bg-lure font-semibold text-lure-foreground hover:bg-lure/90"
         >
           {label}

@@ -58,4 +58,13 @@ describe('NetShop', () => {
     fireEvent.click(screen.getByRole('button', { name: /voltar/i }));
     expect(onBack).toHaveBeenCalledTimes(1);
   });
+
+  it('disables the buy control while a purchase is in flight', () => {
+    render(
+      <I18nProvider>
+        <NetShop player={makePlayer({ nets: 3 })} buying onBuy={vi.fn()} onBack={vi.fn()} />
+      </I18nProvider>,
+    );
+    expect(screen.getByRole('button', { name: /comprar 1 rede/i })).toBeDisabled();
+  });
 });
