@@ -14,6 +14,11 @@ const skinBody = z.object({
   skinId: z.string().min(1).max(64),
 });
 
+const aquariumPlaceBody = z.object({
+  timestamp: z.number().int().nonnegative(),
+  sector: z.number().int().min(1).max(5),
+});
+
 export function registerGameStateEconomyRoutes(app: FastifyInstance, service: GameStateEconomyService): void {
   const r = app.withTypeProvider<ZodTypeProvider>();
 
@@ -74,5 +79,17 @@ export function registerGameStateEconomyRoutes(app: FastifyInstance, service: Ga
     preHandler: app.requireAuth,
   }, async (request) => {
     return service.claimDailyGift(request.userId, idempotencyKey(request.headers['idempotency-key']));
+  });
+
+  r.post('/api/v1/me/economy/aquarium/place', {
+    schema: {
+      tags: ['gamestate'],
+      summary: 'Move an aquarium-warehouse fish into a display sector (needs Idempotency-Key)',
+      body: aquariumPlaceBody,
+    },
+    preHandler: app.requireAuth,
+  }, async (request) => {
+    const { timestamp, sector } = request.body;
+    return service.placeAquariumFish(request.userId, idempotencyKey(request.headers['idempotency-key']), timestamp, sector);
   });
 }

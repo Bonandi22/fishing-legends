@@ -45,6 +45,7 @@ describe('generated OpenAPI contract', () => {
       '/api/v1/auth/register', '/api/v1/auth/login', '/api/v1/auth/refresh', '/api/v1/auth/logout',
       '/api/v1/me', '/api/v1/catalog',
       '/api/v1/me/fishing/cast', '/api/v1/me/fishing/land',
+      '/api/v1/me/economy/aquarium/place',
       '/api/v1/wallet', '/api/v1/economy/nets/purchase', '/api/v1/economy/multipliers/purchase',
       '/api/v1/inventory/warehouse', '/api/v1/inventory/warehouse/sell',
       '/api/v1/inventory/aquarium', '/api/v1/inventory/aquarium/{sector}',

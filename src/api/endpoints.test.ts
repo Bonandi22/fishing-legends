@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import * as client from './client';
-import { register, login, logout, getMe, getGameState, putGameState, sellWarehouse, purchaseNet, purchaseMultiplier, purchaseSkin, spinRoulette, spinSkinRoulette, claimDailyGift, castLine, landCatch } from './endpoints';
+import { register, login, logout, getMe, getGameState, putGameState, sellWarehouse, purchaseNet, purchaseMultiplier, purchaseSkin, spinRoulette, spinSkinRoulette, claimDailyGift, placeAquariumFish, castLine, landCatch } from './endpoints';
 
 describe('endpoints', () => {
   it('register POSTs /auth/register with the body', async () => {
@@ -100,6 +100,12 @@ describe('endpoints', () => {
     const spy = vi.spyOn(client, 'apiFetch').mockResolvedValue({} as never);
     await purchaseSkin('idem-key-skinskinski', 'boat', 'yacht');
     expect(spy).toHaveBeenCalledWith('/me/economy/skins/purchase', { method: 'POST', body: { kind: 'boat', skinId: 'yacht' }, idempotencyKey: 'idem-key-skinskinski' });
+  });
+
+  it('placeAquariumFish POSTs /me/economy/aquarium/place with { timestamp, sector } + key', async () => {
+    const spy = vi.spyOn(client, 'apiFetch').mockResolvedValue({} as never);
+    await placeAquariumFish('idem-key-aquaaquaaqu', 42, 3);
+    expect(spy).toHaveBeenCalledWith('/me/economy/aquarium/place', { method: 'POST', body: { timestamp: 42, sector: 3 }, idempotencyKey: 'idem-key-aquaaquaaqu' });
   });
 
   it('purchaseMultiplier POSTs /me/economy/multipliers/purchase with the body and idempotency key', async () => {

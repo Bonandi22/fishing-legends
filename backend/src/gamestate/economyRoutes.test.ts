@@ -391,3 +391,62 @@ describe('POST /api/v1/me/economy reward ops', () => {
     expect(res.statusCode).toBe(401);
   });
 });
+
+describe('POST /api/v1/me/economy/aquarium/place', () => {
+  const withAq = (over: Record<string, unknown> = {}) => ({
+    schemaVersion: SAVE_SCHEMA_VERSION,
+    player: {
+      ...blob([]).player, xpToNextLevel: 999999,
+      aquariumWarehouse: [{ fish: FISH[0], weight: 1.5, location: 'atlantic', timestamp: 55 }],
+      ...over,
+    },
+  });
+
+  it('places the fish: moved to sector, coins+xp up, version 1 -> 2', async () => {
+    const a = await app();
+    const client = await registerAndAuth(a);
+    await seedBlob(client, withAq());
+    const res = await client.request({ method: 'POST', url: '/api/v1/me/economy/aquarium/place', payload: { timestamp: 55, sector: 3 } });
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(body.version).toBe(2);
+    expect(body.state.player.aquariumWarehouse).toEqual([]);
+    expect(body.state.player.aquariumSectors['3']).toHaveLength(1);
+    expect(body.state.player.coins).toBeGreaterThan(100);
+    expect(body.reward).toBeUndefined();
+  });
+
+  it('replay with the same Idempotency-Key returns the same body', async () => {
+    const a = await app();
+    const client = await registerAndAuth(a);
+    await seedBlob(client, withAq());
+    const first = await client.request({ method: 'POST', url: '/api/v1/me/economy/aquarium/place', payload: { timestamp: 55, sector: 2 }, idempotencyKey: 'aqua-key-replayreplay1' });
+    const replay = await client.request({ method: 'POST', url: '/api/v1/me/economy/aquarium/place', payload: { timestamp: 55, sector: 2 }, idempotencyKey: 'aqua-key-replayreplay1' });
+    expect(replay.json()).toEqual(first.json());
+    expect((await client.request({ method: 'GET', url: '/api/v1/me/state' })).json().version).toBe(2);
+  });
+
+  it('unknown timestamp -> 404 AQUARIUM_FISH_NOT_FOUND', async () => {
+    const a = await app();
+    const client = await registerAndAuth(a);
+    await seedBlob(client, withAq());
+    const res = await client.request({ method: 'POST', url: '/api/v1/me/economy/aquarium/place', payload: { timestamp: 999, sector: 1 } });
+    expect(res.statusCode).toBe(404);
+    expect(res.json().error.code).toBe('AQUARIUM_FISH_NOT_FOUND');
+  });
+
+  it('sector out of range -> 400 VALIDATION_ERROR', async () => {
+    const a = await app();
+    const client = await registerAndAuth(a);
+    await seedBlob(client, withAq());
+    const res = await client.request({ method: 'POST', url: '/api/v1/me/economy/aquarium/place', payload: { timestamp: 55, sector: 6 } });
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error.code).toBe('VALIDATION_ERROR');
+  });
+
+  it('no session -> 401', async () => {
+    const a = await app();
+    const res = await a.inject({ method: 'POST', url: '/api/v1/me/economy/aquarium/place', payload: { timestamp: 55, sector: 1 } });
+    expect(res.statusCode).toBe(401);
+  });
+});
