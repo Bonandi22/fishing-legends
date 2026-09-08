@@ -22,7 +22,7 @@ describe('replaceFromServer', () => {
 
   it('gives the updater the current state so it can merge non-destructively', () => {
     const { result } = renderHook(() => useGameState());
-    act(() => { result.current.addCoins(500); });
+    act(() => { result.current.replaceFromServer(() => ({ coins: 500 })); });
     act(() => {
       result.current.replaceFromServer(prev => ({ level: Math.max(prev.level, 3), coins: prev.coins }));
     });
