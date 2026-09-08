@@ -326,3 +326,68 @@ describe('POST /api/v1/me/economy/skins/purchase', () => {
     expect(res.statusCode).toBe(401);
   });
 });
+
+describe('POST /api/v1/me/economy reward ops', () => {
+  it('daily-gift/claim -> 200 with a reward, version 1 -> 2', async () => {
+    const a = await app();
+    const client = await registerAndAuth(a);
+    await seedBlob(client, netBlob({ coins: 0 }));
+    const res = await client.request({ method: 'POST', url: '/api/v1/me/economy/daily-gift/claim' });
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(body.version).toBe(2);
+    expect(body.reward).toEqual({ type: 'coins', amount: 150 });
+    expect(body.state.player.coins).toBe(150);
+  });
+
+  it('daily-gift/claim replay -> identical body', async () => {
+    const a = await app();
+    const client = await registerAndAuth(a);
+    await seedBlob(client, netBlob({ coins: 0 }));
+    const first = await client.request({ method: 'POST', url: '/api/v1/me/economy/daily-gift/claim', idempotencyKey: 'gift-key-replayreplay1' });
+    const replay = await client.request({ method: 'POST', url: '/api/v1/me/economy/daily-gift/claim', idempotencyKey: 'gift-key-replayreplay1' });
+    expect(replay.json()).toEqual(first.json());
+  });
+
+  it('second distinct daily claim same day -> 409 DAILY_GIFT_ALREADY_CLAIMED', async () => {
+    const a = await app();
+    const client = await registerAndAuth(a);
+    await seedBlob(client, netBlob({ coins: 0 }));
+    await client.request({ method: 'POST', url: '/api/v1/me/economy/daily-gift/claim' });
+    const res = await client.request({ method: 'POST', url: '/api/v1/me/economy/daily-gift/claim' });
+    expect(res.statusCode).toBe(409);
+    expect(res.json().error.code).toBe('DAILY_GIFT_ALREADY_CLAIMED');
+  });
+
+  it('roulette/spin -> 200 with a reward; second distinct spin same day -> 409 ROULETTE_ALREADY_USED', async () => {
+    const a = await app();
+    const client = await registerAndAuth(a);
+    await seedBlob(client, netBlob({ coins: 0 }));
+    const first = await client.request({ method: 'POST', url: '/api/v1/me/economy/roulette/spin' });
+    expect(first.statusCode).toBe(200);
+    expect(first.json().reward).toBeDefined();
+    const second = await client.request({ method: 'POST', url: '/api/v1/me/economy/roulette/spin' });
+    expect(second.statusCode).toBe(409);
+    expect(second.json().error.code).toBe('ROULETTE_ALREADY_USED');
+  });
+
+  it('skin-roulette/spin -> 200; below the cost -> 409 INSUFFICIENT_FUNDS', async () => {
+    const a = await app();
+    const client = await registerAndAuth(a);
+    await seedBlob(client, netBlob({ coins: 5_000 }));
+    const ok = await client.request({ method: 'POST', url: '/api/v1/me/economy/skin-roulette/spin' });
+    expect(ok.statusCode).toBe(200);
+
+    const poor = await registerAndAuth(a);
+    await seedBlob(poor, netBlob({ coins: 100 }));
+    const res = await poor.request({ method: 'POST', url: '/api/v1/me/economy/skin-roulette/spin' });
+    expect(res.statusCode).toBe(409);
+    expect(res.json().error.code).toBe('INSUFFICIENT_FUNDS');
+  });
+
+  it('no session -> 401', async () => {
+    const a = await app();
+    const res = await a.inject({ method: 'POST', url: '/api/v1/me/economy/roulette/spin' });
+    expect(res.statusCode).toBe(401);
+  });
+});

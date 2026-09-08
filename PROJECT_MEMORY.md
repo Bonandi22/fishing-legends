@@ -1889,6 +1889,66 @@ Quarta op. **Preço passa a ser do servidor.** Branch
   Branch `feature/task-10-3-economy-skin-purchase` apagada. `main` verde (341 unit
   + 68 integração).
 
+### Task 10.3 fatia 5 — roletas + prendas diárias server-autoritativas — 2026-09-08
+
+Quinta op. **Muda de padrão: RNG e portas temporais no servidor.** Branch
+`feature/task-10-3-roulettes-daily-gifts`. Spec
+`docs/superpowers/specs/2026-09-08-server-roulettes-daily-gifts.md`, plano
+`docs/superpowers/plans/2026-09-08-server-roulettes-daily-gifts.md`. Executado com
+`executing-plans` (13 tarefas), inline, commit por passo.
+
+- **`src/game/rewards.ts` (novo)** — tipo `RewardGrant`, `RouletteSlot`,
+  `DAILY_ROULETTE_SLOTS` (8 fatias uniformes, espelha a `Roulette.tsx` antiga),
+  `SKIN_ROULETTE_COST` 1500, `DAILY_GIFT_DUPLICATE_COINS` 1000,
+  `ROULETTE_DUPLICATE_COINS` 500. O backend importa (dívida D1).
+- **3 regras puras em `stateRules.ts`** (todas puras — `now` e `roll(n)→[0,n)`
+  injetados): `resolveDailyGift(state, todayStr, now)` (port verbatim do antigo
+  `useGameState.claimDailyGift`; lança `DAILY_GIFT_ALREADY_CLAIMED`),
+  `spinDailyRoulette(state, todayStr, now, roll)` (lança `ROULETTE_ALREADY_USED`;
+  slot `skinOrCoins` verifica `pool.length` antes de `roll` — `randomInt(0)` lança),
+  `spinSkinRoulette(state, roll)` (`roll(2)` rod/boat + `roll(pool.length)`;
+  duplicada → reembolso, skin não re-adicionada; lança `INSUFFICIENT_FUNDS`).
+- **Backend** — `Compute` generaliza para `{ player, reward? }`; `Result` ganha
+  `reward?`. 3 métodos no service (`spinRoulette`/`spinSkinRoulette`/`claimDailyGift`)
+  por `runMemoryOp`/`runPgOp` com ops `roulette_spin` / `skin_roulette_spin` /
+  `daily_gift_claim`; `roll = crypto.randomInt`, `today`/`now` tirados uma vez por
+  chamada. **O `reward` resolvido fica no op row** → replay devolve o mesmo prémio.
+  3 rotas `POST /api/v1/me/economy/{roulette/spin, skin-roulette/spin, daily-gift/claim}`
+  (todas sob `/me/economy/` — `daily-gift/claim` evita a rota dormente
+  `/api/v1/rewards/daily/claim`). Sem body. Erros `ROULETTE_ALREADY_USED` /
+  `DAILY_GIFT_ALREADY_CLAIMED` (409). Sem migração.
+- **Frontend** — `endpoints.{spinRoulette,spinSkinRoulette,claimDailyGift}` →
+  `RewardEnvelope = GameStateEnvelope & { reward }`. `Index.runRewardOp(op, local, api)`
+  devolve o `reward` (do servidor quando `syncEnabled`, da regra local quando
+  anónimo). `useGameState` troca 6 callbacks de concessão (`addCoins`, `addSkin`,
+  `addBoatSkin`, `spendCoins`, `addMultiplier`, `setLastRouletteDate`,
+  `claimDailyGift`) por 3 helpers locais (`claimDailyGiftLocal`,
+  `spinDailyRouletteLocal`, `spinSkinRouletteLocal`) que lêem um `playerRef` e
+  devolvem o `reward`. `busyOp` estende para `'roulette'|'skinRoulette'|'dailyGift'`.
+  `Roulette` / `SkinRoulette` viram **roda decorativa** (SVG estático de 8 fatias,
+  giro de voltas fixas, sem alvo calculado) que revela o `reward` recebido ~400ms
+  depois; `DailyGifts` mostra o `reward` devolvido (não `gifts[currentDay-1]`).
+  `dailygifts/rewards.ts` `rewardLabel` alargado a `RewardGrant` + `rewardEmoji`.
+  Nova chave i18n `roulette.failed` (6 locales).
+- **Sem mudança de balanceamento** — custos, cooldowns (prenda + roleta 1×/dia UTC,
+  roleta de skins ilimitada), tabelas, durações (`MULTIPLIER_DURATION` 60s, poder 2),
+  reembolsos de duplicado — tudo carregado como estava.
+- Testes: `rewards.test.ts` (+2), `stateRules.test.ts` (+16), `economyService.test.ts`
+  (+9), `economyRoutes.test.ts` (+6), `economyService.integration.test.ts` (+5),
+  `endpoints.test.ts` (+3), `useGameState.rewards.test.tsx` (+4, novo),
+  `Roulette.test.tsx` (+4), `DailyGifts.test.tsx` (reescritos), `replaceFromServer.test.ts`
+  (ajuste — `addCoins` removido).
+- Verificação: `tsc app` ✅ · `backend:typecheck` ✅ · `lint` ✅ 0 erros · `npm test`
+  ✅ **384** · `build` ✅ · `test:integration` ✅ **73**.
+- Smoke browser (Playwright — a extensão Chrome estava a congelar; **Vite no
+  contentor não fez HMR das mudanças — precisou de `docker compose restart frontend`**,
+  o que levou a uma volta de debug inútil sobre código velho): autenticado, prenda
+  → `POST .../daily-gift/claim` 200 (+300), roleta → `POST .../roulette/spin` 200
+  (ganhou skin `gold`), roleta de skins → `POST .../skin-roulette/spin` 200 (−1500,
+  ganhou `pirate`); 3 linhas `game_state_operations` com `reward`, estado correto,
+  **sem `PUT /me/state` redundante**, botões de cooldown desativam; anónimo → regra
+  local, revelação ok.
+
 ### Ponto de parada — 2026-09-08 (fatia 4 integrada)
 
 - `main` em `2947291`, sincronizada com `origin/main`, worktree limpo (`.claude/`

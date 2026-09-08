@@ -18,23 +18,21 @@ function makePlayer(over: Partial<PlayerState> = {}): PlayerState {
 }
 
 const today = new Date().toISOString().slice(0, 10);
-const noop = () => {};
 
 beforeEach(() => cleanup());
 
 describe('Roulette', () => {
-  function renderRoulette(over: Partial<PlayerState> = {}) {
+  function renderRoulette(
+    over: Partial<PlayerState> = {},
+    onSpin: () => Promise<unknown> = vi.fn().mockResolvedValue({ type: 'coins', amount: 250 }),
+  ) {
     const onBack = vi.fn();
     render(
       <I18nProvider>
-        <Roulette
-          player={makePlayer(over)}
-          onAddCoins={noop} onAddSkin={noop} onAddBoatSkin={noop} onAddMultiplier={noop}
-          onSetLastRouletteDate={noop} onBack={onBack}
-        />
+        <Roulette player={makePlayer(over)} onSpin={onSpin as () => Promise<never>} onBack={onBack} />
       </I18nProvider>,
     );
-    return { onBack };
+    return { onBack, onSpin };
   }
 
   it('offers a spin when the daily roulette is available', () => {
@@ -48,6 +46,23 @@ describe('Roulette', () => {
     expect(screen.queryByRole('button', { name: /girar/i })).not.toBeInTheDocument();
   });
 
+  it('calls onSpin and reveals the returned reward', async () => {
+    const onSpin = vi.fn().mockResolvedValue({ type: 'coins', amount: 250 });
+    renderRoulette({ lastRouletteDate: null }, onSpin);
+    fireEvent.click(screen.getByRole('button', { name: /girar/i }));
+    expect(onSpin).toHaveBeenCalledTimes(1);
+    expect(await screen.findByText(/250/)).toBeInTheDocument();
+  });
+
+  it('disables the control while busy', () => {
+    render(
+      <I18nProvider>
+        <Roulette player={makePlayer()} onSpin={vi.fn()} busy onBack={vi.fn()} />
+      </I18nProvider>,
+    );
+    expect(screen.getByRole('button', { name: /girar/i })).toBeDisabled();
+  });
+
   it('goes back', () => {
     const { onBack } = renderRoulette();
     fireEvent.click(screen.getByRole('button', { name: /voltar/i }));
@@ -56,18 +71,17 @@ describe('Roulette', () => {
 });
 
 describe('SkinRoulette', () => {
-  function renderSkinRoulette(over: Partial<PlayerState> = {}) {
+  function renderSkinRoulette(
+    over: Partial<PlayerState> = {},
+    onSpin: () => Promise<unknown> = vi.fn().mockResolvedValue({ type: 'rodSkin', skinId: 'shark' }),
+  ) {
     const onBack = vi.fn();
-    const onSpend = vi.fn();
     render(
       <I18nProvider>
-        <SkinRoulette
-          player={makePlayer(over)}
-          onAddSkin={noop} onAddBoatSkin={noop} onSpend={onSpend} onBack={onBack}
-        />
+        <SkinRoulette player={makePlayer(over)} onSpin={onSpin as () => Promise<never>} onBack={onBack} />
       </I18nProvider>,
     );
-    return { onBack, onSpend };
+    return { onBack, onSpin };
   }
 
   it('shows the spin cost on the control', () => {
@@ -76,10 +90,27 @@ describe('SkinRoulette', () => {
   });
 
   it('blocks the spin when the player cannot afford it', () => {
-    const { onSpend } = renderSkinRoulette({ coins: 1000 });
+    const { onSpin } = renderSkinRoulette({ coins: 1000 });
     expect(screen.getByRole('button', { name: /1500/ })).toBeDisabled();
     expect(screen.getByText(/moedas insuficientes/i)).toBeInTheDocument();
-    expect(onSpend).not.toHaveBeenCalled();
+    expect(onSpin).not.toHaveBeenCalled();
+  });
+
+  it('calls onSpin and reveals the returned skin', async () => {
+    const onSpin = vi.fn().mockResolvedValue({ type: 'rodSkin', skinId: 'shark' });
+    renderSkinRoulette({ coins: 5000 }, onSpin);
+    fireEvent.click(screen.getByRole('button', { name: /1500/ }));
+    expect(onSpin).toHaveBeenCalledTimes(1);
+    expect(await screen.findByText(/tubarão/i)).toBeInTheDocument();
+  });
+
+  it('disables the control while busy', () => {
+    render(
+      <I18nProvider>
+        <SkinRoulette player={makePlayer({ coins: 5000 })} onSpin={vi.fn()} busy onBack={vi.fn()} />
+      </I18nProvider>,
+    );
+    expect(screen.getByRole('button', { name: /1500/ })).toBeDisabled();
   });
 
   it('goes back', () => {

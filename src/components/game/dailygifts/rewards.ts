@@ -1,9 +1,10 @@
-import { DailyGiftReward, ROD_SKINS, BOAT_SKINS } from '@/game/types';
+import { ROD_SKINS, BOAT_SKINS } from '@/game/types';
+import type { RewardGrant } from '@/game/rewards';
 
 type T = (key: 'daily.coins' | 'daily.rewardLuck' | 'daily.rewardStrength' | 'daily.boatSkin' | 'daily.rodSkin') => string;
 
-/** Human label for a daily reward, e.g. "150 moedas" or "Skin de barco: Leviatã". */
-export function rewardLabel(r: DailyGiftReward, t: T): string {
+/** Human label for a reward, e.g. "150 moedas" or "Skin de barco: Leviatã". */
+export function rewardLabel(r: RewardGrant, t: T): string {
   if (r.type === 'coins') return `${r.amount} ${t('daily.coins')}`;
   if (r.type === 'multiplier') return r.kind === 'luck' ? t('daily.rewardLuck') : t('daily.rewardStrength');
   if (r.type === 'boatSkin') {
@@ -14,6 +15,14 @@ export function rewardLabel(r: DailyGiftReward, t: T): string {
   return `${t('daily.rodSkin')}: ${s?.name ?? r.skinId}`;
 }
 
-export function isExclusive(r: DailyGiftReward): boolean {
+/** A single emoji for a reward reveal. */
+export function rewardEmoji(r: RewardGrant): string {
+  if (r.type === 'coins') return '💰';
+  if (r.type === 'multiplier') return r.kind === 'luck' ? '🍀' : '💪';
+  if (r.type === 'boatSkin') return BOAT_SKINS.find(s => s.id === r.skinId)?.emoji ?? '⛵';
+  return ROD_SKINS.find(s => s.id === r.skinId)?.emoji ?? '🎣';
+}
+
+export function isExclusive(r: RewardGrant): boolean {
   return r.type === 'boatSkin' || r.type === 'rodSkin';
 }

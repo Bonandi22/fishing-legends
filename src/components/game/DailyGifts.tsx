@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
-import { PlayerState, DailyGiftReward, getDailyGiftsForWeek } from '@/game/types';
+import { PlayerState, getDailyGiftsForWeek } from '@/game/types';
+import type { RewardGrant } from '@/game/rewards';
 import { useI18n } from '@/game/i18n';
 import GameScreen from './shell/GameScreen';
 import { screenItem } from './shell/motion';
@@ -11,7 +12,8 @@ import { rewardLabel } from './dailygifts/rewards';
 
 interface Props {
   player: PlayerState;
-  onClaim: () => void;
+  /** Resolves the reward the server (or the local rule) granted, or null on failure. */
+  onClaim: () => Promise<RewardGrant | null>;
   onBack: () => void;
 }
 
@@ -22,12 +24,19 @@ export default function DailyGifts({ player, onClaim, onBack }: Props) {
   const currentDay = player.dailyGiftsDay || 1;
   const currentWeek = player.dailyGiftsWeek || 1;
   const gifts = getDailyGiftsForWeek(currentWeek);
-  const [popup, setPopup] = useState<{ reward: DailyGiftReward; day: number } | null>(null);
+  const [popup, setPopup] = useState<{ reward: RewardGrant; day: number } | null>(null);
+  const [claiming, setClaiming] = useState(false);
 
-  const handleClaim = () => {
-    if (claimedToday) return;
-    onClaim();
-    setPopup({ reward: gifts[currentDay - 1], day: currentDay });
+  const handleClaim = async () => {
+    if (claimedToday || claiming) return;
+    setClaiming(true);
+    const day = currentDay;
+    try {
+      const reward = await onClaim();
+      if (reward) setPopup({ reward, day });
+    } finally {
+      setClaiming(false);
+    }
   };
 
   const subtitle =
@@ -39,7 +48,7 @@ export default function DailyGifts({ player, onClaim, onBack }: Props) {
     <Button
       size="lg"
       onClick={handleClaim}
-      disabled={claimedToday}
+      disabled={claimedToday || claiming}
       className="h-14 w-full bg-lure text-base font-black uppercase tracking-wide text-lure-foreground shadow-[0_0_30px_hsl(var(--lure)/0.4)] hover:bg-lure/90 disabled:bg-menu-raised disabled:text-muted-foreground disabled:shadow-none"
     >
       {claimedToday ? t('daily.comeBack') : `${t('daily.claimDay')} ${currentDay}`}

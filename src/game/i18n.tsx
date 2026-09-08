@@ -199,6 +199,7 @@ const translations = {
   'roulette.won': { pt: 'Você ganhou!', en: 'You won!', es: '¡Ganaste!', fr: 'Vous avez gagné !', de: 'Du hast gewonnen!', ja: '当たり！' },
   'roulette.used': { pt: 'Você já girou a roleta hoje! Volte amanhã.', en: 'You already spun today! Come back tomorrow.', es: '¡Ya giraste hoy! Vuelve mañana.', fr: 'Vous avez déjà tourné aujourd\'hui ! Revenez demain.', de: 'Du hast heute schon gedreht! Komm morgen wieder.', ja: '今日はもう回しました！明日また来てね。' },
   'roulette.daily': { pt: 'Você pode girar a roleta 1 vez por dia', en: 'You can spin the roulette once per day', es: 'Puedes girar la ruleta 1 vez al día', fr: 'Vous pouvez tourner la roulette 1 fois par jour', de: 'Du kannst das Roulette 1 mal pro Tag drehen', ja: 'ルーレットは1日1回回せます' },
+  'roulette.failed': { pt: 'Não deu para girar agora. Tenta de novo.', en: 'Could not spin right now. Try again.', es: 'No se pudo girar ahora. Inténtalo de nuevo.', fr: 'Impossible de tourner maintenant. Réessayez.', de: 'Drehen gerade nicht möglich. Versuch es erneut.', ja: '今は回せませんでした。もう一度お試しください。' },
   'menu.skinRoulette': { pt: '🎡 Roleta de Skins', en: '🎡 Skin Roulette', es: '🎡 Ruleta de Skins', fr: '🎡 Roulette de Skins', de: '🎡 Skin-Roulette', ja: '🎡 スキンルーレット' },
   'menu.aquarium': { pt: '🐠 Aquário', en: '🐠 Aquarium', es: '🐠 Acuario', fr: '🐠 Aquarium', de: '🐠 Aquarium', ja: '🐠 水族館' },
   'aquarium.title': { pt: 'Aquário', en: 'Aquarium', es: 'Acuario', fr: 'Aquarium', de: 'Aquarium', ja: '水族館' },

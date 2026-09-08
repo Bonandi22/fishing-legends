@@ -1,187 +1,105 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
-import { PlayerState, ROD_SKINS, BOAT_SKINS } from '@/game/types';
+import { PlayerState } from '@/game/types';
+import { SKIN_ROULETTE_COST, type RewardGrant } from '@/game/rewards';
 import { useI18n } from '@/game/i18n';
 import GameScreen from './shell/GameScreen';
+import { rewardEmoji, rewardLabel } from './dailygifts/rewards';
 
 interface Props {
   player: PlayerState;
-  onAddSkin: (skinId: string) => void;
-  onAddBoatSkin: (skinId: string) => void;
-  onSpend: (amount: number) => void;
+  /** Resolves the reward the server (or the local rule) granted, or null on failure. */
+  onSpin: () => Promise<RewardGrant | null>;
+  busy?: boolean;
   onBack: () => void;
 }
 
-interface Prize {
-  label: string;
-  emoji: string;
-  color: string;
-  kind: 'rod' | 'boat';
-  id: string;
-  action: () => void;
-}
-
-const SPIN_COST = 1500;
 const INK = '#0a141b';
-const HUB = '#12212b';
 const POINTER = '#2bd4ee';
+const SLICE_EMOJI = ['🎣', '⛵', '🎣', '⛵', '🎣', '⛵', '🎣', '⛵'];
+const SLICE_COLORS = ['#0e7490', '#155e75', '#0891b2', '#164e63', '#0e7490', '#155e75', '#0891b2', '#164e63'];
 
-function shuffle<T>(arr: T[]): T[] {
-  const a = [...arr];
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
-}
-
-export default function SkinRoulette({ player, onAddSkin, onAddBoatSkin, onSpend, onBack }: Props) {
+export default function SkinRoulette({ player, onSpin, busy = false, onBack }: Props) {
   const { t } = useI18n();
   const [spinning, setSpinning] = useState(false);
-  const [result, setResult] = useState<Prize | null>(null);
   const [rotation, setRotation] = useState(0);
-  const [prizes, setPrizes] = useState<Prize[]>([]);
-  const spinTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [result, setResult] = useState<RewardGrant | null>(null);
+  const [failed, setFailed] = useState(false);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const buildPrizes = useCallback((): Prize[] => {
-    const rods = ROD_SKINS.filter(s => s.price > 0 || s.exclusive);
-    const boats = BOAT_SKINS.filter(s => s.price > 0);
-    const pick = <T,>(arr: T[]) => arr[Math.floor(Math.random() * arr.length)];
+  const canAfford = player.coins >= SKIN_ROULETTE_COST;
 
-    const slots: Prize[] = [];
-    for (let i = 0; i < 4; i++) {
-      const r = pick(rods);
-      slots.push({ label: `${r.emoji} ${r.name}`, emoji: r.emoji, color: r.color, kind: 'rod', id: r.id, action: () => onAddSkin(r.id) });
-    }
-    for (let i = 0; i < 4; i++) {
-      const b = pick(boats);
-      slots.push({ label: `${b.emoji} ${b.name}`, emoji: b.emoji, color: b.rail[1], kind: 'boat', id: b.id, action: () => onAddBoatSkin(b.id) });
-    }
-    return shuffle(slots);
-  }, [onAddSkin, onAddBoatSkin]);
+  useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
 
-  useEffect(() => {
-    setPrizes(buildPrizes());
-  }, [buildPrizes]);
-
-  useEffect(() => {
-    return () => {
-      if (spinTimeoutRef.current) clearTimeout(spinTimeoutRef.current);
-    };
-  }, []);
-
-  const spin = useCallback(() => {
-    if (spinning) return;
-    if (player.coins < SPIN_COST) return;
-    onSpend(SPIN_COST);
-
+  const spin = useCallback(async () => {
+    if (spinning || busy || !canAfford) return;
     setSpinning(true);
     setResult(null);
+    setFailed(false);
+    setRotation(r => r + 360 * (5 + Math.floor(Math.random() * 4)) + Math.floor(Math.random() * 360));
 
-    const newPrizes = buildPrizes();
-    setPrizes(newPrizes);
-
-    const winIndex = Math.floor(Math.random() * newPrizes.length);
-    const sliceAngle = 360 / newPrizes.length;
-    const midAngle = winIndex * sliceAngle + sliceAngle / 2;
-    const targetMod = ((270 - midAngle) % 360 + 360) % 360;
-    const extraTurns = 5 + Math.floor(Math.random() * 4);
-    const base = rotation - (rotation % 360) + extraTurns * 360;
-    const targetRotation = base + targetMod;
-
-    setRotation(targetRotation);
-
-    spinTimeoutRef.current = setTimeout(() => {
+    const reward = await onSpin();
+    timer.current = setTimeout(() => {
       setSpinning(false);
-      const prize = newPrizes[winIndex];
-      prize.action();
-      setResult(prize);
-    }, 4200);
-  }, [spinning, player.coins, onSpend, buildPrizes, rotation]);
-
-  const canSpin = player.coins >= SPIN_COST && !spinning;
+      if (reward) setResult(reward);
+      else setFailed(true);
+    }, 400);
+  }, [spinning, busy, canAfford, onSpin]);
 
   return (
     <GameScreen title={t('skinRoulette.name')} onBack={onBack} coins={player.coins} width="narrow">
       <div className="flex flex-col items-center gap-5">
-        <div className="relative" style={{ width: 320, height: 320 }}>
+        <div className="relative" style={{ width: 300, height: 300 }}>
           <div
             className="absolute inset-0 rounded-full ring-1 ring-lure/25"
             style={{
               transform: `rotate(${rotation}deg)`,
-              transition: spinning ? 'transform 4s cubic-bezier(0.25, 0.1, 0.25, 1)' : 'none',
+              transition: spinning ? 'transform 3.6s cubic-bezier(0.25, 0.1, 0.25, 1)' : 'none',
             }}
           >
-            <svg viewBox="0 0 320 320" width="320" height="320" className="rounded-full">
-              {prizes.map((prize, i) => {
-                const startAngle = (i * 360) / prizes.length;
-                const endAngle = ((i + 1) * 360) / prizes.length;
-                const largeArc = endAngle - startAngle > 180 ? 1 : 0;
-                const r = 150;
-                const cx = 160;
-                const cy = 160;
-                const rad = (deg: number) => (deg * Math.PI) / 180;
-                const x1 = cx + r * Math.cos(rad(startAngle));
-                const y1 = cy + r * Math.sin(rad(startAngle));
-                const x2 = cx + r * Math.cos(rad(endAngle));
-                const y2 = cy + r * Math.sin(rad(endAngle));
-                const midAngle = startAngle + (endAngle - startAngle) / 2;
-                const tx = cx + (r * 0.7) * Math.cos(rad(midAngle));
-                const ty = cy + (r * 0.7) * Math.sin(rad(midAngle));
+            <svg viewBox="0 0 300 300" width="300" height="300" className="rounded-full">
+              {SLICE_EMOJI.map((emoji, i) => {
+                const start = (i * 360) / 8;
+                const end = ((i + 1) * 360) / 8;
+                const r = 140;
+                const rad = (d: number) => (d * Math.PI) / 180;
+                const x1 = 150 + r * Math.cos(rad(start));
+                const y1 = 150 + r * Math.sin(rad(start));
+                const x2 = 150 + r * Math.cos(rad(end));
+                const y2 = 150 + r * Math.sin(rad(end));
+                const mid = start + (end - start) / 2;
+                const tx = 150 + r * 0.66 * Math.cos(rad(mid));
+                const ty = 150 + r * 0.66 * Math.sin(rad(mid));
                 return (
                   <g key={i}>
-                    <path
-                      d={`M${cx},${cy} L${x1},${y1} A${r},${r} 0 ${largeArc},1 ${x2},${y2} Z`}
-                      fill={prize.color}
-                      stroke={INK}
-                      strokeWidth="2"
-                    />
-                    <text
-                      x={tx}
-                      y={ty}
-                      textAnchor="middle"
-                      dominantBaseline="central"
-                      fill="#fff"
-                      fontSize="24"
-                      fontWeight="bold"
-                      style={{ textShadow: '0 1px 3px rgba(0,0,0,0.6)' }}
-                    >
-                      {prize.emoji}
-                    </text>
+                    <path d={`M150,150 L${x1},${y1} A${r},${r} 0 0,1 ${x2},${y2} Z`} fill={SLICE_COLORS[i]} stroke={INK} strokeWidth="2" />
+                    <text x={tx} y={ty} textAnchor="middle" dominantBaseline="central" fontSize="18" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.6)' }}>{emoji}</text>
                   </g>
                 );
               })}
-              <circle cx="160" cy="160" r="22" fill={HUB} stroke={POINTER} strokeWidth="3" />
+              <circle cx="150" cy="150" r="20" fill="#12212b" stroke={POINTER} strokeWidth="3" />
             </svg>
           </div>
-          <div className="absolute left-1/2 top-0 z-10 -translate-x-1/2" style={{ marginTop: 4 }}>
-            <div
-              style={{
-                width: 0,
-                height: 0,
-                borderLeft: '12px solid transparent',
-                borderRight: '12px solid transparent',
-                borderTop: `24px solid ${POINTER}`,
-                filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.4))',
-              }}
-            />
-          </div>
+          <div
+            className="absolute left-1/2 top-0 z-10 -translate-x-1/2"
+            style={{ width: 0, height: 0, borderLeft: '12px solid transparent', borderRight: '12px solid transparent', borderTop: `24px solid ${POINTER}` }}
+          />
         </div>
 
         <div className="text-center">
           <Button
             onClick={spin}
-            disabled={!canSpin}
+            disabled={!canAfford || spinning || busy}
             size="lg"
             className="bg-lure px-10 text-base font-black uppercase tracking-wide text-lure-foreground hover:bg-lure/90"
           >
-            {spinning ? t('roulette.spinning') : `${t('roulette.spin')} · 💰 ${SPIN_COST}`}
+            {spinning ? t('roulette.spinning') : `${t('roulette.spin')} · 💰 ${SKIN_ROULETTE_COST}`}
           </Button>
-          {player.coins < SPIN_COST && (
-            <p className="mt-2 text-sm text-destructive">{t('skinRoulette.noCoins')}</p>
-          )}
+          {!canAfford && <p className="mt-2 text-sm text-destructive">{t('skinRoulette.noCoins')}</p>}
         </div>
+
+        {failed && <p className="text-center text-sm text-destructive">{t('roulette.failed')}</p>}
 
         {result && (
           <motion.div
@@ -190,12 +108,12 @@ export default function SkinRoulette({ player, onAddSkin, onAddBoatSkin, onSpend
             animate={{ scale: 1, opacity: 1 }}
             transition={{ type: 'spring', damping: 15 }}
           >
-            <div className="mb-2 text-4xl">{result.emoji}</div>
+            <div className="mb-2 text-4xl">{rewardEmoji(result)}</div>
             <p className="text-lg font-bold text-foreground">{t('roulette.won')}</p>
-            <p className="font-semibold text-lure">{result.label}</p>
-            <p className="mt-2 text-xs text-muted-foreground">
-              {result.kind === 'rod' ? t('skinRoulette.rodWon') : t('skinRoulette.boatWon')}
-            </p>
+            <p className="font-semibold text-lure">{rewardLabel(result, t)}</p>
+            {(result.type === 'rodSkin' || result.type === 'boatSkin') && result.duplicate && (
+              <p className="mt-2 text-xs text-muted-foreground">{t('roulette.duplicate')}</p>
+            )}
           </motion.div>
         )}
 

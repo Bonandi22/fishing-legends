@@ -1,5 +1,5 @@
-import { useState, useCallback, useEffect } from 'react';
-import { PlayerState, CaughtFish, Fish, getXpForLevel, NET_LIMIT, NET_PRICE, MULTIPLIER_COST, MULTIPLIER_COST_4X, MULTIPLIER_DURATION, DailyGiftReward, getDailyGiftsForWeek } from './types';
+import { useState, useCallback, useEffect, useRef } from 'react';
+import { PlayerState, CaughtFish, Fish, getXpForLevel, NET_LIMIT, NET_PRICE } from './types';
 import { LOCATIONS } from './data';
 import { parseSavedState, serializePlayerState } from './persistence';
 import {
@@ -10,12 +10,17 @@ import {
   buyOwnedItem,
   consumeNet as applyNetConsumption,
   getUnlockedLocationIds,
-  grantOwnedItem,
   placeAquariumFish,
+  resolveDailyGift,
   sellWarehouse as applyWarehouseSale,
-  spendCoins as applyCoinSpend,
+  spinDailyRoulette,
+  spinSkinRoulette,
 } from './stateRules';
+import type { RewardGrant } from './rewards';
 import { browserStorage, KeyValueStorage } from './storage';
+
+const todayStr = () => new Date().toISOString().slice(0, 10);
+const roll = (n: number) => Math.floor(Math.random() * n);
 
 const STORAGE_KEY = 'fishing-game-state';
 
@@ -54,8 +59,12 @@ export function savePlayerState(state: PlayerState, storage: KeyValueStorage = b
 
 export function useGameState() {
   const [player, setPlayer] = useState<PlayerState>(loadPlayerState);
+  const playerRef = useRef(player);
 
-  useEffect(() => { savePlayerState(player); }, [player]);
+  useEffect(() => {
+    playerRef.current = player;
+    savePlayerState(player);
+  }, [player]);
 
   const catchFishBatch = useCallback((catches: Array<Pick<CaughtFish, 'fish' | 'weight' | 'location'>>, fromNet = false) => {
     if (catches.length === 0) return;
@@ -124,72 +133,31 @@ export function useGameState() {
     });
   }, []);
 
-  const addCoins = useCallback((amount: number) => {
-    setPlayer(prev => ({ ...prev, coins: prev.coins + Math.max(0, amount) }));
-  }, []);
-
-  const addSkin = useCallback((skinId: string): void => {
-    setPlayer(prev => grantOwnedItem(prev, 'rod', skinId, 500));
-  }, []);
-
-  const addBoatSkin = useCallback((skinId: string): void => {
-    setPlayer(prev => grantOwnedItem(prev, 'boat', skinId, 500));
-  }, []);
-
-  const spendCoins = useCallback((amount: number): void => {
-    setPlayer(prev => applyCoinSpend(prev, amount));
-  }, []);
-
-  const addMultiplier = useCallback((type: 'luck' | 'strength') => {
-    setPlayer(prev => {
-      const end = Date.now() + MULTIPLIER_DURATION;
-      return {
-        ...prev,
-        ...(type === 'luck' ? { luckMultiplierEnd: end } : { strengthMultiplierEnd: end }),
-      };
-    });
-  }, []);
-
-  const setLastRouletteDate = useCallback((date: string) => {
-    setPlayer(prev => ({ ...prev, lastRouletteDate: date }));
-  }, []);
-
   const moveAquariumFishToSector = useCallback((timestamp: number, sector: number) => {
     setPlayer(prev => placeAquariumFish(prev, timestamp, sector, LOCATIONS));
   }, []);
 
-  const claimDailyGift = useCallback((): void => {
-    const today = new Date().toISOString().slice(0, 10);
-    setPlayer(prev => {
-      if (prev.dailyGiftsLastClaim === today) return prev;
-      const day = prev.dailyGiftsDay || 1;
-      const week = prev.dailyGiftsWeek || 1;
-      const gifts = getDailyGiftsForWeek(week);
-      const reward = gifts[day - 1];
-      const nextDay = day >= 7 ? 1 : day + 1;
-      const nextWeek = day >= 7 ? week + 1 : week;
-      const next = { ...prev, dailyGiftsLastClaim: today, dailyGiftsDay: nextDay, dailyGiftsWeek: nextWeek };
-      if (reward.type === 'coins') {
-        next.coins = prev.coins + reward.amount;
-      } else if (reward.type === 'multiplier') {
-        const end = Date.now() + MULTIPLIER_DURATION;
-        if (reward.kind === 'luck') next.luckMultiplierEnd = end;
-        else next.strengthMultiplierEnd = end;
-      } else if (reward.type === 'boatSkin') {
-        if (prev.ownedBoatSkins.includes(reward.skinId)) {
-          next.coins = prev.coins + 1000;
-        } else {
-          next.ownedBoatSkins = [...prev.ownedBoatSkins, reward.skinId];
-        }
-      } else if (reward.type === 'rodSkin') {
-        if (prev.ownedSkins.includes(reward.skinId)) {
-          next.coins = prev.coins + 1000;
-        } else {
-          next.ownedSkins = [...prev.ownedSkins, reward.skinId];
-        }
-      }
-      return next;
-    });
+  // Reward flows for anonymous / degraded sessions: run the shared pure rule with
+  // a Math.random roll against the latest player (playerRef, not the closed-over
+  // `player`, so a rapid second click sees the applied cooldown), apply it, and
+  // return the granted reward for the screen to reveal. Throw the same domain
+  // codes the server does — the caller decides how to surface them.
+  const claimDailyGiftLocal = useCallback((): RewardGrant => {
+    const { next, reward } = resolveDailyGift(playerRef.current, todayStr(), Date.now());
+    setPlayer(next);
+    return reward;
+  }, []);
+
+  const spinDailyRouletteLocal = useCallback((): RewardGrant => {
+    const { next, reward } = spinDailyRoulette(playerRef.current, todayStr(), Date.now(), roll);
+    setPlayer(next);
+    return reward;
+  }, []);
+
+  const spinSkinRouletteLocal = useCallback((): RewardGrant => {
+    const { next, reward } = spinSkinRoulette(playerRef.current, roll);
+    setPlayer(next);
+    return reward;
   }, []);
 
   const consumeNet = useCallback((): void => {
@@ -215,8 +183,8 @@ export function useGameState() {
     player, catchFish, resetProgress, sellWarehouse,
     buyMultiplier, buySkin, equipSkin,
     buyBoatSkin, equipBoatSkin,
-    addCoins, addSkin, addBoatSkin, spendCoins, addMultiplier, setLastRouletteDate,
-    moveAquariumFishToSector, claimDailyGift, consumeNet, buyNet, catchFishBatch,
+    claimDailyGiftLocal, spinDailyRouletteLocal, spinSkinRouletteLocal,
+    moveAquariumFishToSector, consumeNet, buyNet, catchFishBatch,
     replaceFromServer,
   };
 }
