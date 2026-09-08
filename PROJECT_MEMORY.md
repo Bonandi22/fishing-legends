@@ -2072,6 +2072,32 @@ plano `.../plans/2026-09-08-server-fishing-catch-6b2-submarine.md` (9 tarefas,
   `version`, roster encolhe, `created_at` renovado, drain → `completed`, coluna
   `mode='submarine'`, guards `INVALID_FISHING_SESSION` (sem `catchId` / `catchId`
   inválido / já colhido).
+- **Integrado na `main`**: PR `Bonandi22/deep-blue-lure#36` merged em `c6f7fbf`.
+  (`claude-review` falhou por infra — binário `claude` não instalou no action,
+  `ANTHROPIC_API_KEY` vazio — não é um achado de código; jobs `quality` +
+  `integration` verdes, sem review comments.)
+
+### Ponto de parada — 2026-09-08 (fatia 6b-2 integrada)
+
+- `main` em `c6f7fbf`, sincronizada com `origin/main`, worktree limpo.
+- **Task 10.3 fatias 1–5** + **6a** (vara) + **6b-1** (rede) + **6b-2** (submarino)
+  + **segurança lote 1** — integradas e verificadas. **Todos os modos de captura
+  são server-autoritativos**; `Index` não tem mais nenhum `onCatch`.
+- **Retomar por**: Task 10.3 **fatia 6c — aquário** (`POST /api/v1/me/economy/aquarium/place`,
+  body `{ timestamp, sector }` + `Idempotency-Key`, op `aquarium_place`;
+  `placeAquariumFish` já é regra pura em `stateRules.ts`, concede `AQUARIUM_REWARDS`
+  coins+xp). Reusa o runner de economia (`runPgOp`/`runMemoryOp`), **sem sessão**
+  (opera sobre um peixe já no `aquariumWarehouse`). Frontend:
+  `Aquarium.onMoveToSector` → `runEconomyOp('aquariumPlace', …)`. Erro novo
+  possível: `AQUARIUM_FISH_NOT_FOUND` (404) quando o `timestamp` não existe (a
+  regra pura hoje devolve estado inalterado — fazê-la lançar). Ver sketch §6c em
+  `docs/superpowers/specs/2026-09-08-server-fishing-catch.md`.
+- Depois de 6c: fatia 7 (ranking + temporada, leitura), fatia 8 (limpeza de
+  endpoints dormentes `/api/v1/economy/*`, `/inventory/*`, `/rewards/daily/claim`),
+  e por fim **retirar o write livre do blob `PUT /me/state`** para autenticados
+  (#8 da auditoria de segurança).
+- **Dependabot**: 7 PRs abertos (#29–#35) desde o lote 1 de segurança — tarefa
+  própria do utilizador, não mexer nos transitivos (CLAUDE.md).
 
 ### Task 10.3 fatia 6b-1 — captura à rede server-autoritativa — 2026-09-08
 
