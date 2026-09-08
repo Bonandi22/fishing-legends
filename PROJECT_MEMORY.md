@@ -1839,3 +1839,25 @@ Terceira op. **Primeiro endpoint de economia com body.** Branch
 - **Próximo**: fatia 4 = compra de skin (`buySkin`/`buyBoatSkin` — o servidor passa a
   possuir os preços, lookup nos arrays `SKINS`/`BOAT_SKINS` de `types.ts`). Roletas e
   prendas diárias (RNG/limite diário server-side) ficam para depois.
+
+### Ponto de parada — 2026-09-08 (fim de sessão)
+
+- `main` em `a9d8ba3`, sincronizada com `origin/main`, worktree limpo.
+- **Task 10.1** (auth foundation + persistência de estado), **10.2** (guarda de versão
+  + pull periódico), **limpeza** do fluxo de import, e **10.3 fatias 1–3** (venda do
+  armazém, compra de rede, compra de multiplicador) — todas integradas e verificadas.
+- **Retomar por**: Task 10.3 **fatia 4 — compra de skin** (`buySkin` / `buyBoatSkin`).
+  Design acordado: mesmo padrão (`POST /api/v1/me/economy/skins/purchase`, body
+  `{ skinId }`), mas o **servidor passa a possuir os preços** — lookup nos arrays
+  `SKINS` / `BOAT_SKINS` de `src/game/types.ts` (hoje o cliente passa o preço em
+  `buySkin(skinId, price)`, furo de confiança). `computeSkinPurchase` valida
+  skin já possuída / skin inexistente / `INSUFFICIENT_FUNDS`. Executar inline, TDD,
+  como as fatias 2 e 3.
+- Infra do padrão pronta: `runMemoryOp`/`runPgOp` + `runEconomyOp` no cliente
+  (`Index.tsx`), PK `game_state_operations` com `operation`, suporte a body com Zod
+  (`economyRoutes.ts` já usa `withTypeProvider<ZodTypeProvider>`).
+- Depois da fatia 4: roletas e prendas diárias (RNG / limite diário server-side —
+  design próprio), depois captura e aquário. E a limpeza dos endpoints dormentes
+  `/api/v1/economy/*` + `/api/v1/inventory/*` quando tudo estiver migrado.
+- Stack Docker fica de pé; a BD de dev partilha instância com os testes de integração
+  (as contas de smoke são truncadas entre corridas — criar conta nova a cada smoke).
