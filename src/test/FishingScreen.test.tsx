@@ -32,7 +32,7 @@ function makePlayer(over: Partial<PlayerState> = {}): PlayerState {
 const ocean = LOCATIONS.find(l => l.id === 'atlantic') as FishingLocation;
 const lake = LOCATIONS.find(l => l.id === 'titicaca') as FishingLocation;
 const noCast = () => Promise.resolve(null);
-const noLand = () => Promise.resolve('landed' as const);
+const noLand = () => Promise.resolve({ outcome: 'landed' as const });
 
 beforeEach(() => cleanup());
 

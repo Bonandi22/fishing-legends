@@ -29,7 +29,7 @@ const netHooked = (over: Partial<NetHooked> = {}): NetHooked => ({
   ...over,
 });
 
-function renderNet(over: Partial<PlayerState> = {}, onCast = vi.fn().mockResolvedValue(netHooked()), onLand = vi.fn().mockResolvedValue('landed')) {
+function renderNet(over: Partial<PlayerState> = {}, onCast = vi.fn().mockResolvedValue(netHooked()), onLand = vi.fn().mockResolvedValue({ outcome: 'landed' })) {
   const onBack = vi.fn();
   render(
     <I18nProvider>
@@ -50,7 +50,7 @@ describe('NetFishing', () => {
   });
 
   it('a green pull lands the haul via onLand', async () => {
-    const onLand = vi.fn().mockResolvedValue('landed');
+    const onLand = vi.fn().mockResolvedValue({ outcome: 'landed' });
     // net with a full-width green zone so any pull position is a hit
     renderNet({}, vi.fn().mockResolvedValue(netHooked({ net: { rarity: 'common', fishCount: 3, greenZoneSize: 1, speed: 1 } })), onLand);
     fireEvent.click(await screen.findByRole('button', { name: /puxar/i }));

@@ -141,6 +141,7 @@ const translations = {
   'sub.title': { pt: 'Pesca Submarina', en: 'Submarine Fishing', es: 'Pesca Submarina', fr: 'Pêche sous-marine', de: 'Unterwasserfischen', ja: '水中漁' },
   'sub.hint': { pt: 'Clique em um peixe para lançar o arpão! 🔱', en: 'Click a fish to launch the harpoon! 🔱', es: '¡Haz clic en un pez para lanzar el arpón! 🔱', fr: 'Cliquez sur un poisson pour lancer le harpon ! 🔱', de: 'Klicke auf einen Fisch um die Harpune zu werfen! 🔱', ja: '魚をクリックしてモリを投げよう！🔱' },
   'sub.back': { pt: '← Voltar', en: '← Back', es: '← Volver', fr: '← Retour', de: '← Zurück', ja: '← 戻る' },
+  'sub.unavailable': { pt: 'Mergulho indisponível de momento.', en: 'The dive is unavailable right now.', es: 'La inmersión no está disponible ahora.', fr: "La plongée est indisponible pour l'instant.", de: 'Der Tauchgang ist gerade nicht verfügbar.', ja: 'ダイブは現在利用できません。' },
 
   // Multiplier
   'mult.title': { pt: '⚡ Multiplicadores', en: '⚡ Multipliers', es: '⚡ Multiplicadores', fr: '⚡ Multiplicateurs', de: '⚡ Multiplikatoren', ja: '⚡ マルチプライヤー' },

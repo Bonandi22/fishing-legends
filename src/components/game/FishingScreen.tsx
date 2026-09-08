@@ -293,7 +293,7 @@ interface Props {
   location: FishingLocation;
   player: PlayerState;
   onCast: (locationId: string, mode?: 'rod' | 'net' | 'submarine') => Promise<Hooked | null>;
-  onLand: (hooked: Hooked, locationId: string) => Promise<'landed' | 'failed'>;
+  onLand: (hooked: Hooked, locationId: string, catchId?: string) => Promise<{ outcome: 'landed' | 'failed'; caught?: { fishId: string; weight: number; location: string } }>;
   onBack: () => void;
   onCastNet?: () => void;
   onOpenNetShop?: () => void;
@@ -443,8 +443,8 @@ export default function FishingScreen({ location, player, onCast, onLand, onBack
 
   const handleWin = useCallback(async () => {
     if (!hooked) return;
-    const outcome = await onLand(hooked, location.id);
-    setPhase(outcome === 'landed' ? 'caught' : 'lost');
+    const res = await onLand(hooked, location.id);
+    setPhase(res.outcome === 'landed' ? 'caught' : 'lost');
   }, [hooked, location.id, onLand]);
 
   const handleLose = useCallback(() => {
