@@ -29,6 +29,7 @@ import {
   spinRoulette as spinRouletteApi,
   spinSkinRoulette as spinSkinRouletteApi,
   claimDailyGift as claimDailyGiftApi,
+  placeAquariumFish as placeAquariumFishApi,
   castLine as castLineApi,
   landCatch as landCatchApi,
   type RewardEnvelope,
@@ -55,7 +56,7 @@ const IndexInner = () => {
   } = useGameState();
   const { isPlaying: musicPlaying, toggle: toggleMusic, trackId: musicTrack, setTrack: setMusicTrack } = useBackgroundMusic();
   const [syncEnabled, setSyncEnabled] = useState(false);
-  const [busyOp, setBusyOp] = useState<null | 'sell' | 'net' | 'multiplier' | 'skin' | 'roulette' | 'skinRoulette' | 'dailyGift' | 'cast' | 'land'>(null);
+  const [busyOp, setBusyOp] = useState<null | 'sell' | 'net' | 'multiplier' | 'skin' | 'roulette' | 'skinRoulette' | 'dailyGift' | 'aquariumPlace' | 'cast' | 'land'>(null);
   const { flushNow, start: startSync, applyServerResult } = useGameStateSync({ player, enabled: syncEnabled, replace: replaceFromServer });
   const [screen, setScreen] = useState<Screen>('menu');
   const [selectedLocation, setSelectedLocation] = useState<FishingLocation | null>(null);
@@ -86,7 +87,7 @@ const IndexInner = () => {
   // change), then the server op, then adopt its authoritative result. Failure is
   // silent (no toast surface) and leaves local state untouched.
   const runEconomyOp = useCallback(async (
-    op: 'sell' | 'net' | 'multiplier' | 'skin',
+    op: 'sell' | 'net' | 'multiplier' | 'skin' | 'aquariumPlace',
     local: () => void,
     api: (idempotencyKey: string) => Promise<GameStateEnvelope>,
   ) => {
@@ -126,6 +127,12 @@ const IndexInner = () => {
     (skinId: string, price: number) =>
       runEconomyOp('skin', () => buyBoatSkin(skinId, price), key => purchaseSkinApi(key, 'boat', skinId)),
     [runEconomyOp, buyBoatSkin],
+  );
+  const handleMoveAquarium = useCallback(
+    (timestamp: number, sector: number) =>
+      runEconomyOp('aquariumPlace', () => moveAquariumFishToSector(timestamp, sector),
+        key => placeAquariumFishApi(key, timestamp, sector)),
+    [runEconomyOp, moveAquariumFishToSector],
   );
 
   // Reward ops: anonymous / degraded → the local pure rule; authenticated → flush,
@@ -289,7 +296,7 @@ const IndexInner = () => {
   } else if (screen === 'ranking') {
     content = <Ranking player={player} onBack={() => setScreen('menu')} />;
   } else if (screen === 'aquarium') {
-    content = <Aquarium player={player} onMoveToSector={moveAquariumFishToSector} onBack={() => setScreen('menu')} />;
+    content = <Aquarium player={player} onMoveToSector={handleMoveAquarium} onBack={() => setScreen('menu')} />;
   } else if (screen === 'dailyGifts') {
     content = <DailyGifts player={player} onClaim={handleClaimDailyGift} onBack={() => setScreen('menu')} />;
   } else {
