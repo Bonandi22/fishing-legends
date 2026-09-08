@@ -51,10 +51,11 @@ describe('pg fishing service (integration)', () => {
     await gameState.put(userId, blob(), null);
 
     const cast = await fishing.cast(userId, 'cast-int-aaaaaaaa', 'atlantic');
+    if (cast.mode !== 'rod') throw new Error('expected a rod cast');
     expect(cast.version).toBe(2);
     const land = await fishing.land(userId, 'land-int-aaaaaaaa', cast.sessionId);
     expect(land.version).toBe(3);
-    expect(land.caught.fishId).toBe(cast.fishId);
+    expect(land.caught[0].fishId).toBe(cast.fishId);
     expect(land.state.player.warehouse).toHaveLength(1);
 
     const sessions = await harness.db.select().from(fishingSessions).where(eq(fishingSessions.userId, userId));
@@ -112,6 +113,37 @@ describe('pg fishing service (integration)', () => {
       .where(eq(fishingSessions.id, cast.sessionId));
     await expect(fishing.land(userId, 'land-int-eeeeeeee', cast.sessionId)).rejects.toThrow('FISHING_SESSION_EXPIRED');
     expect((await gameState.get(userId))!.version).toBe(2);
+  });
+
+  it('net cast + land transactionally: nets decremented, warehouse += batch, one op row', async () => {
+    const userId = await seedUser();
+    await gameState.put(userId, blob({ nets: 3, level: 8, unlockedLocations: ['titicaca'], xp: 0, xpToNextLevel: 999999 }), null);
+    const cast = await fishing.cast(userId, 'cast-net-int-aa', 'titicaca', 'net');
+    if (cast.mode !== 'net') throw new Error('expected a net cast');
+    expect(cast.version).toBe(2);
+    const land = await fishing.land(userId, 'land-net-int-aa', cast.sessionId);
+    const blobRow = await gameState.get(userId);
+    expect((blobRow!.state as { player: { nets: number } }).player.nets).toBe(2);
+    const total = land.state.player.warehouse.length + land.state.player.aquariumWarehouse.length;
+    expect(total).toBe(cast.catches.length);
+    expect(land.caught).toHaveLength(cast.catches.length);
+    const sessions = await harness.db.select().from(fishingSessions).where(eq(fishingSessions.userId, userId));
+    expect(sessions).toHaveLength(1);
+    expect(sessions[0].resultCatches).toHaveLength(cast.catches.length);
+    const ops = await harness.db.select().from(gameStateOperations).where(eq(gameStateOperations.userId, userId));
+    expect(ops).toHaveLength(1);
+    expect(ops[0].operation).toBe('fishing_land');
+  });
+
+  it('net land replays the same key: one op row, batch not doubled', async () => {
+    const userId = await seedUser();
+    await gameState.put(userId, blob({ nets: 3, level: 8, unlockedLocations: ['titicaca'] }), null);
+    const cast = await fishing.cast(userId, 'cast-net-int-bb', 'titicaca', 'net');
+    const first = await fishing.land(userId, 'land-net-int-bb', cast.sessionId);
+    const replay = await fishing.land(userId, 'land-net-int-bb', cast.sessionId);
+    expect(replay).toEqual(first);
+    const ops = await harness.db.select().from(gameStateOperations).where(eq(gameStateOperations.userId, userId));
+    expect(ops).toHaveLength(1);
   });
 
   it('deleting the user cascades fishing_sessions', async () => {

@@ -278,7 +278,7 @@ describe('backend foundation', () => {
 
     const landed = await client.request({ method: 'POST', url: '/api/v1/me/fishing/land', payload: { sessionId: first.json().sessionId } });
     expect(landed.statusCode).toBe(200);
-    expect(landed.json().caught.fishId).toEqual(expect.any(String));
+    expect(landed.json().caught[0].fishId).toEqual(expect.any(String));
     expect(landed.json().state.player.warehouse).toHaveLength(1);
     expect(landed.json().state.player.totalFishCaught).toBe(1);
   });

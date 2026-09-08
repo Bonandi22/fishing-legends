@@ -1,57 +1,63 @@
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
-import { Fish, FishingLocation, PlayerState } from '@/game/types';
-import { getFishForLocation } from '@/game/data';
-import { rollWeight } from '@/game/fishingLogic';
+import { FishingLocation, PlayerState, Rarity } from '@/game/types';
+import type { Hooked, NetHooked } from '@/game/fishing';
 import { FISH_IMAGES } from '@/game/fishImages';
 import { getRarityLabel, useI18n } from '@/game/i18n';
 import GameScreen from './shell/GameScreen';
 import { screenItem } from './shell/motion';
 import { rarityColor } from './locations/rarity';
-import { NetType, randomNet } from './netfishing/netTypes';
 
 interface Props {
   location: FishingLocation;
   player: PlayerState;
-  onCatch: (fish: Fish, weight: number, locationId: string) => void;
-  onCatchBatch?: (catches: { fish: Fish; weight: number }[], locationId: string) => void;
+  onCast: (locationId: string, mode?: 'rod' | 'net' | 'submarine') => Promise<Hooked | null>;
+  onLand: (hooked: Hooked, locationId: string) => Promise<'landed' | 'failed'>;
   onBack: () => void;
-  onUseNet?: () => void;
   onOpenShop?: () => void;
 }
 
-type Phase = 'pull' | 'pulled' | 'opened' | 'lost' | 'empty';
+type Phase = 'casting' | 'pull' | 'pulled' | 'opened' | 'lost' | 'empty';
 
-export default function NetFishing({ location, player, onCatch, onCatchBatch, onBack, onUseNet, onOpenShop }: Props) {
+export default function NetFishing({ location, player, onCast, onLand, onBack, onOpenShop }: Props) {
   const { lang, t } = useI18n();
   const strengthActive = !!player.strengthMultiplierEnd && player.strengthMultiplierEnd > Date.now();
   const strengthFactor = strengthActive ? (player.strengthMultiplierPower === 4 ? 0.25 : 0.5) : 1;
 
-  const pool = useMemo(() => getFishForLocation(location), [location]);
-  const [phase, setPhase] = useState<Phase>('pull');
-  const [net, setNet] = useState<NetType | null>(() => randomNet());
-  const [haul, setHaul] = useState<{ fish: Fish; weight: number }[]>([]);
+  const [phase, setPhase] = useState<Phase>('casting');
+  const [hooked, setHooked] = useState<NetHooked | null>(null);
 
-  const [linePos, setLinePos] = useState(0.5);
-  const linePosRef = useRef(0.5);
+  const [linePos, setLinePos] = useState(0);
+  const linePosRef = useRef(0);
   const dirRef = useRef(1);
   const frameRef = useRef<number>(0);
   const lastRef = useRef(0);
 
-  const greenSize = net?.greenZoneSize ?? 0.5;
+  const greenSize = hooked?.net.greenZoneSize ?? 0.5;
   const greenStart = (1 - greenSize) / 2;
-  const speed = (net?.speed ?? 1) * strengthFactor;
+  const speed = (hooked?.net.speed ?? 1) * strengthFactor;
 
-  const netName = (n: NetType) => `${t('net.type')} — ${getRarityLabel(n.rarity, lang)}`;
+  const netName = (rarity: Rarity) => `${t('net.type')} — ${getRarityLabel(rarity, lang)}`;
 
-  const startNet = (selected: NetType) => {
-    setNet(selected);
+  const cast = useCallback(async () => {
+    setPhase('casting');
+    const h = await onCast(location.id, 'net');
+    if (!h || h.kind !== 'net') {
+      setPhase('empty');
+      return;
+    }
+    setHooked(h);
     linePosRef.current = 0;
     dirRef.current = 1;
     setLinePos(0);
     setPhase('pull');
-  };
+  }, [location.id, onCast]);
+
+  useEffect(() => {
+    void cast();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (phase !== 'pull') return;
@@ -70,45 +76,34 @@ export default function NetFishing({ location, player, onCatch, onCatchBatch, on
     return () => cancelAnimationFrame(frameRef.current);
   }, [phase, speed]);
 
-  const handlePull = useCallback(() => {
-    if (!net) return;
+  const handlePull = useCallback(async () => {
+    if (!hooked) return;
     const pos = linePosRef.current;
     const inGreen = pos >= greenStart && pos <= greenStart + greenSize;
     cancelAnimationFrame(frameRef.current);
     if (!inGreen) { setPhase('lost'); return; }
 
-    const candidates = pool.filter(f => f.rarity === net.rarity);
-    const fallback = candidates.length > 0 ? candidates : pool;
-    const caught = Array.from({ length: net.fishCount }, () => {
-      const f = fallback[Math.floor(Math.random() * fallback.length)];
-      return { fish: f, weight: rollWeight(f) };
-    });
-    setHaul(caught);
-    setPhase('pulled');
-  }, [net, greenStart, greenSize, pool]);
+    const outcome = await onLand(hooked, location.id);
+    setPhase(outcome === 'landed' ? 'pulled' : 'lost');
+  }, [hooked, greenStart, greenSize, onLand, location.id]);
 
-  const handleOpenNet = () => {
-    if (onCatchBatch) onCatchBatch(haul, location.id);
-    else haul.forEach(({ fish, weight }) => onCatch(fish, weight, location.id));
-    setPhase('opened');
-  };
-
-  const reset = () => {
-    if ((player.nets ?? 0) <= 0) { setPhase('empty'); return; }
-    onUseNet?.();
-    setHaul([]);
-    startNet(randomNet());
-  };
+  const haul = hooked?.catches ?? [];
 
   return (
     <GameScreen title={t('net.castTitle')} onBack={onBack} subtitle={location.name} width="narrow">
       <AnimatePresence mode="wait">
-        {phase === 'pull' && net && (
+        {phase === 'casting' && (
+          <motion.p key="casting" variants={screenItem} initial="hidden" animate="show" className="mt-10 text-center text-muted-foreground">
+            {t('net.pullHint')}
+          </motion.p>
+        )}
+
+        {phase === 'pull' && hooked && (
           <motion.div key="pull" variants={screenItem} initial="hidden" animate="show">
             <div className="mb-6 text-center">
-              <h2 className="font-display text-xl font-bold tracking-wide text-foreground">{netName(net)}</h2>
-              <p className="text-xs font-semibold" style={{ color: rarityColor(net.rarity) }}>
-                {net.fishCount} {t('net.pieces')}
+              <h2 className="font-display text-xl font-bold tracking-wide text-foreground">{netName(hooked.net.rarity)}</h2>
+              <p className="text-xs font-semibold" style={{ color: rarityColor(hooked.net.rarity) }}>
+                {hooked.net.fishCount} {t('net.pieces')}
               </p>
               <p className="text-xs text-muted-foreground">{t('net.random')}</p>
               <p className="mt-1 text-sm text-muted-foreground">{t('net.pullHint')}</p>
@@ -117,14 +112,8 @@ export default function NetFishing({ location, player, onCatch, onCatchBatch, on
 
             <div className="relative mb-6 h-14 overflow-hidden rounded-xl border border-lure/20 bg-menu-raised">
               <div className="absolute inset-0 bg-destructive/40" />
-              <div
-                className="absolute bottom-0 top-0 bg-biolume/70"
-                style={{ left: `${greenStart * 100}%`, width: `${greenSize * 100}%` }}
-              />
-              <div
-                className="absolute bottom-0 top-0 w-1 bg-foreground shadow-[0_0_8px_hsl(var(--lure))]"
-                style={{ left: `${linePos * 100}%` }}
-              />
+              <div className="absolute bottom-0 top-0 bg-biolume/70" style={{ left: `${greenStart * 100}%`, width: `${greenSize * 100}%` }} />
+              <div className="absolute bottom-0 top-0 w-1 bg-foreground shadow-[0_0_8px_hsl(var(--lure))]" style={{ left: `${linePos * 100}%` }} />
             </div>
 
             <div className="text-center">
@@ -139,12 +128,12 @@ export default function NetFishing({ location, player, onCatch, onCatchBatch, on
           </motion.div>
         )}
 
-        {phase === 'pulled' && net && (
+        {phase === 'pulled' && hooked && (
           <motion.div key="pulled" variants={screenItem} initial="hidden" animate="show" className="mt-8 text-center">
             <h2 className="mb-2 font-display text-2xl font-black text-foreground">{t('net.pulled')}</h2>
-            <p className="mb-6 text-muted-foreground">{netName(net)} — {t('net.pulledMsg')}</p>
+            <p className="mb-6 text-muted-foreground">{netName(hooked.net.rarity)} — {t('net.pulledMsg')}</p>
             <Button
-              onClick={handleOpenNet}
+              onClick={() => setPhase('opened')}
               size="lg"
               className="bg-lure px-10 py-6 text-xl font-black uppercase tracking-wide text-lure-foreground hover:bg-lure/90"
             >
@@ -177,7 +166,7 @@ export default function NetFishing({ location, player, onCatch, onCatchBatch, on
               ))}
             </div>
             <div className="flex gap-3">
-              <Button onClick={reset} className="flex-1 bg-lure font-semibold text-lure-foreground hover:bg-lure/90">
+              <Button onClick={cast} className="flex-1 bg-lure font-semibold text-lure-foreground hover:bg-lure/90">
                 {t('net.castAnother')} ({player.nets ?? 0})
               </Button>
               <Button variant="outline" onClick={onBack} className="flex-1 border-lure/25 bg-menu-panel/60">
@@ -209,7 +198,7 @@ export default function NetFishing({ location, player, onCatch, onCatchBatch, on
             <h2 className="mb-2 font-display text-2xl font-black text-destructive">{t('net.escaped')}</h2>
             <p className="mb-6 text-muted-foreground">{t('net.escapedMsg')}</p>
             <div className="flex justify-center gap-3">
-              <Button onClick={reset} className="bg-lure font-semibold text-lure-foreground hover:bg-lure/90">
+              <Button onClick={cast} className="bg-lure font-semibold text-lure-foreground hover:bg-lure/90">
                 {t('net.retry')}
               </Button>
               <Button variant="outline" onClick={onBack} className="border-lure/25 bg-menu-panel/60">

@@ -33,6 +33,7 @@ const DOMAIN_ERRORS: Record<string, DomainErrorSpec> = {
   INVALID_NET_QUANTITY: { status: 400, message: 'The net quantity is not valid' },
   LOCATION_LOCKED: { status: 403, message: 'That location is not unlocked yet' },
   NET_LIMIT_REACHED: { status: 409, message: 'The net limit has been reached' },
+  NO_NETS: { status: 409, message: 'No fishing nets left' },
   INSUFFICIENT_FUNDS: { status: 409, message: 'Insufficient wallet balance' },
   SKIN_NOT_FOUND: { status: 404, message: 'That skin is not available for purchase' },
   SKIN_ALREADY_OWNED: { status: 409, message: 'That skin is already owned' },

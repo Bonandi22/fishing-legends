@@ -37,8 +37,9 @@ import type { GameStateEnvelope } from '@/api/types';
 import type { RewardGrant } from '@/game/rewards';
 import type { Hooked } from '@/game/fishing';
 import { rollFish, rollWeight } from '@/game/fishingLogic';
+import { rollNet } from '@/game/netTypes';
 import { resolveLuckyMode } from '@/game/stateRules';
-import { FISH, LOCATIONS } from '@/game/data';
+import { FISH, LOCATIONS, getFishForLocation } from '@/game/data';
 import { FishingLocation, Fish } from '@/game/types';
 
 type Screen = 'menu' | 'locations' | 'fishing' | 'collection' | 'warehouse' | 'submarine' | 'multiplier' | 'skins' | 'boatSkins' | 'roulette' | 'skinRoulette' | 'ranking' | 'aquarium' | 'dailyGifts' | 'net' | 'netShop';
@@ -49,7 +50,7 @@ const IndexInner = () => {
     buyMultiplier, buySkin, equipSkin,
     buyBoatSkin, equipBoatSkin,
     claimDailyGiftLocal, spinDailyRouletteLocal, spinSkinRouletteLocal,
-    moveAquariumFishToSector, consumeNet, buyNet,
+    moveAquariumFishToSector, buyNet,
     replaceFromServer,
   } = useGameState();
   const { isPlaying: musicPlaying, toggle: toggleMusic, trackId: musicTrack, setTrack: setMusicTrack } = useBackgroundMusic();
@@ -79,13 +80,10 @@ const IndexInner = () => {
     setScreen('fishing');
   }, []);
 
+  // Submarine still catches locally (slice 6b-2 moves it server-side).
   const handleCatch = useCallback((fish: Fish, weight: number, locationId: string) => {
-    catchFish(fish, weight, locationId, screen === 'net');
-  }, [catchFish, screen]);
-
-  const handleNetCatch = useCallback((catches: Array<{ fish: Fish; weight: number }>, locationId: string) => {
-    catchFishBatch(catches.map(caught => ({ ...caught, location: locationId })), true);
-  }, [catchFishBatch]);
+    catchFish(fish, weight, locationId, false);
+  }, [catchFish]);
 
   // A value-granting economy op: anonymous / degraded → the local pure rule;
   // authenticated → flush any pending local mutation FIRST (else the server runs
@@ -173,18 +171,25 @@ const IndexInner = () => {
     [runRewardOp, claimDailyGiftLocal],
   );
 
-  // Rod fishing: the server rolls the fish at cast time (authenticated) — the
-  // client keeps only the minigame. Anonymous / degraded → roll locally.
-  const handleCast = useCallback(async (locationId: string): Promise<Hooked | null> => {
+  // Fishing: the server rolls the fish/batch at cast time (authenticated) — the
+  // client keeps only the minigame. Anonymous / degraded → roll locally. Net spends
+  // a net on the cast (server, or the local roll).
+  const handleCast = useCallback(async (locationId: string, mode: 'rod' | 'net' | 'submarine' = 'rod'): Promise<Hooked | null> => {
     if (syncEnabled) {
       setBusyOp('cast');
       try {
         await flushNow();
-        const r = await castLineApi(crypto.randomUUID(), locationId);
+        const r = await castLineApi(crypto.randomUUID(), locationId, mode);
         applyServerResult(r);
+        if (r.mode === 'net') {
+          const catches = r.catches
+            .map(c => ({ fish: FISH.find(f => f.id === c.fishId), weight: c.weight }))
+            .filter((c): c is { fish: Fish; weight: number } => !!c.fish);
+          return { kind: 'net', net: { rarity: r.net.rarity as Fish['rarity'], fishCount: r.net.fishCount, greenZoneSize: r.net.greenZoneSize, speed: r.net.speed }, catches, lucky: r.lucky, sessionId: r.sessionId };
+        }
         const fish = FISH.find(f => f.id === r.fishId);
         if (!fish) return null;
-        return { fish, weight: r.weight, lucky: r.lucky, sessionId: r.sessionId };
+        return { kind: 'rod', fish, weight: r.weight, lucky: r.lucky, sessionId: r.sessionId };
       } catch {
         console.warn('cast failed; no fish hooked');
         return null;
@@ -197,11 +202,24 @@ const IndexInner = () => {
       if (!location) return null;
       const now = Date.now();
       const luck = resolveLuckyMode(player, now);
-      replaceFromServer(() => ({ luckyUntil: luck.luckyUntil, luckyCooldownUntil: luck.luckyCooldownUntil }));
       const luckActive = !!player.luckMultiplierEnd && player.luckMultiplierEnd > now;
       const luckPower = luckActive ? (player.luckMultiplierPower ?? 2) : 2;
+      if (mode === 'net') {
+        if ((player.nets ?? 0) < 1) return null;
+        const net = rollNet();
+        const pool = getFishForLocation(location);
+        const tier = pool.filter(f => f.rarity === net.rarity);
+        const draw = tier.length > 0 ? tier : pool;
+        const catches = Array.from({ length: net.fishCount }, () => {
+          const f = draw[Math.floor(Math.random() * draw.length)];
+          return { fish: f, weight: rollWeight(f) };
+        });
+        replaceFromServer(() => ({ nets: (player.nets ?? 0) - 1, luckyUntil: luck.luckyUntil, luckyCooldownUntil: luck.luckyCooldownUntil }));
+        return { kind: 'net', net: { rarity: net.rarity, fishCount: net.fishCount, greenZoneSize: net.greenZoneSize, speed: net.speed }, catches, lucky: luck.lucky, sessionId: '' };
+      }
+      replaceFromServer(() => ({ luckyUntil: luck.luckyUntil, luckyCooldownUntil: luck.luckyCooldownUntil }));
       const fish = rollFish(location, player.level, luck.lucky || luckActive, luckPower);
-      return { fish, weight: rollWeight(fish), lucky: luck.lucky, sessionId: '' };
+      return { kind: 'rod', fish, weight: rollWeight(fish), lucky: luck.lucky, sessionId: '' };
     } catch {
       return null;
     }
@@ -214,13 +232,17 @@ const IndexInner = () => {
         applyServerResult(await landCatchApi(crypto.randomUUID(), hooked.sessionId));
         return 'landed';
       } catch {
-        console.warn('land failed; the fish escaped');
+        console.warn('land failed; the catch was lost');
         return 'failed';
       } finally {
         setBusyOp(null);
       }
     }
-    catchFishBatch([{ fish: hooked.fish, weight: hooked.weight, location: locationId }], false);
+    if (hooked.kind === 'net') {
+      catchFishBatch(hooked.catches.map(c => ({ fish: c.fish, weight: c.weight, location: locationId })), true);
+    } else {
+      catchFishBatch([{ fish: hooked.fish, weight: hooked.weight, location: locationId }], false);
+    }
     return 'landed';
   }, [syncEnabled, applyServerResult, catchFishBatch]);
 
@@ -228,9 +250,9 @@ const IndexInner = () => {
   if (screen === 'locations') {
     content = <LocationSelect playerLevel={player.level} unlockedLocations={player.unlockedLocations} world={world} onSelect={handleSelectLocation} onBack={() => setScreen('menu')} />;
   } else if (screen === 'fishing' && selectedLocation) {
-    content = <FishingScreen location={selectedLocation} player={player} onCast={handleCast} onLand={handleLand} onBack={() => setScreen('locations')} onCastNet={() => { if ((player.nets ?? 0) > 0) { consumeNet(); setScreen('net'); } }} onOpenNetShop={() => setScreen('netShop')} />;
+    content = <FishingScreen location={selectedLocation} player={player} onCast={handleCast} onLand={handleLand} onBack={() => setScreen('locations')} onCastNet={() => { if ((player.nets ?? 0) > 0) setScreen('net'); }} onOpenNetShop={() => setScreen('netShop')} />;
   } else if (screen === 'net' && selectedLocation) {
-    content = <NetFishing location={selectedLocation} player={player} onCatch={handleCatch} onCatchBatch={handleNetCatch} onUseNet={consumeNet} onOpenShop={() => setScreen('netShop')} onBack={() => setScreen('locations')} />;
+    content = <NetFishing location={selectedLocation} player={player} onCast={handleCast} onLand={handleLand} onOpenShop={() => setScreen('netShop')} onBack={() => setScreen('locations')} />;
   } else if (screen === 'netShop') {
     content = <NetShop player={player} onBuy={handleBuyNet} buying={busyOp === 'net'} onBack={() => setScreen(selectedLocation ? 'fishing' : 'menu')} />;
   } else if (screen === 'collection') {
