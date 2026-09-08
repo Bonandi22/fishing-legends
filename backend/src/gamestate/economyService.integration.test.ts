@@ -303,6 +303,67 @@ describe('pg game-state economy service (integration)', () => {
     expect(ops).toHaveLength(0);
   });
 
+  it('claimDailyGift transactionally: +150 coins, version +1, one op row with the reward', async () => {
+    const userId = await seedUser();
+    await gameState.put(userId, netBlob({ coins: 0 }), null);
+
+    const res = await economy.claimDailyGift(userId, 'gift-key-int-aaaaaaaa');
+    expect(res.version).toBe(2);
+    expect(res.state.player.coins).toBe(150);
+    expect(res.reward).toEqual({ type: 'coins', amount: 150 });
+
+    const ops = await harness.db.select().from(gameStateOperations).where(eq(gameStateOperations.userId, userId));
+    expect(ops).toHaveLength(1);
+    expect(ops[0].operation).toBe('daily_gift_claim');
+    expect((ops[0].result as { reward: unknown }).reward).toEqual({ type: 'coins', amount: 150 });
+  });
+
+  it('claimDailyGift replay: identical result incl. reward, one row', async () => {
+    const userId = await seedUser();
+    await gameState.put(userId, netBlob({ coins: 0 }), null);
+    const first = await economy.claimDailyGift(userId, 'gift-key-int-bbbbbbbb');
+    const replay = await economy.claimDailyGift(userId, 'gift-key-int-bbbbbbbb');
+    expect(replay).toEqual(first);
+    const ops = await harness.db.select().from(gameStateOperations).where(eq(gameStateOperations.userId, userId));
+    expect(ops).toHaveLength(1);
+  });
+
+  it('second distinct daily claim same day -> DAILY_GIFT_ALREADY_CLAIMED, nothing written', async () => {
+    const userId = await seedUser();
+    await gameState.put(userId, netBlob({ coins: 0 }), null);
+    await economy.claimDailyGift(userId, 'gift-key-int-cccccccc');
+    await expect(economy.claimDailyGift(userId, 'gift-key-int-dddddddd')).rejects.toThrow('DAILY_GIFT_ALREADY_CLAIMED');
+    expect((await gameState.get(userId))!.version).toBe(2);
+    const ops = await harness.db.select().from(gameStateOperations).where(eq(gameStateOperations.userId, userId));
+    expect(ops).toHaveLength(1);
+  });
+
+  it('spinRoulette: concurrent same-key resolves identically, one op row, version 2', async () => {
+    const userId = await seedUser();
+    await gameState.put(userId, netBlob({ coins: 0 }), null);
+    const key = 'roul-key-int-race-same';
+    const [a, b] = await Promise.all([
+      economy.spinRoulette(userId, key),
+      economy.spinRoulette(userId, key),
+    ]);
+    expect(a).toEqual(b);
+    expect(a.version).toBe(2);
+    const ops = await harness.db.select().from(gameStateOperations).where(eq(gameStateOperations.userId, userId));
+    expect(ops).toHaveLength(1);
+    expect(ops[0].operation).toBe('roulette_spin');
+  });
+
+  it('spinSkinRoulette: -1500 (+/- dup refund) coins, one op row', async () => {
+    const userId = await seedUser();
+    await gameState.put(userId, netBlob({ coins: 5_000 }), null);
+    const res = await economy.spinSkinRoulette(userId, 'skinroul-key-int-aa');
+    expect(res.state.player.coins).toBeGreaterThanOrEqual(5_000 - 1_500);
+    expect(res.state.player.coins).toBeLessThanOrEqual(5_000 - 1_500 + 500);
+    const ops = await harness.db.select().from(gameStateOperations).where(eq(gameStateOperations.userId, userId));
+    expect(ops).toHaveLength(1);
+    expect(ops[0].operation).toBe('skin_roulette_spin');
+  });
+
   it('deleting the user cascades game_state_operations', async () => {
     const userId = await seedUser();
     await gameState.put(userId, blob(oneFish), null);
