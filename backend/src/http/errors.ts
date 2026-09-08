@@ -34,6 +34,8 @@ const DOMAIN_ERRORS: Record<string, DomainErrorSpec> = {
   LOCATION_LOCKED: { status: 403, message: 'That location is not unlocked yet' },
   NET_LIMIT_REACHED: { status: 409, message: 'The net limit has been reached' },
   INSUFFICIENT_FUNDS: { status: 409, message: 'Insufficient wallet balance' },
+  SKIN_NOT_FOUND: { status: 404, message: 'That skin is not available for purchase' },
+  SKIN_ALREADY_OWNED: { status: 409, message: 'That skin is already owned' },
   LOCAL_SAVE_ALREADY_IMPORTED: { status: 409, message: 'The local save has already been imported' },
   WAREHOUSE_FISH_NOT_FOUND: { status: 404, message: 'That warehouse fish was not found' },
   WAREHOUSE_EMPTY: { status: 422, message: 'The warehouse is empty' },

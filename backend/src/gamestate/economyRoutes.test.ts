@@ -232,3 +232,97 @@ describe('POST /api/v1/me/economy/multipliers/purchase', () => {
     expect(res.statusCode).toBe(401);
   });
 });
+
+describe('POST /api/v1/me/economy/skins/purchase', () => {
+  it('buys a rod skin at the server price: -1000 coins, id owned, version 1 -> 2', async () => {
+    const a = await app();
+    const client = await registerAndAuth(a);
+    await seedBlob(client, netBlob({ coins: 8_000 }));
+    const res = await client.request({ method: 'POST', url: '/api/v1/me/economy/skins/purchase', payload: { kind: 'rod', skinId: 'shark' } });
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(body.version).toBe(2);
+    expect(body.state.player.coins).toBe(7_000);
+    expect(body.state.player.ownedSkins).toContain('shark');
+  });
+
+  it('buys a boat skin at the server price: -2500 coins, id owned', async () => {
+    const a = await app();
+    const client = await registerAndAuth(a);
+    await seedBlob(client, netBlob({ coins: 8_000 }));
+    const res = await client.request({ method: 'POST', url: '/api/v1/me/economy/skins/purchase', payload: { kind: 'boat', skinId: 'yacht' } });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().state.player.coins).toBe(5_500);
+    expect(res.json().state.player.ownedBoatSkins).toContain('yacht');
+  });
+
+  it('replay with the same Idempotency-Key returns the same body, no double charge', async () => {
+    const a = await app();
+    const client = await registerAndAuth(a);
+    await seedBlob(client, netBlob({ coins: 8_000 }));
+    const first = await client.request({ method: 'POST', url: '/api/v1/me/economy/skins/purchase', payload: { kind: 'rod', skinId: 'shark' }, idempotencyKey: 'skin-key-replayreplay1' });
+    const replay = await client.request({ method: 'POST', url: '/api/v1/me/economy/skins/purchase', payload: { kind: 'rod', skinId: 'shark' }, idempotencyKey: 'skin-key-replayreplay1' });
+    expect(replay.json()).toEqual(first.json());
+    expect((await client.request({ method: 'GET', url: '/api/v1/me/state' })).json().version).toBe(2);
+  });
+
+  it('already owned -> 409 SKIN_ALREADY_OWNED', async () => {
+    const a = await app();
+    const client = await registerAndAuth(a);
+    await seedBlob(client, netBlob({ coins: 8_000, ownedSkins: ['default', 'shark'] }));
+    const res = await client.request({ method: 'POST', url: '/api/v1/me/economy/skins/purchase', payload: { kind: 'rod', skinId: 'shark' } });
+    expect(res.statusCode).toBe(409);
+    expect(res.json().error.code).toBe('SKIN_ALREADY_OWNED');
+  });
+
+  it('unknown id -> 404 SKIN_NOT_FOUND', async () => {
+    const a = await app();
+    const client = await registerAndAuth(a);
+    await seedBlob(client, netBlob({ coins: 8_000 }));
+    const res = await client.request({ method: 'POST', url: '/api/v1/me/economy/skins/purchase', payload: { kind: 'rod', skinId: 'nonesuch' } });
+    expect(res.statusCode).toBe(404);
+    expect(res.json().error.code).toBe('SKIN_NOT_FOUND');
+  });
+
+  it('exclusive (roulette-only) id -> 404 SKIN_NOT_FOUND', async () => {
+    const a = await app();
+    const client = await registerAndAuth(a);
+    await seedBlob(client, netBlob({ coins: 200_000 }));
+    const res = await client.request({ method: 'POST', url: '/api/v1/me/economy/skins/purchase', payload: { kind: 'rod', skinId: 'celestial' } });
+    expect(res.statusCode).toBe(404);
+    expect(res.json().error.code).toBe('SKIN_NOT_FOUND');
+  });
+
+  it('insufficient coins -> 409 INSUFFICIENT_FUNDS', async () => {
+    const a = await app();
+    const client = await registerAndAuth(a);
+    await seedBlob(client, netBlob({ coins: 999 }));
+    const res = await client.request({ method: 'POST', url: '/api/v1/me/economy/skins/purchase', payload: { kind: 'rod', skinId: 'shark' } });
+    expect(res.statusCode).toBe(409);
+    expect(res.json().error.code).toBe('INSUFFICIENT_FUNDS');
+  });
+
+  it('invalid body (unknown kind) -> 400 VALIDATION_ERROR', async () => {
+    const a = await app();
+    const client = await registerAndAuth(a);
+    await seedBlob(client, netBlob({ coins: 8_000 }));
+    const res = await client.request({ method: 'POST', url: '/api/v1/me/economy/skins/purchase', payload: { kind: 'sail', skinId: 'shark' } });
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error.code).toBe('VALIDATION_ERROR');
+  });
+
+  it('invalid body (missing skinId) -> 400 VALIDATION_ERROR', async () => {
+    const a = await app();
+    const client = await registerAndAuth(a);
+    await seedBlob(client, netBlob({ coins: 8_000 }));
+    const res = await client.request({ method: 'POST', url: '/api/v1/me/economy/skins/purchase', payload: { kind: 'rod' } });
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error.code).toBe('VALIDATION_ERROR');
+  });
+
+  it('no session -> 401', async () => {
+    const a = await app();
+    const res = await a.inject({ method: 'POST', url: '/api/v1/me/economy/skins/purchase', payload: { kind: 'rod', skinId: 'shark' } });
+    expect(res.statusCode).toBe(401);
+  });
+});

@@ -245,6 +245,64 @@ describe('pg game-state economy service (integration)', () => {
     expect((await gameState.get(userId))!.version).toBe(2);
   });
 
+  it('buys a rod skin transactionally: -1000 coins, id owned, version +1, one op row', async () => {
+    const userId = await seedUser();
+    await gameState.put(userId, netBlob({ coins: 8_000 }), null);
+
+    const res = await economy.purchaseSkin(userId, 'skin-key-int-aaaaaaaa', 'rod', 'shark');
+    expect(res.version).toBe(2);
+    expect(res.state.player.coins).toBe(7_000);
+    expect(res.state.player.ownedSkins).toContain('shark');
+
+    const ops = await harness.db.select().from(gameStateOperations).where(eq(gameStateOperations.userId, userId));
+    expect(ops).toHaveLength(1);
+    expect(ops[0].operation).toBe('skin_purchase');
+  });
+
+  it('skin purchase replays the same key: identical result, one row, not charged twice', async () => {
+    const userId = await seedUser();
+    await gameState.put(userId, netBlob({ coins: 8_000 }), null);
+
+    const first = await economy.purchaseSkin(userId, 'skin-key-int-bbbbbbbb', 'boat', 'yacht');
+    const replay = await economy.purchaseSkin(userId, 'skin-key-int-bbbbbbbb', 'boat', 'yacht');
+    expect(replay).toEqual(first);
+
+    const ops = await harness.db.select().from(gameStateOperations).where(eq(gameStateOperations.userId, userId));
+    expect(ops).toHaveLength(1);
+    expect((await gameState.get(userId))!.version).toBe(2);
+    expect((first.state.player as { coins: number }).coins).toBe(5_500);
+  });
+
+  it('skin purchase: concurrent same-key resolves identically, one op row, version 2', async () => {
+    const userId = await seedUser();
+    await gameState.put(userId, netBlob({ coins: 20_000 }), null);
+
+    const key = 'skin-key-int-race-same';
+    const [a, b] = await Promise.all([
+      economy.purchaseSkin(userId, key, 'rod', 'kraken'),
+      economy.purchaseSkin(userId, key, 'rod', 'kraken'),
+    ]);
+
+    expect(a).toEqual(b);
+    expect(a.version).toBe(2);
+    expect(a.state.player.coins).toBe(15_000); // kraken 5000, charged once
+
+    const ops = await harness.db.select().from(gameStateOperations).where(eq(gameStateOperations.userId, userId));
+    expect(ops).toHaveLength(1);
+    expect((await gameState.get(userId))!.version).toBe(2);
+  });
+
+  it('already-owned skin -> SKIN_ALREADY_OWNED, nothing written', async () => {
+    const userId = await seedUser();
+    await gameState.put(userId, netBlob({ coins: 8_000, ownedSkins: ['default', 'shark'] }), null);
+
+    await expect(economy.purchaseSkin(userId, 'skin-key-int-cccccccc', 'rod', 'shark')).rejects.toThrow('SKIN_ALREADY_OWNED');
+
+    expect((await gameState.get(userId))!.version).toBe(1);
+    const ops = await harness.db.select().from(gameStateOperations).where(eq(gameStateOperations.userId, userId));
+    expect(ops).toHaveLength(0);
+  });
+
   it('deleting the user cascades game_state_operations', async () => {
     const userId = await seedUser();
     await gameState.put(userId, blob(oneFish), null);
