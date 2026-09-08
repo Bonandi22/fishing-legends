@@ -33,6 +33,9 @@ playwright-report
 test-results
 blob-report
 
+# Local agent/harness config (Claude Code) — never committed
+.claude/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
