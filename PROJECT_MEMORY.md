@@ -1829,6 +1829,12 @@ Terceira op. **Primeiro endpoint de economia com body.** Branch
   `test/MultiplierShop.test.tsx` (+1).
 - Verificação: `tsc app` ✅ · `backend:typecheck` ✅ · `lint` ✅ 0 erros · `npm test` ✅
   **316** · `build` ✅ · `test:integration` ✅ **64**.
+- Smoke browser (stack Docker): UI "Comprar 2x Sorte" → `POST .../multipliers/purchase`
+  200, moedas −3000, cartão passa a "Ativo!", sem `PUT` redundante; body inválido
+  (`power: 3`, `type` desconhecido) → `400 VALIDATION_ERROR`, nada escrito.
+- **Integrado na `main`**: PR `Bonandi22/deep-blue-lure#23` merged em `2030e65`.
+  Branch `feature/task-10-3-economy-multiplier-purchase` apagada. `main` verde
+  (316 unit — 1 flake de MainMenu numa corrida, verde em 2 re-runs — + 64 integração).
 
 - **Próximo**: fatia 4 = compra de skin (`buySkin`/`buyBoatSkin` — o servidor passa a
   possuir os preços, lookup nos arrays `SKINS`/`BOAT_SKINS` de `types.ts`). Roletas e
