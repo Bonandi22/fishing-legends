@@ -21,8 +21,18 @@ import { useBackgroundMusic } from '@/game/useBackgroundMusic';
 import { I18nProvider } from '@/game/i18n';
 import { AuthProvider } from '@/game/auth/AuthProvider';
 import { useGameStateSync } from '@/game/auth/gameStateSync';
-import { sellWarehouse as sellWarehouseApi, purchaseNet as purchaseNetApi, purchaseMultiplier as purchaseMultiplierApi, purchaseSkin as purchaseSkinApi } from '@/api/endpoints';
+import {
+  sellWarehouse as sellWarehouseApi,
+  purchaseNet as purchaseNetApi,
+  purchaseMultiplier as purchaseMultiplierApi,
+  purchaseSkin as purchaseSkinApi,
+  spinRoulette as spinRouletteApi,
+  spinSkinRoulette as spinSkinRouletteApi,
+  claimDailyGift as claimDailyGiftApi,
+  type RewardEnvelope,
+} from '@/api/endpoints';
 import type { GameStateEnvelope } from '@/api/types';
+import type { RewardGrant } from '@/game/rewards';
 import { FishingLocation, Fish } from '@/game/types';
 
 type Screen = 'menu' | 'locations' | 'fishing' | 'collection' | 'warehouse' | 'submarine' | 'multiplier' | 'skins' | 'boatSkins' | 'roulette' | 'skinRoulette' | 'ranking' | 'aquarium' | 'dailyGifts' | 'net' | 'netShop';
@@ -32,13 +42,13 @@ const IndexInner = () => {
     player, catchFish, catchFishBatch, resetProgress, sellWarehouse,
     buyMultiplier, buySkin, equipSkin,
     buyBoatSkin, equipBoatSkin,
-    addCoins, addSkin, addBoatSkin, spendCoins, addMultiplier, setLastRouletteDate,
-    moveAquariumFishToSector, claimDailyGift, consumeNet, buyNet,
+    claimDailyGiftLocal, spinDailyRouletteLocal, spinSkinRouletteLocal,
+    moveAquariumFishToSector, consumeNet, buyNet,
     replaceFromServer,
   } = useGameState();
   const { isPlaying: musicPlaying, toggle: toggleMusic, trackId: musicTrack, setTrack: setMusicTrack } = useBackgroundMusic();
   const [syncEnabled, setSyncEnabled] = useState(false);
-  const [busyOp, setBusyOp] = useState<null | 'sell' | 'net' | 'multiplier' | 'skin'>(null);
+  const [busyOp, setBusyOp] = useState<null | 'sell' | 'net' | 'multiplier' | 'skin' | 'roulette' | 'skinRoulette' | 'dailyGift'>(null);
   const { flushNow, start: startSync, applyServerResult } = useGameStateSync({ player, enabled: syncEnabled, replace: replaceFromServer });
   const [screen, setScreen] = useState<Screen>('menu');
   const [selectedLocation, setSelectedLocation] = useState<FishingLocation | null>(null);
@@ -119,6 +129,44 @@ const IndexInner = () => {
     [runEconomyOp, buyBoatSkin],
   );
 
+  // Reward ops: anonymous / degraded → the local pure rule; authenticated → flush,
+  // run the server op, adopt its state, and return its `reward` for the screen to
+  // reveal. Failure is silent and leaves local state untouched (returns null).
+  const runRewardOp = useCallback(async (
+    op: 'roulette' | 'skinRoulette' | 'dailyGift',
+    local: () => RewardGrant,
+    api: (idempotencyKey: string) => Promise<RewardEnvelope>,
+  ): Promise<RewardGrant | null> => {
+    if (!syncEnabled) {
+      try { return local(); } catch { return null; }
+    }
+    setBusyOp(op);
+    try {
+      await flushNow();
+      const res = await api(crypto.randomUUID());
+      applyServerResult(res);
+      return res.reward;
+    } catch {
+      console.warn(`reward op "${op}" failed; state unchanged`);
+      return null;
+    } finally {
+      setBusyOp(null);
+    }
+  }, [syncEnabled, flushNow, applyServerResult]);
+
+  const handleSpinRoulette = useCallback(
+    () => runRewardOp('roulette', spinDailyRouletteLocal, spinRouletteApi),
+    [runRewardOp, spinDailyRouletteLocal],
+  );
+  const handleSpinSkinRoulette = useCallback(
+    () => runRewardOp('skinRoulette', spinSkinRouletteLocal, spinSkinRouletteApi),
+    [runRewardOp, spinSkinRouletteLocal],
+  );
+  const handleClaimDailyGift = useCallback(
+    () => runRewardOp('dailyGift', claimDailyGiftLocal, claimDailyGiftApi),
+    [runRewardOp, claimDailyGiftLocal],
+  );
+
   let content: JSX.Element;
   if (screen === 'locations') {
     content = <LocationSelect playerLevel={player.level} unlockedLocations={player.unlockedLocations} world={world} onSelect={handleSelectLocation} onBack={() => setScreen('menu')} />;
@@ -141,15 +189,15 @@ const IndexInner = () => {
   } else if (screen === 'boatSkins') {
     content = <BoatSkinsShop player={player} onBuy={handleBuyBoatSkin} buying={busyOp === 'skin'} onEquip={equipBoatSkin} onBack={() => setScreen('skins')} />;
   } else if (screen === 'roulette') {
-    content = <Roulette player={player} onAddCoins={addCoins} onAddSkin={addSkin} onAddBoatSkin={addBoatSkin} onAddMultiplier={addMultiplier} onSetLastRouletteDate={setLastRouletteDate} onBack={() => setScreen('menu')} />;
+    content = <Roulette player={player} onSpin={handleSpinRoulette} busy={busyOp === 'roulette'} onBack={() => setScreen('menu')} />;
   } else if (screen === 'skinRoulette') {
-    content = <SkinRoulette player={player} onAddSkin={addSkin} onAddBoatSkin={addBoatSkin} onSpend={spendCoins} onBack={() => setScreen('menu')} />;
+    content = <SkinRoulette player={player} onSpin={handleSpinSkinRoulette} busy={busyOp === 'skinRoulette'} onBack={() => setScreen('menu')} />;
   } else if (screen === 'ranking') {
     content = <Ranking player={player} onBack={() => setScreen('menu')} />;
   } else if (screen === 'aquarium') {
     content = <Aquarium player={player} onMoveToSector={moveAquariumFishToSector} onBack={() => setScreen('menu')} />;
   } else if (screen === 'dailyGifts') {
-    content = <DailyGifts player={player} onClaim={claimDailyGift} onBack={() => setScreen('menu')} />;
+    content = <DailyGifts player={player} onClaim={handleClaimDailyGift} onBack={() => setScreen('menu')} />;
   } else {
     content = (
       <MainMenu

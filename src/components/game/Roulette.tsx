@@ -1,197 +1,115 @@
-import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
-import { PlayerState, ROD_SKINS, BOAT_SKINS } from '@/game/types';
+import { PlayerState } from '@/game/types';
+import { DAILY_ROULETTE_SLOTS, type RewardGrant, type RouletteSlot } from '@/game/rewards';
 import { useI18n } from '@/game/i18n';
 import GameScreen from './shell/GameScreen';
+import { rewardEmoji, rewardLabel } from './dailygifts/rewards';
 
 interface Props {
   player: PlayerState;
-  onAddCoins: (amount: number) => void;
-  onAddSkin: (skinId: string) => void;
-  onAddBoatSkin: (skinId: string) => void;
-  onAddMultiplier: (type: 'luck' | 'strength') => void;
-  onSetLastRouletteDate: (date: string) => void;
+  /** Resolves the reward the server (or the local rule) granted, or null on failure. */
+  onSpin: () => Promise<RewardGrant | null>;
+  busy?: boolean;
   onBack: () => void;
 }
 
-interface Prize {
-  label: string;
-  emoji: string;
-  color: string;
-  action: () => void;
+const INK = '#0a141b';
+const POINTER = '#2bd4ee';
+const SLOT_COLORS = ['#d9a441', '#2dd4bf', '#c08a35', '#f59e0b', '#0e7490', '#155e75', '#0891b2', '#164e63'];
+
+function slotEmoji(slot: RouletteSlot): string {
+  if (slot.kind === 'coins') return '💰';
+  if (slot.kind === 'multiplier') return slot.mult === 'luck' ? '🍀' : '💪';
+  return '🎁';
 }
 
-// Canvas can't read CSS custom properties — these track the deep-blue tokens.
-const INK = '#0a141b';       // --abyss
-const HUB = '#12212b';       // --menu-panel
-const POINTER = '#2bd4ee';   // --lure
-
-export default function Roulette({ player, onAddCoins, onAddSkin, onAddBoatSkin, onAddMultiplier, onSetLastRouletteDate, onBack }: Props) {
+export default function Roulette({ player, onSpin, busy = false, onBack }: Props) {
   const { t } = useI18n();
-  const canvasRef = useRef<HTMLCanvasElement>(null);
   const [spinning, setSpinning] = useState(false);
-  const [result, setResult] = useState<Prize | null>(null);
-  const angleRef = useRef(0);
-  const animRef = useRef<number>(0);
+  const [rotation, setRotation] = useState(0);
+  const [result, setResult] = useState<RewardGrant | null>(null);
+  const [failed, setFailed] = useState(false);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const today = new Date().toISOString().slice(0, 10);
-  const alreadySpun = player.lastRouletteDate === today;
+  const alreadyUsed = player.lastRouletteDate === today;
 
-  // Freeze prizes for the lifetime of the component to ensure the prize matches the arrow.
-  const prizes = useMemo<Prize[]>(() => {
-    const unownedRods = ROD_SKINS.filter(s => !player.ownedSkins.includes(s.id) && (s.price > 0 || s.exclusive));
-    const randomRod = unownedRods.length > 0 ? unownedRods[Math.floor(Math.random() * unownedRods.length)] : null;
-    const unownedBoats = BOAT_SKINS.filter(s => !player.ownedBoatSkins.includes(s.id) && s.price > 0);
-    const randomBoat = unownedBoats.length > 0 ? unownedBoats[Math.floor(Math.random() * unownedBoats.length)] : null;
-    return [
-      { label: '100 💰', emoji: '💰', color: '#d9a441', action: () => onAddCoins(100) },
-      { label: '🍀 ' + t('mult.luck'), emoji: '🍀', color: '#2dd4bf', action: () => onAddMultiplier('luck') },
-      { label: '250 💰', emoji: '💰', color: '#c08a35', action: () => onAddCoins(250) },
-      { label: '💪 ' + t('mult.strength'), emoji: '💪', color: '#f59e0b', action: () => onAddMultiplier('strength') },
-      randomBoat
-        ? { label: `${randomBoat.emoji} ${randomBoat.name}`, emoji: randomBoat.emoji, color: randomBoat.rail[1], action: () => onAddBoatSkin(randomBoat.id) }
-        : { label: '500 💰', emoji: '💰', color: '#0e7490', action: () => onAddCoins(500) },
-      randomRod
-        ? { label: `${randomRod.emoji} ${randomRod.name}`, emoji: randomRod.emoji, color: randomRod.color, action: () => onAddSkin(randomRod.id) }
-        : { label: '1000 💰', emoji: '💰', color: '#155e75', action: () => onAddCoins(1000) },
-      { label: '1000 💰', emoji: '💰', color: '#0891b2', action: () => onAddCoins(1000) },
-      { label: '150 💰', emoji: '💰', color: '#164e63', action: () => onAddCoins(150) },
-    ];
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
 
-  const drawWheel = useCallback((angle: number) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    const size = canvas.width;
-    const cx = size / 2;
-    const cy = size / 2;
-    const r = size / 2 - 10;
-    const sliceAngle = (2 * Math.PI) / prizes.length;
-
-    ctx.clearRect(0, 0, size, size);
-
-    prizes.forEach((prize, i) => {
-      const start = angle + i * sliceAngle;
-      const end = start + sliceAngle;
-
-      ctx.beginPath();
-      ctx.moveTo(cx, cy);
-      ctx.arc(cx, cy, r, start, end);
-      ctx.closePath();
-      ctx.fillStyle = prize.color;
-      ctx.fill();
-      ctx.strokeStyle = INK;
-      ctx.lineWidth = 2;
-      ctx.stroke();
-
-      ctx.save();
-      ctx.translate(cx, cy);
-      ctx.rotate(start + sliceAngle / 2);
-      ctx.textAlign = 'center';
-      ctx.fillStyle = '#fff';
-      ctx.font = 'bold 14px sans-serif';
-      ctx.shadowColor = 'rgba(0,0,0,0.5)';
-      ctx.shadowBlur = 3;
-      ctx.fillText(prize.emoji, r * 0.65, 5);
-      ctx.restore();
-    });
-
-    ctx.beginPath();
-    ctx.arc(cx, cy, 20, 0, Math.PI * 2);
-    ctx.fillStyle = HUB;
-    ctx.fill();
-    ctx.strokeStyle = POINTER;
-    ctx.lineWidth = 3;
-    ctx.stroke();
-
-    ctx.beginPath();
-    ctx.moveTo(cx - 12, 5);
-    ctx.lineTo(cx + 12, 5);
-    ctx.lineTo(cx, 30);
-    ctx.closePath();
-    ctx.fillStyle = POINTER;
-    ctx.fill();
-    ctx.strokeStyle = INK;
-    ctx.lineWidth = 2;
-    ctx.stroke();
-  }, [prizes]);
-
-  useEffect(() => {
-    drawWheel(0);
-  }, [drawWheel]);
-
-  const spin = useCallback(() => {
-    if (spinning || alreadySpun) return;
+  const spin = useCallback(async () => {
+    if (spinning || alreadyUsed || busy) return;
     setSpinning(true);
     setResult(null);
+    setFailed(false);
+    // Decorative: a fixed number of turns, no computed target — the server owns the outcome.
+    setRotation(r => r + 360 * (5 + Math.floor(Math.random() * 4)) + Math.floor(Math.random() * 360));
 
-    const sliceAngle = (2 * Math.PI) / prizes.length;
-    const winIndex = Math.floor(Math.random() * prizes.length);
-    const baseTarget = -winIndex * sliceAngle - sliceAngle / 2 - Math.PI / 2;
-    const extraTurns = 5 + Math.floor(Math.random() * 4);
-    const totalRotation = baseTarget + Math.PI * 2 * extraTurns;
+    const reward = await onSpin();
+    timer.current = setTimeout(() => {
+      setSpinning(false);
+      if (reward) setResult(reward);
+      else setFailed(true);
+    }, 400);
+  }, [spinning, alreadyUsed, busy, onSpin]);
 
-    const startAngle = angleRef.current;
-    const startTime = performance.now();
-    const duration = 4000;
-
-    const animate = (now: number) => {
-      const elapsed = now - startTime;
-      const progress = Math.min(elapsed / duration, 1);
-      const eased = 1 - Math.pow(1 - progress, 3);
-      const currentAngle = startAngle + (totalRotation - startAngle) * eased;
-      angleRef.current = currentAngle;
-      drawWheel(currentAngle);
-
-      if (progress < 1) {
-        animRef.current = requestAnimationFrame(animate);
-      } else {
-        setSpinning(false);
-        onSetLastRouletteDate(today);
-        const TWO_PI = Math.PI * 2;
-        const finalAngle = ((angleRef.current % TWO_PI) + TWO_PI) % TWO_PI;
-        const arrowAngle = ((-Math.PI / 2 - finalAngle) % TWO_PI + TWO_PI) % TWO_PI;
-        const actualIndex = Math.floor(arrowAngle / sliceAngle) % prizes.length;
-        const prize = prizes[actualIndex] ?? prizes[winIndex];
-        prize.action();
-        setResult(prize);
-      }
-    };
-
-    animRef.current = requestAnimationFrame(animate);
-  }, [spinning, alreadySpun, prizes, drawWheel, today, onSetLastRouletteDate]);
-
-  useEffect(() => {
-    return () => cancelAnimationFrame(animRef.current);
-  }, []);
+  const slices = DAILY_ROULETTE_SLOTS.length;
 
   return (
     <GameScreen title={t('roulette.name')} onBack={onBack} coins={player.coins} width="narrow">
       <div className="flex flex-col items-center gap-5">
-        <canvas
-          ref={canvasRef}
-          width={300}
-          height={300}
-          className="rounded-full ring-1 ring-lure/25"
-        />
+        <div className="relative" style={{ width: 300, height: 300 }}>
+          <div
+            className="absolute inset-0 rounded-full ring-1 ring-lure/25"
+            style={{
+              transform: `rotate(${rotation}deg)`,
+              transition: spinning ? 'transform 3.6s cubic-bezier(0.25, 0.1, 0.25, 1)' : 'none',
+            }}
+          >
+            <svg viewBox="0 0 300 300" width="300" height="300" className="rounded-full">
+              {DAILY_ROULETTE_SLOTS.map((slot, i) => {
+                const start = (i * 360) / slices;
+                const end = ((i + 1) * 360) / slices;
+                const r = 140;
+                const rad = (d: number) => (d * Math.PI) / 180;
+                const x1 = 150 + r * Math.cos(rad(start));
+                const y1 = 150 + r * Math.sin(rad(start));
+                const x2 = 150 + r * Math.cos(rad(end));
+                const y2 = 150 + r * Math.sin(rad(end));
+                const mid = start + (end - start) / 2;
+                const tx = 150 + r * 0.66 * Math.cos(rad(mid));
+                const ty = 150 + r * 0.66 * Math.sin(rad(mid));
+                return (
+                  <g key={i}>
+                    <path d={`M150,150 L${x1},${y1} A${r},${r} 0 0,1 ${x2},${y2} Z`} fill={SLOT_COLORS[i % SLOT_COLORS.length]} stroke={INK} strokeWidth="2" />
+                    <text x={tx} y={ty} textAnchor="middle" dominantBaseline="central" fontSize="18" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.6)' }}>{slotEmoji(slot)}</text>
+                  </g>
+                );
+              })}
+              <circle cx="150" cy="150" r="20" fill="#12212b" stroke={POINTER} strokeWidth="3" />
+            </svg>
+          </div>
+          <div
+            className="absolute left-1/2 top-0 z-10 -translate-x-1/2"
+            style={{ width: 0, height: 0, borderLeft: '12px solid transparent', borderRight: '12px solid transparent', borderTop: `24px solid ${POINTER}` }}
+          />
+        </div>
 
-        {alreadySpun && !result ? (
+        {alreadyUsed && !result ? (
           <p className="text-center font-medium text-muted-foreground">{t('roulette.used')}</p>
         ) : (
           <Button
             onClick={spin}
-            disabled={spinning || alreadySpun}
+            disabled={spinning || alreadyUsed || busy}
             size="lg"
             className="bg-lure px-10 text-base font-black uppercase tracking-wide text-lure-foreground hover:bg-lure/90"
           >
             {spinning ? t('roulette.spinning') : t('roulette.spin')}
           </Button>
         )}
+
+        {failed && <p className="text-center text-sm text-destructive">{t('roulette.failed')}</p>}
 
         {result && (
           <motion.div
@@ -200,9 +118,9 @@ export default function Roulette({ player, onAddCoins, onAddSkin, onAddBoatSkin,
             animate={{ scale: 1, opacity: 1 }}
             transition={{ type: 'spring', damping: 15 }}
           >
-            <div className="mb-2 text-4xl">{result.emoji}</div>
+            <div className="mb-2 text-4xl">{rewardEmoji(result)}</div>
             <p className="text-lg font-bold text-foreground">{t('roulette.won')}</p>
-            <p className="font-semibold text-lure">{result.label}</p>
+            <p className="font-semibold text-lure">{rewardLabel(result, t)}</p>
           </motion.div>
         )}
 
