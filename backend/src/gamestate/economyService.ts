@@ -5,13 +5,22 @@ import { SAVE_SCHEMA_VERSION, saveSchema, type SaveEnvelope } from '../../../src
 import {
   buyMultiplier as applyMultiplierPurchase,
   buyNet as applyNetPurchase,
+  buyOwnedItem as applySkinPurchase,
   sellWarehouse as applyWarehouseSale,
 } from '../../../src/game/stateRules.js';
 import { LOCATIONS } from '../../../src/game/data.js';
-import { MULTIPLIER_COST, MULTIPLIER_COST_4X, NET_LIMIT, NET_PRICE } from '../../../src/game/types.js';
+import {
+  BOAT_SKINS,
+  MULTIPLIER_COST,
+  MULTIPLIER_COST_4X,
+  NET_LIMIT,
+  NET_PRICE,
+  ROD_SKINS,
+} from '../../../src/game/types.js';
 
 export type MultiplierType = 'luck' | 'strength';
 export type MultiplierPower = 2 | 4;
+export type SkinKind = 'rod' | 'boat';
 import type { MemoryGameStateStore } from './memoryService.js';
 
 type Player = SaveEnvelope['player'];
@@ -30,6 +39,7 @@ const OPS = {
   warehouseSell: 'warehouse_sell',
   netPurchase: 'net_purchase',
   multiplierPurchase: 'multiplier_purchase',
+  skinPurchase: 'skin_purchase',
 } as const;
 
 function computeSale(envelope: SaveEnvelope): Player {
@@ -55,6 +65,23 @@ function computeMultiplierPurchase(
   return applyMultiplierPurchase(envelope.player, type, power, now);
 }
 
+/**
+ * Skin pricing is server-owned: the price comes from the `ROD_SKINS` / `BOAT_SKINS`
+ * catalog, never from the client. Exclusive skins are roulette-only and cannot be
+ * bought here (treated as not found).
+ */
+function computeSkinPurchase(envelope: SaveEnvelope, kind: SkinKind, skinId: string): Player {
+  const catalog = kind === 'rod' ? ROD_SKINS : BOAT_SKINS;
+  const skin = catalog.find(s => s.id === skinId);
+  if (!skin || skin.exclusive) throw new Error('SKIN_NOT_FOUND');
+
+  const owned = kind === 'rod' ? envelope.player.ownedSkins : envelope.player.ownedBoatSkins;
+  if (owned.includes(skinId)) throw new Error('SKIN_ALREADY_OWNED');
+  if (envelope.player.coins < skin.price) throw new Error('INSUFFICIENT_FUNDS');
+
+  return applySkinPurchase(envelope.player, kind, skinId, skin.price);
+}
+
 export interface GameStateEconomyService {
   sellWarehouse(userId: string, idempotencyKey: string): Promise<Result>;
   purchaseNet(userId: string, idempotencyKey: string): Promise<Result>;
@@ -63,6 +90,12 @@ export interface GameStateEconomyService {
     idempotencyKey: string,
     type: MultiplierType,
     power: MultiplierPower,
+  ): Promise<Result>;
+  purchaseSkin(
+    userId: string,
+    idempotencyKey: string,
+    kind: SkinKind,
+    skinId: string,
   ): Promise<Result>;
 }
 
@@ -181,6 +214,10 @@ export function createMemoryGameStateEconomyService(store: MemoryGameStateStore)
       return runMemoryOp(store, ops, userId, OPS.multiplierPurchase, idempotencyKey,
         env => computeMultiplierPurchase(env, type, power, now));
     },
+    async purchaseSkin(userId, idempotencyKey, kind, skinId) {
+      return runMemoryOp(store, ops, userId, OPS.skinPurchase, idempotencyKey,
+        env => computeSkinPurchase(env, kind, skinId));
+    },
   };
 }
 
@@ -196,6 +233,10 @@ export function createPgGameStateEconomyService(db: Database): GameStateEconomyS
       const now = Date.now();
       return runPgOp(db, userId, OPS.multiplierPurchase, idempotencyKey,
         env => computeMultiplierPurchase(env, type, power, now));
+    },
+    async purchaseSkin(userId, idempotencyKey, kind, skinId) {
+      return runPgOp(db, userId, OPS.skinPurchase, idempotencyKey,
+        env => computeSkinPurchase(env, kind, skinId));
     },
   };
 }
