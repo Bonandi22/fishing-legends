@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { FishingScene3D, RodOverlayCanvas } from './FishingScene';
 import PullMinigame from './PullMinigame';
 import { FishingLocation, Fish, PlayerState, BOAT_SKINS, BoatSkin } from '@/game/types';
-import type { Hooked } from '@/game/fishing';
+import type { Hooked, RodHooked } from '@/game/fishing';
 import { FISH_IMAGES } from '@/game/fishImages';
 import { getWaitTime } from '@/game/fishingLogic';
 import { useI18n, getRarityLabel } from '@/game/i18n';
@@ -292,7 +292,7 @@ function BoatOverlay({ skinId }: { skinId: string }) {
 interface Props {
   location: FishingLocation;
   player: PlayerState;
-  onCast: (locationId: string) => Promise<Hooked | null>;
+  onCast: (locationId: string, mode?: 'rod' | 'net' | 'submarine') => Promise<Hooked | null>;
   onLand: (hooked: Hooked, locationId: string) => Promise<'landed' | 'failed'>;
   onBack: () => void;
   onCastNet?: () => void;
@@ -305,7 +305,7 @@ export default function FishingScreen({ location, player, onCast, onLand, onBack
   const [bobberPos, setBobberPos] = useState<[number, number, number]>([0, 0, 0]);
   const [currentFish, setCurrentFish] = useState<Fish | null>(null);
   const [currentWeight, setCurrentWeight] = useState(0);
-  const [hooked, setHooked] = useState<Hooked | null>(null);
+  const [hooked, setHooked] = useState<RodHooked | null>(null);
   const [message, setMessage] = useState(t('fish.castPrompt'));
   const [luckyMode, setLuckyMode] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout>>();
@@ -421,8 +421,8 @@ export default function FishingScreen({ location, player, onCast, onLand, onBack
 
       const wait = getWaitTime();
       timerRef.current = setTimeout(async () => {
-        const h = await onCast(location.id);
-        if (!h) {
+        const h = await onCast(location.id, 'rod');
+        if (!h || h.kind !== 'rod') {
           setPhase('idle');
           setMessage(t('fish.castPrompt'));
           return;
