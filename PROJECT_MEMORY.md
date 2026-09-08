@@ -2063,6 +2063,25 @@ plano `.../plans/2026-09-08-server-fishing-catch-6b1-net.md` (10 tarefas,
   4 sessões `completed`. Um 409 na consola durante o mashing agressivo do smoke
   (`STATE_VERSION_CONFLICT` entre um `PUT` de flush e um `cast` — comportamento de
   concorrência otimista pré-existente, o cliente retenta).
+- **Integrado na `main`**: PR `Bonandi22/deep-blue-lure#27` merged em `26fe90d`.
+
+### Ponto de parada — 2026-09-08 (fatia 6b-1 integrada)
+
+- `main` em `26fe90d`, sincronizada com `origin/main`, worktree limpo (`.claude/`
+  fica untracked — candidato a `.gitignore`).
+- **Task 10.3 fatias 1–5** + **6a** (vara) + **6b-1** (rede, lote) — integradas e
+  verificadas.
+- **Auditoria de segurança**: `docs/analysis/security-checklist-20.md` (20 pontos,
+  2026-09-08). Bloqueiam produção: backups automáticos (#3), HTTPS/HSTS no edge
+  (#4/#18), retirar o write livre do blob `PUT /me/state` (#8 = concluir Task 10.3).
+  Alto valor/baixo custo: `npm audit` não-bloqueante no CI + `dependabot.yml` (#19),
+  headers de segurança no nginx da SPA (#18), balde de rate limit dedicado para
+  `auth/login`+`auth/register` (#11), `/.claude/` no `.gitignore` (#1).
+- **Retomar por**: ajustes de segurança acordados com o utilizador **ou** Task 10.3
+  **fatia 6b-2 — submarino** (mesmo `cast`/`land`, `mode:'submarine'`; precisa de
+  coluna `mode` para distinguir de `net`; `location:'submarine'` não está em
+  `LOCATIONS` — bug latente de corrupção de save a corrigir aqui). Depois **6c**
+  aquário, ranking+temporada (leitura), limpeza de endpoints dormentes.
 
 ### Ponto de parada — 2026-09-08 (fatia 6a integrada)
 
