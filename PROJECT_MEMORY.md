@@ -1840,6 +1840,52 @@ Terceira op. **Primeiro endpoint de economia com body.** Branch
   possuir os preços, lookup nos arrays `SKINS`/`BOAT_SKINS` de `types.ts`). Roletas e
   prendas diárias (RNG/limite diário server-side) ficam para depois.
 
+### Task 10.3 fatia 4 — compra de skin server-autoritativa — 2026-09-08
+
+Quarta op. **Preço passa a ser do servidor.** Branch
+`feature/task-10-3-economy-skin-purchase`. Inline, TDD, 3 commits.
+
+- **`purchaseSkin(userId, key, kind, skinId)`** — `computeSkinPurchase` faz lookup
+  em `ROD_SKINS` / `BOAT_SKINS` (de `src/game/types.ts`) e cobra o **preço do
+  catálogo**; o serviço não tem parâmetro `price`. Skin exclusiva (só roleta) ou id
+  desconhecido → `SKIN_NOT_FOUND` (404); já possuída → `SKIN_ALREADY_OWNED` (409);
+  abaixo do preço → `INSUFFICIENT_FUNDS` (409). Delega em `stateRules.buyOwnedItem`.
+  Passa pelos `runMemoryOp`/`runPgOp` com operation `skin_purchase` (closure captura
+  `kind`/`skinId`). Sem `now` — `buyOwnedItem` não é temporizado.
+- **`POST /api/v1/me/economy/skins/purchase`** — body
+  `z.object({ kind: enum(['rod','boat']), skinId: string().min(1).max(64) })`. O
+  `kind` é necessário: ids colidem entre `ROD_SKINS` e `BOAT_SKINS` (`gold`,
+  `default`/`classic`). Body inválido → `400 VALIDATION_ERROR`.
+- **`http/errors.ts`**: `SKIN_NOT_FOUND` (404) e `SKIN_ALREADY_OWNED` (409) no mapa
+  `DOMAIN_ERRORS`. Sem migração nova — a PK `(user_id, idempotency_key, operation)`
+  da fatia 2 já cobre a op nova.
+- **Frontend**: `endpoints.purchaseSkin(key, kind, skinId)`; `Index.tsx`
+  `handleBuySkin` / `handleBuyBoatSkin` por `runEconomyOp('skin', …)` — flush →
+  server op → `applyServerResult` quando `syncEnabled`, regra local
+  `buySkin(id, price)` quando anónimo. `busyOp` estende para `'skin'`.
+  `SkinsShop` / `BoatSkinsShop` ganham `buying?: boolean` → `CosmeticCard` `busy`
+  (desativa o botão comprar).
+- **Mudança de comportamento**: `BoatSkinsShop` passa a filtrar `!s.exclusive`
+  (o `SkinsShop` já filtrava; o barco exclusivo `daily_leviathan` deixa de aparecer
+  na loja por 99999 moedas). UI e servidor ficam alinhados.
+- Testes: `economyService.test.ts` (+11 — rod, boat, preço do catálogo, replay,
+  já possuída, id desconhecido, exclusiva rod+boat, sem fundos, not-found, F2
+  cross-op skin↔net), `economyRoutes.test.ts` (+10 — inclui 400 body inválido ×2,
+  404 exclusiva, 409 já possuída), `economyService.integration.test.ts` (+4 — txn +
+  op row `skin_purchase`, replay, concorrente mesma-chave, já possuída sem escrita),
+  `endpoints.test.ts` (+1), `SkinsShop.test.tsx` (+3 — disabled enquanto compra,
+  boat sem exclusivas, boat disabled), `CosmeticCard.test.tsx` (+1).
+- Verificação: `tsc app` ✅ · `backend:typecheck` ✅ · `lint` ✅ 0 erros (12 warnings
+  pré-existentes) · `npm test` ✅ **341** · `build` ✅ · `test:integration` ✅ **68**
+  (Postgres do compose em `localhost:5432`).
+- Smoke browser (stack Docker, conta nova, moedas semeadas via `psql` no blob):
+  loja de vara "Comprar" Tubarão → `POST .../skins/purchase` 200, moedas 50000→49000
+  (−1000, preço do catálogo), cartão passa a "Equipar"; loja de barco Iate →
+  46500 (−2500), "Equipar"; **sem `PUT /me/state` redundante** (só o `POST` por
+  compra); barco exclusivo ausente da loja; DB: `version` 5,
+  `ownedSkins ["default","shark"]`, `ownedBoatSkins ["classic","yacht"]`, 2 linhas
+  `game_state_operations` op `skin_purchase` (sem duplicados).
+
 ### Ponto de parada — 2026-09-08 (fim de sessão)
 
 - `main` em `a9d8ba3`, sincronizada com `origin/main`, worktree limpo.
