@@ -8,6 +8,7 @@ import {
   buyMultiplier as applyMultiplierPurchase,
   buyNet as applyNetPurchase,
   buyOwnedItem as applySkinPurchase,
+  placeAquariumFish as applyAquariumPlace,
   resolveDailyGift,
   sellWarehouse as applyWarehouseSale,
   spinDailyRoulette,
@@ -49,6 +50,7 @@ const OPS = {
   rouletteSpin: 'roulette_spin',
   skinRouletteSpin: 'skin_roulette_spin',
   dailyGiftClaim: 'daily_gift_claim',
+  aquariumPlace: 'aquarium_place',
 } as const;
 
 const roll = (n: number) => randomInt(n);
@@ -94,6 +96,18 @@ function computeSkinPurchase(envelope: SaveEnvelope, kind: SkinKind, skinId: str
   return { player: applySkinPurchase(envelope.player, kind, skinId, skin.price) };
 }
 
+/**
+ * Move a fish already in `aquariumWarehouse` into a display sector. The pure rule
+ * grants `AQUARIUM_REWARDS` (coins + xp) folded straight into the blob — there is
+ * no `reward` descriptor. The `timestamp` must match a stored fish (checked here,
+ * before the write, like `computeSkinPurchase`).
+ */
+function computeAquariumPlace(envelope: SaveEnvelope, timestamp: number, sector: number): { player: Player } {
+  const has = (envelope.player.aquariumWarehouse ?? []).some(c => c.timestamp === timestamp);
+  if (!has) throw new Error('AQUARIUM_FISH_NOT_FOUND');
+  return { player: applyAquariumPlace(envelope.player, timestamp, sector, LOCATIONS) };
+}
+
 export interface GameStateEconomyService {
   sellWarehouse(userId: string, idempotencyKey: string): Promise<Result>;
   purchaseNet(userId: string, idempotencyKey: string): Promise<Result>;
@@ -112,6 +126,7 @@ export interface GameStateEconomyService {
   spinRoulette(userId: string, idempotencyKey: string): Promise<Result>;
   spinSkinRoulette(userId: string, idempotencyKey: string): Promise<Result>;
   claimDailyGift(userId: string, idempotencyKey: string): Promise<Result>;
+  placeAquariumFish(userId: string, idempotencyKey: string, timestamp: number, sector: number): Promise<Result>;
 }
 
 /**
@@ -243,6 +258,10 @@ export function createMemoryGameStateEconomyService(store: MemoryGameStateStore)
         return { player: next, reward };
       });
     },
+    async placeAquariumFish(userId, idempotencyKey, timestamp, sector) {
+      return runMemoryOp(store, ops, userId, OPS.aquariumPlace, idempotencyKey,
+        env => computeAquariumPlace(env, timestamp, sector));
+    },
   };
 }
 
@@ -284,6 +303,10 @@ export function createPgGameStateEconomyService(db: Database): GameStateEconomyS
         const { next, reward } = resolveDailyGift(env.player, today, now);
         return { player: next, reward };
       });
+    },
+    async placeAquariumFish(userId, idempotencyKey, timestamp, sector) {
+      return runPgOp(db, userId, OPS.aquariumPlace, idempotencyKey,
+        env => computeAquariumPlace(env, timestamp, sector));
     },
   };
 }

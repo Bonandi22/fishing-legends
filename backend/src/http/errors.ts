@@ -43,6 +43,7 @@ const DOMAIN_ERRORS: Record<string, DomainErrorSpec> = {
   WAREHOUSE_FISH_NOT_FOUND: { status: 404, message: 'That warehouse fish was not found' },
   WAREHOUSE_EMPTY: { status: 422, message: 'The warehouse is empty' },
   INVALID_AQUARIUM_SECTOR: { status: 422, message: 'The aquarium sector is not valid' },
+  AQUARIUM_FISH_NOT_FOUND: { status: 404, message: 'That aquarium fish was not found' },
   INVALID_PLAYER_PROGRESS: { status: 422, message: 'Player progress is not available' },
   INVALID_FISHING_REQUEST: { status: 422, message: 'The fishing request is not valid' },
   INVALID_FISHING_SESSION: { status: 422, message: 'The fishing session is not valid' },

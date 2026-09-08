@@ -8,6 +8,7 @@ import { createPgGameStateService } from './pgRepository.js';
 import { createPgGameStateEconomyService } from './economyService.js';
 import { SAVE_SCHEMA_VERSION } from '../../../src/game/persistence.js';
 import { FISH } from '../../../src/game/data.js';
+import { AQUARIUM_REWARDS } from '../../../src/game/types.js';
 
 let harness: TestDatabase;
 let auth: ReturnType<typeof createPgAuthRepository>;
@@ -362,6 +363,59 @@ describe('pg game-state economy service (integration)', () => {
     const ops = await harness.db.select().from(gameStateOperations).where(eq(gameStateOperations.userId, userId));
     expect(ops).toHaveLength(1);
     expect(ops[0].operation).toBe('skin_roulette_spin');
+  });
+
+  it('placeAquariumFish transactionally: fish moved to sector, coins+xp up, version +1, one op row', async () => {
+    const userId = await seedUser();
+    const aq = { fish: FISH[0], weight: 1.5, location: 'atlantic', timestamp: 77 };
+    await gameState.put(userId, {
+      schemaVersion: SAVE_SCHEMA_VERSION,
+      player: { ...blob([]).player, xpToNextLevel: 999999, aquariumWarehouse: [aq] },
+    }, null);
+
+    const res = await economy.placeAquariumFish(userId, 'aqua-key-int-aaaa', 77, 4);
+    expect(res.version).toBe(2);
+    expect(res.state.player.aquariumWarehouse).toEqual([]);
+    expect(res.state.player.aquariumSectors[4]).toHaveLength(1);
+    expect(res.state.player.coins).toBe(100 + AQUARIUM_REWARDS[FISH[0].rarity].coins);
+
+    const got = await gameState.get(userId);
+    expect(got!.version).toBe(2);
+
+    const ops = await harness.db.select().from(gameStateOperations).where(eq(gameStateOperations.userId, userId));
+    expect(ops).toHaveLength(1);
+    expect(ops[0].operation).toBe('aquarium_place');
+  });
+
+  it('placeAquariumFish replays the same key: identical result, one op row', async () => {
+    const userId = await seedUser();
+    const aq = { fish: FISH[0], weight: 1.5, location: 'atlantic', timestamp: 88 };
+    await gameState.put(userId, {
+      schemaVersion: SAVE_SCHEMA_VERSION,
+      player: { ...blob([]).player, xpToNextLevel: 999999, aquariumWarehouse: [aq] },
+    }, null);
+    const first = await economy.placeAquariumFish(userId, 'aqua-key-int-bbbb', 88, 2);
+    const replay = await economy.placeAquariumFish(userId, 'aqua-key-int-bbbb', 88, 2);
+    expect(replay).toEqual(first);
+    const ops = await harness.db.select().from(gameStateOperations).where(eq(gameStateOperations.userId, userId));
+    expect(ops).toHaveLength(1);
+  });
+
+  it('placeAquariumFish concurrent same-key: both resolve identically, one op row', async () => {
+    const userId = await seedUser();
+    const aq = { fish: FISH[0], weight: 1.5, location: 'atlantic', timestamp: 99 };
+    await gameState.put(userId, {
+      schemaVersion: SAVE_SCHEMA_VERSION,
+      player: { ...blob([]).player, xpToNextLevel: 999999, aquariumWarehouse: [aq] },
+    }, null);
+    const [a, b] = await Promise.all([
+      economy.placeAquariumFish(userId, 'aqua-key-int-cccc', 99, 1),
+      economy.placeAquariumFish(userId, 'aqua-key-int-cccc', 99, 1),
+    ]);
+    expect(a).toEqual(b);
+    expect(a.version).toBe(2);
+    const ops = await harness.db.select().from(gameStateOperations).where(eq(gameStateOperations.userId, userId));
+    expect(ops).toHaveLength(1);
   });
 
   it('deleting the user cascades game_state_operations', async () => {
