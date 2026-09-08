@@ -1954,6 +1954,63 @@ Quinta op. **Muda de padrão: RNG e portas temporais no servidor.** Branch
   cada smoke** — o Vite no contentor não faz HMR das mudanças bind-mounted neste
   host; e usar Playwright MCP (a extensão Chrome congela).
 
+### Task 10.3 fatia 6a — captura à vara server-autoritativa — 2026-09-08
+
+Primeira das 3 sub-fatias da captura. **O servidor sorteia o peixe/peso/modo
+sortudo; o minigame de puxar fica no cliente** (furo aceite — um cliente batoteiro
+"ganha sempre" mas já não fabrica peixe/raridade/peso). Branch
+`feature/task-10-3-fishing-catch-6a`. Spec
+`docs/superpowers/specs/2026-09-08-server-fishing-catch.md` (6a; 6b/6c esboçadas),
+plano `docs/superpowers/plans/2026-09-08-server-fishing-catch-6a.md` (15 tarefas,
+`executing-plans`, inline).
+
+- **`applyCatch(state, catches, {fromNet}, locations)`** — regra pura nova em
+  `stateRules.ts`, port verbatim de `catchFishBatch` (XP rede ×0.3, nível,
+  desbloqueio, coleção, `heaviestFish`, overflow armazém→`aquariumWarehouse`,
+  `totalFishCaught`). `useGameState.catchFishBatch` passa a delegar nela.
+- **`resolveLuckyMode(state, now, random)`** — o buff "modo sortudo" (7min/50%/1min)
+  passa para o servidor: 2 campos novos no `PlayerState` / `saveSchema`
+  (`luckyUntil`, `luckyCooldownUntil`).
+- **`rollFish` / `rollWeight`** ganham `random = Math.random` injetável (todos os
+  `Math.random()` internos → `random()`; `getWaitTime` intacto). `fishingLogic.ts`
+  passa a usar sufixos `.js` nos imports (agora compilado pelo backend).
+- **`opReplay.ts` (novo)** — o `readRecordedResult` inline do `runPgOp` extraído,
+  partilhado por economia + `fishing_land`. Sem mudança de comportamento.
+- **Backend `fishing/` reescrito para o blob** (`roll.ts` / `service.ts` /
+  `pgService.ts` antigos apagados): `service.ts` (memória) + `pgRepository.ts` (PG,
+  transação própria a espelhar `runPgOp`), helpers partilhados `rollCast` /
+  `applyLand`. Migração `0020`… **na verdade `0019_fishing_sessions_result_lucky.sql`**
+  (+`result_lucky`). `cast` valida localização + `requiredLevel`, sorteia, escreve
+  a janela de sorte no blob (versão +1) + `INSERT fishing_sessions` com o roll.
+  `land` (op `fishing_land`, idempotente por chave **e** por `status` da sessão)
+  valida a sessão (`INVALID_FISHING_SESSION` / `FISHING_SESSION_EXPIRED` TTL 5min),
+  `applyCatch`, versão +1. Rotas
+  `POST /api/v1/me/fishing/{cast,land}`; as antigas `/api/v1/fishing/sessions*`
+  removidas (`app.ts` partilha o memory blob store como a economia; `openapi.test.ts`
+  + `app.test.ts` atualizados).
+- **Frontend** — `endpoints.{castLine,landCatch}`; `src/game/fishing.ts` (tipo
+  `Hooked`); `Index.handleCast`/`handleLand` (servidor quando `syncEnabled` — flush,
+  cast/land, `applyServerResult` nos **dois**; regra local + `catchFishBatch` quando
+  anónimo). `FishingScreen` deixa de sortear: no fim da espera chama `onCast`, no win
+  do minigame chama `onLand` — **`land` falhado → peixe escapou** (`phase='lost'`),
+  nunca diverge. Sem o timer local de modo sortudo. `SubmarineFishing`/`NetFishing`
+  intactos (6b).
+- Sem mudança de balanceamento (odds de raridade, pesos, XP, `WAREHOUSE_LIMIT`,
+  janela de sorte — tudo carregado).
+- Testes: `persistence.test.ts` (+1), `stateRules.test.ts` (+9), `fishingLogic.test.ts`
+  (+3), `useGameState.catch.test.tsx` (+2, novo), `fishing/service.test.ts` (novo, 8),
+  `fishing/routes.test.ts` (novo, 6), `fishing/pgRepository.integration.test.ts` (novo,
+  6), `endpoints.test.ts` (+2), `FishingScreen.test.tsx` (reescrito, +1 mock de cena).
+- Verificação: `tsc app` ✅ · `backend:typecheck` ✅ · `lint` ✅ 0 erros · `npm test`
+  ✅ **406** · `build` ✅ · `test:integration` ✅ **72**.
+- Smoke browser (Playwright, stack Docker, conta nova nível 1, Atlântico): 2
+  capturas — clicar água → "Lançando" → fim da espera → `POST .../fishing/cast` 200
+  (servidor sorteou "Corvina"), minigame no cliente (Enter até ao verde),
+  `POST .../fishing/land` 200 → revelação "Capturado! Corvina 3.23 kg +12 XP".
+  DB: `fishing_sessions` 1 completed + 1 open (minigame abandonado, TTL trata),
+  2 op rows `fishing_land`, blob version 5, xp 24, `totalFishCaught` 2, armazém 2,
+  `luckyCooldownUntil` escrito pelo cast; sem divergência, sem erros na consola.
+
 ### Ponto de parada — 2026-09-08 (fatia 5 integrada)
 
 - `main` em `4c88b7c`, sincronizada com `origin/main`, worktree limpo (`.claude/`
