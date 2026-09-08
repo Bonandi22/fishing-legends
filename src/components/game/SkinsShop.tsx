@@ -13,9 +13,10 @@ interface Props {
   onEquip: (skinId: string) => void;
   onBack: () => void;
   onOpenBoatVisuals: () => void;
+  buying?: boolean;
 }
 
-export default function SkinsShop({ player, onBuy, onEquip, onBack, onOpenBoatVisuals }: Props) {
+export default function SkinsShop({ player, onBuy, onEquip, onBack, onOpenBoatVisuals, buying = false }: Props) {
   const { t } = useI18n();
   const skins = ROD_SKINS.filter(s => !s.exclusive);
 
@@ -40,6 +41,7 @@ export default function SkinsShop({ player, onBuy, onEquip, onBack, onOpenBoatVi
             owned={player.ownedSkins.includes(skin.id)}
             equipped={player.activeSkin === skin.id}
             canAfford={player.coins >= skin.price}
+            busy={buying}
             preview={<RodPreview skin={skin} />}
             onBuy={() => onBuy(skin.id, skin.price)}
             onEquip={() => onEquip(skin.id)}
