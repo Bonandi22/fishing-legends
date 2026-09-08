@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import * as client from './client';
-import { register, login, logout, getMe, getGameState, putGameState, sellWarehouse, purchaseNet, purchaseMultiplier, purchaseSkin, spinRoulette, spinSkinRoulette, claimDailyGift } from './endpoints';
+import { register, login, logout, getMe, getGameState, putGameState, sellWarehouse, purchaseNet, purchaseMultiplier, purchaseSkin, spinRoulette, spinSkinRoulette, claimDailyGift, castLine, landCatch } from './endpoints';
 
 describe('endpoints', () => {
   it('register POSTs /auth/register with the body', async () => {
@@ -58,6 +58,18 @@ describe('endpoints', () => {
     await purchaseNet('idem-key-9876543210');
     expect(spy).toHaveBeenCalledWith('/me/economy/nets/purchase', { method: 'POST', idempotencyKey: 'idem-key-9876543210' });
     spy.mockRestore();
+  });
+
+  it('castLine POSTs /me/fishing/cast with the locationId + key', async () => {
+    const spy = vi.spyOn(client, 'apiFetch').mockResolvedValue({} as never);
+    await castLine('idem-key-castcast0001', 'atlantic');
+    expect(spy).toHaveBeenCalledWith('/me/fishing/cast', { method: 'POST', body: { locationId: 'atlantic' }, idempotencyKey: 'idem-key-castcast0001' });
+  });
+
+  it('landCatch POSTs /me/fishing/land with the sessionId + key', async () => {
+    const spy = vi.spyOn(client, 'apiFetch').mockResolvedValue({} as never);
+    await landCatch('idem-key-landland0001', 'sess-1');
+    expect(spy).toHaveBeenCalledWith('/me/fishing/land', { method: 'POST', body: { sessionId: 'sess-1' }, idempotencyKey: 'idem-key-landland0001' });
   });
 
   it('spinRoulette POSTs /me/economy/roulette/spin with the idempotency key', async () => {

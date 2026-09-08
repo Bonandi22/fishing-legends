@@ -54,3 +54,13 @@ export function spinSkinRoulette(idempotencyKey: string): Promise<RewardEnvelope
 export function claimDailyGift(idempotencyKey: string): Promise<RewardEnvelope> {
   return apiFetch('/me/economy/daily-gift/claim', { method: 'POST', idempotencyKey });
 }
+
+export type CastResult = GameStateEnvelope & { sessionId: string; fishId: string; weight: number; xp: number; lucky: boolean };
+export type LandResult = GameStateEnvelope & { caught: { fishId: string; weight: number; location: string } };
+
+export function castLine(idempotencyKey: string, locationId: string): Promise<CastResult> {
+  return apiFetch('/me/fishing/cast', { method: 'POST', body: { locationId }, idempotencyKey });
+}
+export function landCatch(idempotencyKey: string, sessionId: string): Promise<LandResult> {
+  return apiFetch('/me/fishing/land', { method: 'POST', body: { sessionId }, idempotencyKey });
+}
