@@ -12,11 +12,6 @@ import {
 
 const RULESET_VERSION = 'blob-1';
 
-/** The session's mode is `rod` unless it carries a batch. */
-function modeOf(session: { resultCatches: unknown }): 'rod' | 'net' {
-  return session.resultCatches ? 'net' : 'rod';
-}
-
 function recordedCaught(session: typeof fishingSessions.$inferSelect): Caught[] {
   const rows = session.resultCatches ?? [{ fishId: session.resultFishId ?? '', weight: Number(session.resultWeight ?? 0) }];
   return rows.map(r => ({ fishId: r.fishId, weight: r.weight, location: session.locationId }));
@@ -39,11 +34,17 @@ export function createPgFishingService(db: Database): FishingService {
         if (dupe[0]) {
           const s = dupe[0];
           const state: SaveEnvelope = { schemaVersion: SAVE_SCHEMA_VERSION, player: currentPlayer };
-          return modeOf(s) === 'net'
+          if (s.mode === 'submarine') {
+            return {
+              sessionId: s.id, mode: 'submarine', lucky: false, state, version: row.version,
+              catches: (s.resultCatches ?? []) as Array<{ id: string; fishId: string; weight: number }>,
+            };
+          }
+          return s.mode === 'net'
             ? {
                 sessionId: s.id, mode: 'net', lucky: s.resultLucky, state, version: row.version,
                 net: { id: '', rarity: '', fishCount: s.resultCatches!.length, greenZoneSize: 0.5, speed: 1 },
-                catches: s.resultCatches!,
+                catches: s.resultCatches! as Array<{ fishId: string; weight: number }>,
               }
             : {
                 sessionId: s.id, mode: 'rod', lucky: s.resultLucky, state, version: row.version,
@@ -54,26 +55,33 @@ export function createPgFishingService(db: Database): FishingService {
         const now = Date.now();
         const roll = rollCast(currentPlayer, locationId, mode, now);
 
-        const version = row.version + 1;
+        const isSubmarine = roll.mode === 'submarine';
+        const version = isSubmarine ? row.version : row.version + 1;
         const state: SaveEnvelope = { schemaVersion: SAVE_SCHEMA_VERSION, player: castPlayerPatch(currentPlayer, roll) };
-        await tx.update(playerGameState).set({ state, version, updatedAt: new Date() })
-          .where(eq(playerGameState.userId, userId));
+        if (!isSubmarine) {
+          await tx.update(playerGameState).set({ state, version, updatedAt: new Date() })
+            .where(eq(playerGameState.userId, userId));
+        }
 
         const [session] = await tx.insert(fishingSessions).values({
           id: randomUUID(), userId, locationId, rulesetVersion: RULESET_VERSION, idempotencyKey, status: 'open',
-          resultLucky: roll.lucky,
-          ...(roll.mode === 'net'
+          mode: roll.mode,
+          resultLucky: roll.mode === 'submarine' ? false : roll.lucky,
+          ...(roll.mode === 'submarine' || roll.mode === 'net'
             ? { resultCatches: roll.catches }
             : { resultFishId: roll.fishId, resultWeight: roll.weight.toFixed(2), resultXp: roll.xp }),
         }).returning();
 
+        if (roll.mode === 'submarine') {
+          return { sessionId: session.id, mode: 'submarine', catches: roll.catches, lucky: false, state, version };
+        }
         return roll.mode === 'net'
           ? { sessionId: session.id, mode: 'net', net: roll.net, catches: roll.catches, lucky: roll.lucky, state, version }
           : { sessionId: session.id, mode: 'rod', fishId: roll.fishId, weight: roll.weight, xp: roll.xp, lucky: roll.lucky, state, version };
       });
     },
 
-    async land(userId, idempotencyKey, sessionId): Promise<LandResult> {
+    async land(userId, idempotencyKey, sessionId, catchId): Promise<LandResult> {
       return db.transaction(async (tx) => {
         const prior = await readRecordedResult<LandResult>(tx, userId, 'fishing_land', idempotencyKey);
         if (prior) return prior;
@@ -92,6 +100,8 @@ export function createPgFishingService(db: Database): FishingService {
         if (!blob) throw new Error('GAME_STATE_NOT_FOUND');
 
         if (session.status === 'completed') {
+          // A new key on a drained submarine roster is not a valid harvest.
+          if (session.mode === 'submarine') throw new Error('INVALID_FISHING_SESSION');
           return {
             state: { schemaVersion: SAVE_SCHEMA_VERSION, player: saveSchema.parse(blob.state).player },
             version: blob.version,
@@ -106,19 +116,29 @@ export function createPgFishingService(db: Database): FishingService {
 
         const now = Date.now();
         const applied = applyLand(saveSchema.parse(blob.state).player, {
-          mode: modeOf(session),
+          mode: session.mode as 'rod' | 'net' | 'submarine',
           locationId: session.locationId,
           resultFishId: session.resultFishId,
           resultWeight: session.resultWeight === null ? null : Number(session.resultWeight),
           resultCatches: session.resultCatches,
-        }, now);
+        }, now, { catchId });
         const version = blob.version + 1;
         const state: SaveEnvelope = { schemaVersion: SAVE_SCHEMA_VERSION, player: applied.player };
 
         await tx.update(playerGameState).set({ state, version, updatedAt: new Date() })
           .where(eq(playerGameState.userId, userId));
-        await tx.update(fishingSessions).set({ status: 'completed', completedAt: new Date() })
-          .where(eq(fishingSessions.id, sessionId));
+
+        if (session.mode === 'submarine') {
+          const remaining = applied.remaining ?? [];
+          await tx.update(fishingSessions).set({
+            resultCatches: remaining,
+            createdAt: new Date(now),
+            ...(remaining.length === 0 ? { status: 'completed' as const, completedAt: new Date(now) } : {}),
+          }).where(eq(fishingSessions.id, sessionId));
+        } else {
+          await tx.update(fishingSessions).set({ status: 'completed', completedAt: new Date() })
+            .where(eq(fishingSessions.id, sessionId));
+        }
 
         const result: LandResult = { state, version, caught: applied.caught };
         await tx.insert(gameStateOperations).values({

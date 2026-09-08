@@ -2,7 +2,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { eq, sql } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
 import { createTestDatabase, type TestDatabase } from '../testing/pgHarness.js';
-import { fishingSessions, gameStateOperations, users } from '../db/schema.js';
+import { fishingSessions, gameStateOperations, playerGameState, users } from '../db/schema.js';
 import { createPgAuthRepository } from '../auth/pgRepository.js';
 import { createPgGameStateService } from '../gamestate/pgRepository.js';
 import { createPgFishingService } from './pgRepository.js';
@@ -144,6 +144,46 @@ describe('pg fishing service (integration)', () => {
     expect(replay).toEqual(first);
     const ops = await harness.db.select().from(gameStateOperations).where(eq(gameStateOperations.userId, userId));
     expect(ops).toHaveLength(1);
+  });
+
+  it('submarine: cast writes no blob/op, harvests bump version and shrink the roster, drain completes', async () => {
+    const userId = await seedUser();
+    await gameState.put(userId, blob({ level: 6, xp: 0, xpToNextLevel: 999999 }), null);
+
+    const cast = await fishing.cast(userId, 'cast-sub-int-aa', 'submarine', 'submarine');
+    if (cast.mode !== 'submarine') throw new Error('expected a submarine cast');
+    expect(cast.catches).toHaveLength(24);
+    expect(cast.version).toBe(1);
+
+    const [sessionRow] = await harness.db.select().from(fishingSessions).where(eq(fishingSessions.userId, userId));
+    expect(sessionRow.mode).toBe('submarine');
+    expect(sessionRow.resultCatches).toHaveLength(24);
+    const opsAfterCast = await harness.db.select().from(gameStateOperations).where(eq(gameStateOperations.userId, userId));
+    expect(opsAfterCast).toHaveLength(0);
+
+    for (let i = 0; i < 3; i++) {
+      await fishing.land(userId, `land-sub-int-aa-${i}`, cast.sessionId, cast.catches[i].id);
+    }
+    const [blobRow] = await harness.db.select().from(playerGameState).where(eq(playerGameState.userId, userId));
+    expect(blobRow.version).toBe(4);
+    const [sessionAfter] = await harness.db.select().from(fishingSessions).where(eq(fishingSessions.id, cast.sessionId));
+    expect(sessionAfter.resultCatches).toHaveLength(21);
+    expect(sessionAfter.status).toBe('open');
+
+    for (let i = 3; i < 24; i++) {
+      await fishing.land(userId, `land-sub-int-aa-${i}`, cast.sessionId, cast.catches[i].id);
+    }
+    const [drained] = await harness.db.select().from(fishingSessions).where(eq(fishingSessions.id, cast.sessionId));
+    expect(drained.status).toBe('completed');
+    const ops = await harness.db.select().from(gameStateOperations).where(eq(gameStateOperations.userId, userId));
+    expect(ops).toHaveLength(24);
+  });
+
+  it('submarine land without catchId -> INVALID_FISHING_SESSION', async () => {
+    const userId = await seedUser();
+    await gameState.put(userId, blob({ level: 6 }), null);
+    const cast = await fishing.cast(userId, 'cast-sub-int-bb', 'submarine', 'submarine');
+    await expect(fishing.land(userId, 'land-sub-int-bb', cast.sessionId)).rejects.toThrow('INVALID_FISHING_SESSION');
   });
 
   it('deleting the user cascades fishing_sessions', async () => {
