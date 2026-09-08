@@ -81,6 +81,7 @@ export const fishingSessions = pgTable('fishing_sessions', {
   locationId: varchar('location_id', { length: 120 }).notNull(),
   rulesetVersion: varchar('ruleset_version', { length: 64 }).notNull(),
   status: varchar('status', { length: 16 }).notNull().default('open'),
+  mode: varchar('mode', { length: 16 }).notNull().default('rod'),
   idempotencyKey: varchar('idempotency_key', { length: 128 }).notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   completedAt: timestamp('completed_at', { withTimezone: true }),
@@ -88,10 +89,11 @@ export const fishingSessions = pgTable('fishing_sessions', {
   resultWeight: numeric('result_weight', { precision: 12, scale: 2 }),
   resultXp: integer('result_xp'),
   resultLucky: boolean('result_lucky').notNull().default(false),
-  resultCatches: jsonb('result_catches').$type<Array<{ fishId: string; weight: number }>>(),
+  resultCatches: jsonb('result_catches').$type<Array<{ id?: string; fishId: string; weight: number }>>(),
 }, table => ({
   idempotencyUnique: uniqueIndex('fishing_sessions_idempotency_unique').on(table.userId, table.idempotencyKey),
   statusCheck: check('fishing_sessions_status_check', sql`${table.status} IN ('open', 'completed', 'expired')`),
+  modeCheck: check('fishing_sessions_mode_check', sql`${table.mode} IN ('rod', 'net', 'submarine')`),
 }));
 
 export const localSaveMigrations = pgTable('local_save_migrations', {
