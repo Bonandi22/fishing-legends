@@ -2010,24 +2010,30 @@ plano `docs/superpowers/plans/2026-09-08-server-fishing-catch-6a.md` (15 tarefas
   DB: `fishing_sessions` 1 completed + 1 open (minigame abandonado, TTL trata),
   2 op rows `fishing_land`, blob version 5, xp 24, `totalFishCaught` 2, armazém 2,
   `luckyCooldownUntil` escrito pelo cast; sem divergência, sem erros na consola.
+- **Integrado na `main`**: PR `Bonandi22/deep-blue-lure#26` merged em `a35f7dc`.
+  Branch `feature/task-10-3-fishing-catch-6a` apagada. `main` verde (406 unit + 72
+  integração).
 
-### Ponto de parada — 2026-09-08 (fatia 5 integrada)
+### Ponto de parada — 2026-09-08 (fatia 6a integrada)
 
-- `main` em `4c88b7c`, sincronizada com `origin/main`, worktree limpo (`.claude/`
+- `main` em `a35f7dc`, sincronizada com `origin/main`, worktree limpo (`.claude/`
   fica untracked — settings local do harness; candidato a `.gitignore` à parte).
-- **Task 10.1** (auth foundation + persistência de estado), **10.2** (guarda de versão
-  + pull periódico), **limpeza** do fluxo de import, e **10.3 fatias 1–5** (venda do
-  armazém, compra de rede, compra de multiplicador, compra de skin, roletas + prendas
-  diárias) — todas integradas e verificadas.
-- **Retomar por**: Task 10.3 **fatia 6 — captura + aquário** (a maior). Mover o sorteio
-  de peixe (`rollFish` + raridade + peso, de `fishingLogic.ts`, com localização e
-  multiplicadores do blob) para o servidor. Já existe `/api/v1/fishing/sessions` +
-  `/complete`, mas contra o modelo antigo e a ignorar raridade — reescrever sobre o
-  blob. Precisa de spec própria (SDD). Ver `docs/analysis/task-10-roadmap.md` §Fatia 6.
-- Infra do padrão pronta: `runMemoryOp`/`runPgOp` + `runEconomyOp`/`runRewardOp` no
-  cliente (`Index.tsx`), PK `game_state_operations` com `operation`, `Compute`
-  devolve `{ player, reward? }`, `src/game/rewards.ts` para tabelas partilhadas.
-- Depois da fatia 6: ranking + temporada (leitura), depois a limpeza dos endpoints
-  dormentes `/api/v1/economy/*` + `/api/v1/inventory/*` + `/api/v1/rewards/daily/claim`.
+- **Task 10.1**, **10.2**, **limpeza** do import, e **10.3 fatias 1–5** + **6a**
+  (venda armazém, rede, multiplicador, skin, roletas+prendas, **captura à vara**) —
+  todas integradas e verificadas.
+- **Retomar por**: Task 10.3 **fatia 6b — rede (lote) + submarino**. Mesmo padrão do
+  6a (`cast` sorteia, `land` aplica). `cast` ganha `{ mode: 'rod'|'net'|'submarine' }`:
+  net sorteia N peixes (ver contagem atual em `NetFishing`), `land` aplica
+  `applyCatch(..., { fromNet: true })`; consumo da rede (`consumeNet`) funde-se no
+  `cast`. `SubmarineFishing` = `cast`/`land` como a vara com `mode:'submarine'`.
+  Frontend: `NetFishing`/`SubmarineFishing` saem do `onCatch` para `onCast`/`onLand`;
+  `Index` larga o último `onCatch`. Ver `docs/superpowers/specs/2026-09-08-server-fishing-catch.md`
+  §6b. Precisa de spec própria (brainstorm → spec → plano).
+- Infra do padrão pronta: `service.ts`/`pgRepository.ts` de pesca com `rollCast` /
+  `applyLand` partilhados, `opReplay.ts`, `applyCatch` / `resolveLuckyMode` puros.
+- Depois de 6b: **6c** aquário (`POST /me/economy/aquarium/place`, op `aquarium_place`,
+  `placeAquariumFish` já é regra pura). Depois: ranking + temporada (leitura), depois
+  a limpeza dos endpoints dormentes `/api/v1/economy/*` + `/api/v1/inventory/*` +
+  `/api/v1/rewards/daily/claim`.
 - Stack Docker fica de pé; a BD de dev partilha instância com os testes de integração
   (as contas de smoke são truncadas entre corridas — criar conta nova a cada smoke).
