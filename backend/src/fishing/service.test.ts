@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { createMemoryGameStateStore } from '../gamestate/memoryService.js';
 import { createMemoryFishingService } from './service.js';
 import { SAVE_SCHEMA_VERSION } from '../../../src/game/persistence.js';
+import { SUBMARINE_ROSTER_SIZE } from '../../../src/game/fishingLogic.js';
 
 const blob = (over: Record<string, unknown> = {}) => ({
   schemaVersion: SAVE_SCHEMA_VERSION,
@@ -147,5 +148,41 @@ describe('memory fishing service — net mode', () => {
     const a = await svc.land('u1', 'land-net-eeeeeeeeeeee', cast.sessionId);
     const b = await svc.land('u1', 'land-net-eeeeeeeeeeee', cast.sessionId);
     expect(b).toEqual(a);
+  });
+});
+
+describe('memory fishing service — submarine mode', () => {
+  it('cast submarine: 24 roster entries with ids, blob + version untouched, session mode submarine', async () => {
+    const store = createMemoryGameStateStore();
+    store.set('u1', { state: blob({ level: 6 }), updatedAt: 'now', version: 1 });
+    const svc = createMemoryFishingService(store);
+
+    const res = await svc.cast('u1', 'cast-sub-aaaaaaaaaaaa', 'submarine', 'submarine');
+    if (res.mode !== 'submarine') throw new Error('expected a submarine cast');
+    expect(res.catches).toHaveLength(SUBMARINE_ROSTER_SIZE);
+    expect(res.catches.every(c => typeof c.id === 'string' && c.id.length > 0)).toBe(true);
+    expect(res.catches.every(c => typeof c.fishId === 'string' && c.weight > 0)).toBe(true);
+    expect(res.version).toBe(1);
+    expect(res.lucky).toBe(false);
+    const p = (store.get('u1')!.state as { player: Record<string, unknown> }).player;
+    expect(p.luckyUntil).toBeUndefined();
+    expect(store.get('u1')!.version).toBe(1);
+  });
+
+  it('cast submarine dedupes on the idempotency key', async () => {
+    const store = createMemoryGameStateStore();
+    store.set('u1', { state: blob(), updatedAt: 'now', version: 1 });
+    const svc = createMemoryFishingService(store);
+    const a = await svc.cast('u1', 'cast-sub-bbbbbbbbbbbb', 'submarine', 'submarine');
+    const b = await svc.cast('u1', 'cast-sub-bbbbbbbbbbbb', 'submarine', 'submarine');
+    if (a.mode !== 'submarine' || b.mode !== 'submarine') throw new Error('expected submarine casts');
+    expect(b.sessionId).toBe(a.sessionId);
+    expect(b.catches).toEqual(a.catches);
+  });
+
+  it('cast submarine with no blob -> GAME_STATE_NOT_FOUND', async () => {
+    const svc = createMemoryFishingService(createMemoryGameStateStore());
+    await expect(svc.cast('u1', 'cast-sub-cccccccccccc', 'submarine', 'submarine'))
+      .rejects.toThrow('GAME_STATE_NOT_FOUND');
   });
 });

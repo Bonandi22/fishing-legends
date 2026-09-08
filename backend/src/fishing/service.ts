@@ -1,10 +1,10 @@
 import { randomInt, randomUUID } from 'node:crypto';
 import type { MemoryGameStateStore } from '../gamestate/memoryService.js';
 import { SAVE_SCHEMA_VERSION, saveSchema, type SaveEnvelope } from '../../../src/game/persistence.js';
-import { rollFish, rollWeight } from '../../../src/game/fishingLogic.js';
+import { rollFish, rollWeight, rollSubmarineBatch, SUBMARINE_ROSTER_SIZE } from '../../../src/game/fishingLogic.js';
 import { applyCatch, resolveLuckyMode } from '../../../src/game/stateRules.js';
 import { rollNet } from '../../../src/game/netTypes.js';
-import { FISH, LOCATIONS, getFishForLocation } from '../../../src/game/data.js';
+import { FISH, LOCATIONS, getFishForLocation, SUBMARINE_LOCATION_ID } from '../../../src/game/data.js';
 import { isSessionExpired } from './session.js';
 
 /** Server RNG in [0, 1). Not audited this slice (matches slice 5's roulettes). */
@@ -14,33 +14,36 @@ export type CastMode = 'rod' | 'net' | 'submarine';
 
 export type NetInfo = { id: string; rarity: string; fishCount: number; greenZoneSize: number; speed: number };
 export type BatchEntry = { fishId: string; weight: number };
+export type SubmarineEntry = { id: string; fishId: string; weight: number };
+export type SessionCatch = { id?: string; fishId: string; weight: number };
 
 export type FishingSessionRow = {
   id: string;
   userId: string;
   locationId: string;
   idempotencyKey: string;
-  mode: 'rod' | 'net';
+  mode: 'rod' | 'net' | 'submarine';
   status: 'open' | 'completed' | 'expired';
   createdAt: Date;
   resultFishId: string | null;
   resultWeight: number | null;
   resultXp: number | null;
   resultLucky: boolean;
-  resultCatches: BatchEntry[] | null;
+  resultCatches: SessionCatch[] | null;
 };
 
 type CastBase = { sessionId: string; lucky: boolean; state: SaveEnvelope; version: number };
 export type CastResult =
   | (CastBase & { mode: 'rod'; fishId: string; weight: number; xp: number })
-  | (CastBase & { mode: 'net'; net: NetInfo; catches: BatchEntry[] });
+  | (CastBase & { mode: 'net'; net: NetInfo; catches: BatchEntry[] })
+  | (CastBase & { mode: 'submarine'; catches: SubmarineEntry[] });
 
 export type Caught = { fishId: string; weight: number; location: string };
 export type LandResult = { state: SaveEnvelope; version: number; caught: Caught[] };
 
 export interface FishingService {
   cast(userId: string, idempotencyKey: string, locationId: string, mode?: CastMode): Promise<CastResult>;
-  land(userId: string, idempotencyKey: string, sessionId: string): Promise<LandResult>;
+  land(userId: string, idempotencyKey: string, sessionId: string, catchId?: string): Promise<LandResult>;
 }
 
 type RodRoll = {
@@ -51,7 +54,8 @@ type NetRoll = {
   mode: 'net'; net: NetInfo; catches: BatchEntry[]; netsAfter: number;
   lucky: boolean; luckyUntil: number | null; luckyCooldownUntil: number | null;
 };
-export type CastRoll = RodRoll | NetRoll;
+type SubmarineRoll = { mode: 'submarine'; catches: SubmarineEntry[] };
+export type CastRoll = RodRoll | NetRoll | SubmarineRoll;
 
 /**
  * Roll a cast. Rod → one fish. Net → spend a net and roll `fishCount` fish of the
@@ -65,6 +69,15 @@ export function rollCast(
   mode: CastMode,
   now: number,
 ): CastRoll {
+  if (mode === 'submarine') {
+    // Lucky-neutral: its own rarity table, no location, no level gate.
+    const batch = rollSubmarineBatch(SUBMARINE_ROSTER_SIZE, player.level, random);
+    return {
+      mode: 'submarine',
+      catches: batch.map(f => ({ id: randomUUID(), fishId: f.id, weight: rollWeight(f, random) })),
+    };
+  }
+
   const location = LOCATIONS.find(l => l.id === locationId);
   if (!location) throw new Error('INVALID_FISHING_REQUEST');
   if (player.level < location.requiredLevel) throw new Error('LOCATION_LOCKED');
@@ -128,24 +141,28 @@ export function applyLand(
 }
 
 function castResultFor(roll: CastRoll, sessionId: string, state: SaveEnvelope, version: number): CastResult {
-  const base: CastBase = { sessionId, lucky: roll.lucky, state, version };
-  return roll.mode === 'net'
-    ? { ...base, mode: 'net', net: roll.net, catches: roll.catches }
-    : { ...base, mode: 'rod', fishId: roll.fishId, weight: roll.weight, xp: roll.xp };
+  const base: CastBase = { sessionId, lucky: roll.mode === 'submarine' ? false : roll.lucky, state, version };
+  if (roll.mode === 'submarine') return { ...base, mode: 'submarine', catches: roll.catches };
+  if (roll.mode === 'net') return { ...base, mode: 'net', net: roll.net, catches: roll.catches };
+  return { ...base, mode: 'rod', fishId: roll.fishId, weight: roll.weight, xp: roll.xp };
 }
 
 function sessionRowFor(roll: CastRoll, id: string, userId: string, locationId: string, idempotencyKey: string): FishingSessionRow {
   const common = {
     id, userId, locationId, idempotencyKey, status: 'open' as const, createdAt: new Date(),
-    resultLucky: roll.lucky,
   };
-  return roll.mode === 'net'
-    ? { ...common, mode: 'net', resultFishId: null, resultWeight: null, resultXp: null, resultCatches: roll.catches }
-    : { ...common, mode: 'rod', resultFishId: roll.fishId, resultWeight: roll.weight, resultXp: roll.xp, resultCatches: null };
+  if (roll.mode === 'submarine') {
+    return { ...common, mode: 'submarine', resultLucky: false, resultFishId: null, resultWeight: null, resultXp: null, resultCatches: roll.catches };
+  }
+  if (roll.mode === 'net') {
+    return { ...common, mode: 'net', resultLucky: roll.lucky, resultFishId: null, resultWeight: null, resultXp: null, resultCatches: roll.catches };
+  }
+  return { ...common, mode: 'rod', resultLucky: roll.lucky, resultFishId: roll.fishId, resultWeight: roll.weight, resultXp: roll.xp, resultCatches: null };
 }
 
-/** Player blob patch a cast writes (lucky window always; net also spends a net). */
+/** Player blob patch a cast writes (rod/net: lucky window, net also spends a net; submarine: nothing). */
 export function castPlayerPatch(player: SaveEnvelope['player'], roll: CastRoll): SaveEnvelope['player'] {
+  if (roll.mode === 'submarine') return player;
   const next = { ...player, luckyUntil: roll.luckyUntil, luckyCooldownUntil: roll.luckyCooldownUntil };
   if (roll.mode === 'net') next.nets = roll.netsAfter;
   return next;
@@ -168,6 +185,9 @@ export function createMemoryFishingService(store: MemoryGameStateStore): Fishing
       if (existingId) {
         const s = sessions.get(existingId)!;
         const state: SaveEnvelope = { schemaVersion: SAVE_SCHEMA_VERSION, player: envelopeOf(entry.state).player };
+        if (s.mode === 'submarine') {
+          return { sessionId: s.id, mode: 'submarine', lucky: false, state, version: entry.version, catches: s.resultCatches as SubmarineEntry[] };
+        }
         return s.mode === 'net'
           ? {
               sessionId: s.id, mode: 'net', lucky: s.resultLucky, state, version: entry.version,
@@ -184,9 +204,12 @@ export function createMemoryFishingService(store: MemoryGameStateStore): Fishing
       const now = Date.now();
       const roll = rollCast(player, locationId, mode, now);
 
-      const version = entry.version + 1;
+      const isSubmarine = roll.mode === 'submarine';
+      const version = isSubmarine ? entry.version : entry.version + 1;
       const state: SaveEnvelope = { schemaVersion: SAVE_SCHEMA_VERSION, player: castPlayerPatch(player, roll) };
-      store.set(userId, { state, updatedAt: new Date().toISOString(), version });
+      if (!isSubmarine) {
+        store.set(userId, { state, updatedAt: new Date().toISOString(), version });
+      }
 
       const session = sessionRowFor(roll, randomUUID(), userId, locationId, idempotencyKey);
       sessions.set(session.id, session);
