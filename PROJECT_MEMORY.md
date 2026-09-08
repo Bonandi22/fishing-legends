@@ -2014,6 +2014,44 @@ plano `docs/superpowers/plans/2026-09-08-server-fishing-catch-6a.md` (15 tarefas
   Branch `feature/task-10-3-fishing-catch-6a` apagada. `main` verde (406 unit + 72
   integração).
 
+### Task 10.3 fatia 6c — aquário server-autoritativo — 2026-09-09
+
+Colocar um peixe do `aquariumWarehouse` num sector de exibição passa a ser
+server-autoritativo. Branch `feature/task-10-3-economy-aquarium-place`. Bounded
+(reusa o runner de economia; `placeAquariumFish` já era regra pura) — sem spec/plano.
+
+- **`POST /api/v1/me/economy/aquarium/place`** + `Idempotency-Key`, body
+  `{ timestamp: int≥0, sector: int 1..5 }`. Sector fora de 1–5 → `400 VALIDATION_ERROR`
+  (não uso `INVALID_AQUARIUM_SECTOR` — esse é da rota dormante `/inventory/aquarium`
+  que a fatia 8 apaga). Op `aquarium_place`.
+- **`GameStateEconomyService.placeAquariumFish(userId, key, timestamp, sector)`** —
+  `computeAquariumPlace` verifica que existe um peixe com esse `timestamp` no
+  `aquariumWarehouse` (senão `AQUARIUM_FISH_NOT_FOUND`, **404**, código novo em
+  `errors.ts`), depois delega em `placeAquariumFish` (regra pura **inalterada** —
+  o guard fica no `compute`, como `computeSkinPurchase`; o caminho anónimo mantém
+  o comportamento tolerante). Corre via `runMemoryOp` / `runPgOp` — **sem sessão**.
+- **Result `{ state, version }` — sem `reward`**: os coins+xp de `AQUARIUM_REWARDS`
+  já entram no blob via `placeAquariumFish` (`applyXp` + `coins + reward.coins`).
+- **Frontend**: `endpoints.placeAquariumFish(key, timestamp, sector)`.
+  `Index.handleMoveAquarium` → `runEconomyOp('aquariumPlace', () => moveAquariumFishToSector(ts, sector), key => placeAquariumFishApi(...))`.
+  `runEconomyOp` `op` union + `busyOp` ganham `'aquariumPlace'`. `<Aquarium onMoveToSector>`
+  passa a apontar para o novo handler. `Aquarium.tsx` sem mudança (assinatura igual).
+  Anónimo: `moveAquariumFishToSector` local, inalterado.
+- Testes: `economyService.test.ts` (+3 memória), `economyService.integration.test.ts`
+  (+3 PG: transacional / replay / concorrência mesma-key), `economyRoutes.test.ts`
+  (+5: 200, replay, 404, 400 sector, 401), `endpoints.test.ts` (+1),
+  `openapi.test.ts` (+path), `app.test.ts` (+1 fluxo HTTP).
+- Verificação: `tsc app` ✅ · `backend:typecheck` ✅ · `lint` ✅ 0 erros ·
+  `npm test` ✅ **447** · `build` ✅ · `test:integration` ✅ **79**.
+- Smoke browser (Playwright, stack Docker): caminho **anónimo** — Aquário →
+  Armazém do Aquário → escolher Setor 1 → tocar num peixe (Piranha de Magma,
+  Vulcânica): `coins` 0→350, `xp` 679→959 (+280), `aquariumWarehouse` 23→22,
+  Setor 1 passa a ter 1 peixe; **reload** → tudo persiste. Caminho **servidor**
+  coberto pelos testes HTTP (`app.test.ts` + `economyService.integration.test.ts`):
+  place transacional (1 op row `aquarium_place`, blob atualizado, `version +1`),
+  replay, concorrência mesma-key, `AQUARIUM_FISH_NOT_FOUND` (404), sector 6 → 400.
+- **Integrado na `main`**: PR `Bonandi22/deep-blue-lure#NN` merged em `SHA`. *(a preencher)*
+
 ### Task 10.3 fatia 6b-2 — captura no submarino server-autoritativa — 2026-09-08
 
 Terceira sub-fatia da captura (fecha o 6b). Branch `feature/task-10-3-fishing-catch-6b2`.

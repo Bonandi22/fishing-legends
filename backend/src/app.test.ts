@@ -320,6 +320,37 @@ describe('backend foundation', () => {
     expect(me.state.player.totalFishCaught).toBe(2);
   });
 
+  it('places an aquarium-warehouse fish into a sector, crediting the reward to the blob', async () => {
+    const app = await createApp({ config: testConfig });
+    apps.add(app);
+    const client = await registerAndAuth(app);
+
+    const seedState = {
+      schemaVersion: 1,
+      player: {
+        level: 6, xp: 0, xpToNextLevel: 999999, totalFishCaught: 1, collection: [],
+        unlockedLocations: ['atlantic'], heaviestFish: null, warehouse: [], coins: 0,
+        activeSkin: 'default', ownedSkins: ['default'], activeBoatSkin: 'classic', ownedBoatSkins: ['classic'],
+        luckMultiplierEnd: null, strengthMultiplierEnd: null, lastRouletteDate: null,
+        aquariumWarehouse: [{ fish: { id: 'tilapia', name: 'Tilápia', rarity: 'common', waterType: 'freshwater', minWeight: 0.3, maxWeight: 2.5, xp: 10, description: '', emoji: '🐟' }, weight: 1.2, location: 'atlantic', timestamp: 123 }],
+        aquariumSectors: { 1: [], 2: [], 3: [], 4: [], 5: [] },
+        dailyGiftsLastClaim: null, dailyGiftsDay: 1, dailyGiftsWeek: 1, nets: 0,
+      },
+    };
+    expect((await client.request({ method: 'PUT', url: '/api/v1/me/state', payload: { state: seedState, baseVersion: null } })).statusCode).toBe(200);
+
+    const placed = await client.request({ method: 'POST', url: '/api/v1/me/economy/aquarium/place',
+      payload: { timestamp: 123, sector: 2 }, idempotencyKey: 'aqua-app-aaaaaaaaaaaa' });
+    expect(placed.statusCode).toBe(200);
+    expect(placed.json().version).toBe(2);
+
+    const me = (await client.request({ method: 'GET', url: '/api/v1/me/state' })).json();
+    expect(me.state.player.aquariumWarehouse).toEqual([]);
+    expect(me.state.player.aquariumSectors['2']).toHaveLength(1);
+    expect(me.state.player.coins).toBe(5);
+    expect(me.state.player.xp).toBe(5);
+  });
+
   it('exposes a server-owned wallet balance', async () => {
     const app = await createApp({ config: testConfig });
     apps.add(app);
