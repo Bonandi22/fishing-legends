@@ -160,3 +160,57 @@ describe('memory game-state economy service — purchaseNet', () => {
     expect(store.get('u1')!.version).toBe(3);       // sell -> 2, net -> 3
   });
 });
+
+describe('memory game-state economy service — purchaseMultiplier', () => {
+  it('buys a 2x luck multiplier: -3000 coins, luck end + power set, version bump', async () => {
+    const store = createMemoryGameStateStore();
+    store.set('u1', { state: withCoins({ coins: 8_000 }), updatedAt: 'now', version: 2 });
+    const svc = createMemoryGameStateEconomyService(store);
+
+    const before = Date.now();
+    const res = await svc.purchaseMultiplier('u1', 'mult-key-aaaaaaaaaaaa', 'luck', 2);
+
+    expect(res.version).toBe(3);
+    expect(res.state.player.coins).toBe(5_000);
+    expect(res.state.player.luckMultiplierPower).toBe(2);
+    expect(res.state.player.luckMultiplierEnd).toBeGreaterThanOrEqual(before + 60_000);
+    expect(res.state.player.strengthMultiplierEnd).toBeNull();
+  });
+
+  it('buys a 4x strength multiplier for 6000 coins', async () => {
+    const store = createMemoryGameStateStore();
+    store.set('u1', { state: withCoins({ coins: 8_000 }), updatedAt: 'now', version: 1 });
+    const svc = createMemoryGameStateEconomyService(store);
+
+    const res = await svc.purchaseMultiplier('u1', 'mult-key-bbbbbbbbbbbb', 'strength', 4);
+
+    expect(res.state.player.coins).toBe(2_000);
+    expect(res.state.player.strengthMultiplierPower).toBe(4);
+    expect(res.state.player.luckMultiplierEnd).toBeNull();
+  });
+
+  it('replays the same key without charging twice', async () => {
+    const store = createMemoryGameStateStore();
+    store.set('u1', { state: withCoins({ coins: 8_000 }), updatedAt: 'now', version: 1 });
+    const svc = createMemoryGameStateEconomyService(store);
+
+    const first = await svc.purchaseMultiplier('u1', 'mult-key-cccccccccccc', 'luck', 2);
+    const replay = await svc.purchaseMultiplier('u1', 'mult-key-cccccccccccc', 'luck', 2);
+
+    expect(replay).toEqual(first);
+    expect(store.get('u1')!.version).toBe(2); // not 3
+  });
+
+  it('rejects INSUFFICIENT_FUNDS below the multiplier cost', async () => {
+    const store = createMemoryGameStateStore();
+    store.set('u1', { state: withCoins({ coins: 2_999 }), updatedAt: 'now', version: 1 });
+    const svc = createMemoryGameStateEconomyService(store);
+    await expect(svc.purchaseMultiplier('u1', 'mult-key-dddddddddddd', 'luck', 2)).rejects.toThrow('INSUFFICIENT_FUNDS');
+    expect(store.get('u1')!.version).toBe(1);
+  });
+
+  it('rejects a user with no blob with GAME_STATE_NOT_FOUND', async () => {
+    const svc = createMemoryGameStateEconomyService(createMemoryGameStateStore());
+    await expect(svc.purchaseMultiplier('ghost', 'mult-key-eeeeeeeeeeee', 'strength', 2)).rejects.toThrow('GAME_STATE_NOT_FOUND');
+  });
+});

@@ -1804,6 +1804,32 @@ Segunda op do padrão (ordem acordada: rede → multiplicador → skin). Branch
   → `409 INSUFFICIENT_FUNDS`, nada escrito.
 - **Integrado na `main`**: PR `Bonandi22/deep-blue-lure#22` merged em `03bc80e`.
   Branch `feature/task-10-3-economy-net-purchase` apagada. `main` verde (302 + 61).
-- **Próximo**: fatia 3 = compra de multiplicador (`buyMultiplier`) — primeiro endpoint
-  de economia com body `{ type, power }`; depois fatia 4 = skin (`buySkin`, o servidor
-  passa a possuir os preços). Roletas/prendas ficam para depois.
+
+### Task 10.3 fatia 3 — compra de multiplicador server-autoritativa — 2026-09-08
+
+Terceira op. **Primeiro endpoint de economia com body.** Branch
+`feature/task-10-3-economy-multiplier-purchase`. Inline, TDD.
+
+- **`purchaseMultiplier(userId, key, type, power)`** — `computeMultiplierPurchase`
+  verifica `INSUFFICIENT_FUNDS` contra o custo server-side (`MULTIPLIER_COST` 3000 /
+  `MULTIPLIER_COST_4X` 6000) e delega em `stateRules.buyMultiplier` com um **`now`
+  fornecido pelo servidor** (o `end` do multiplicador é `now + 60s`). Passa pelos
+  `runMemoryOp`/`runPgOp` com um `compute` parametrizado (closure captura `type`/`power`/`now`).
+- **`POST /api/v1/me/economy/multipliers/purchase`** — `economyRoutes.ts` passou a
+  `withTypeProvider<ZodTypeProvider>`; body `z.object({ type: enum(['luck','strength']),
+  power: union([literal(2), literal(4)]) })`. Body inválido → **`400 VALIDATION_ERROR`**
+  (handler central de erros já trata `ZodError`).
+- **Frontend**: `endpoints.purchaseMultiplier(key, type, power)` (body `{ type, power }`);
+  `MultiplierShop` ganha `buying?: boolean` (desativa os 4 botões); `Index.handleBuyMultiplier`
+  encaminha `type`/`power` por `runEconomyOp('multiplier', () => buyMultiplier(type,p),
+  key => purchaseMultiplierApi(key,type,p))`. `busyOp` estende para `'multiplier'`.
+- Replay: mesma chave → resultado gravado (com o `end` original). Chave nova por clique.
+- Testes: `economyService.test.ts` (+5), `economyRoutes.test.ts` (+7 — inclui 400 body
+  inválido ×2), `economyService.integration.test.ts` (+3), `endpoints.test.ts` (+1),
+  `test/MultiplierShop.test.tsx` (+1).
+- Verificação: `tsc app` ✅ · `backend:typecheck` ✅ · `lint` ✅ 0 erros · `npm test` ✅
+  **316** · `build` ✅ · `test:integration` ✅ **64**.
+
+- **Próximo**: fatia 4 = compra de skin (`buySkin`/`buyBoatSkin` — o servidor passa a
+  possuir os preços, lookup nos arrays `SKINS`/`BOAT_SKINS` de `types.ts`). Roletas e
+  prendas diárias (RNG/limite diário server-side) ficam para depois.

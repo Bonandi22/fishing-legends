@@ -164,3 +164,71 @@ describe('POST /api/v1/me/economy/nets/purchase', () => {
     expect(res.statusCode).toBe(401);
   });
 });
+
+describe('POST /api/v1/me/economy/multipliers/purchase', () => {
+  it('buys a 2x luck multiplier: -3000 coins, luck power set, version 1 -> 2', async () => {
+    const a = await app();
+    const client = await registerAndAuth(a);
+    await seedBlob(client, netBlob({ coins: 8_000 }));
+    const res = await client.request({ method: 'POST', url: '/api/v1/me/economy/multipliers/purchase', payload: { type: 'luck', power: 2 } });
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(body.version).toBe(2);
+    expect(body.state.player.coins).toBe(5_000);
+    expect(body.state.player.luckMultiplierPower).toBe(2);
+    expect(typeof body.state.player.luckMultiplierEnd).toBe('number');
+  });
+
+  it('buys a 4x strength multiplier for 6000 coins', async () => {
+    const a = await app();
+    const client = await registerAndAuth(a);
+    await seedBlob(client, netBlob({ coins: 8_000 }));
+    const res = await client.request({ method: 'POST', url: '/api/v1/me/economy/multipliers/purchase', payload: { type: 'strength', power: 4 } });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().state.player.coins).toBe(2_000);
+    expect(res.json().state.player.strengthMultiplierPower).toBe(4);
+  });
+
+  it('replay with the same Idempotency-Key returns the same body, no double charge', async () => {
+    const a = await app();
+    const client = await registerAndAuth(a);
+    await seedBlob(client, netBlob({ coins: 8_000 }));
+    const first = await client.request({ method: 'POST', url: '/api/v1/me/economy/multipliers/purchase', payload: { type: 'luck', power: 2 }, idempotencyKey: 'mult-key-replayreplay01' });
+    const replay = await client.request({ method: 'POST', url: '/api/v1/me/economy/multipliers/purchase', payload: { type: 'luck', power: 2 }, idempotencyKey: 'mult-key-replayreplay01' });
+    expect(replay.json()).toEqual(first.json());
+    expect((await client.request({ method: 'GET', url: '/api/v1/me/state' })).json().version).toBe(2);
+  });
+
+  it('insufficient coins -> 409 INSUFFICIENT_FUNDS', async () => {
+    const a = await app();
+    const client = await registerAndAuth(a);
+    await seedBlob(client, netBlob({ coins: 2_999 }));
+    const res = await client.request({ method: 'POST', url: '/api/v1/me/economy/multipliers/purchase', payload: { type: 'luck', power: 2 } });
+    expect(res.statusCode).toBe(409);
+    expect(res.json().error.code).toBe('INSUFFICIENT_FUNDS');
+  });
+
+  it('invalid body (power 3) -> 400 VALIDATION_ERROR', async () => {
+    const a = await app();
+    const client = await registerAndAuth(a);
+    await seedBlob(client, netBlob({ coins: 8_000 }));
+    const res = await client.request({ method: 'POST', url: '/api/v1/me/economy/multipliers/purchase', payload: { type: 'luck', power: 3 } });
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error.code).toBe('VALIDATION_ERROR');
+  });
+
+  it('invalid body (unknown type) -> 400 VALIDATION_ERROR', async () => {
+    const a = await app();
+    const client = await registerAndAuth(a);
+    await seedBlob(client, netBlob({ coins: 8_000 }));
+    const res = await client.request({ method: 'POST', url: '/api/v1/me/economy/multipliers/purchase', payload: { type: 'speed', power: 2 } });
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error.code).toBe('VALIDATION_ERROR');
+  });
+
+  it('no session -> 401', async () => {
+    const a = await app();
+    const res = await a.inject({ method: 'POST', url: '/api/v1/me/economy/multipliers/purchase', payload: { type: 'luck', power: 2 } });
+    expect(res.statusCode).toBe(401);
+  });
+});

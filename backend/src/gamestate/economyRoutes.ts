@@ -1,19 +1,40 @@
+import { z } from 'zod';
 import type { FastifyInstance } from 'fastify';
+import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 import type { GameStateEconomyService } from './economyService.js';
 import { idempotencyKey } from '../http/idempotency.js';
 
+const multiplierBody = z.object({
+  type: z.enum(['luck', 'strength']),
+  power: z.union([z.literal(2), z.literal(4)]),
+});
+
 export function registerGameStateEconomyRoutes(app: FastifyInstance, service: GameStateEconomyService): void {
-  app.post('/api/v1/me/economy/warehouse/sell', {
+  const r = app.withTypeProvider<ZodTypeProvider>();
+
+  r.post('/api/v1/me/economy/warehouse/sell', {
     schema: { tags: ['gamestate'], summary: 'Sell the whole warehouse (needs Idempotency-Key)' },
     preHandler: app.requireAuth,
   }, async (request) => {
     return service.sellWarehouse(request.userId, idempotencyKey(request.headers['idempotency-key']));
   });
 
-  app.post('/api/v1/me/economy/nets/purchase', {
+  r.post('/api/v1/me/economy/nets/purchase', {
     schema: { tags: ['gamestate'], summary: 'Buy one fishing net at the server price (needs Idempotency-Key)' },
     preHandler: app.requireAuth,
   }, async (request) => {
     return service.purchaseNet(request.userId, idempotencyKey(request.headers['idempotency-key']));
+  });
+
+  r.post('/api/v1/me/economy/multipliers/purchase', {
+    schema: {
+      tags: ['gamestate'],
+      summary: 'Buy a luck/strength multiplier at the server price (needs Idempotency-Key)',
+      body: multiplierBody,
+    },
+    preHandler: app.requireAuth,
+  }, async (request) => {
+    const { type, power } = request.body;
+    return service.purchaseMultiplier(request.userId, idempotencyKey(request.headers['idempotency-key']), type, power);
   });
 }

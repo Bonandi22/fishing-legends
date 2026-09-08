@@ -47,4 +47,13 @@ describe('MultiplierShop', () => {
     screen.getAllByRole('button', { name: /moedas insuficientes/i }).forEach(b => fireEvent.click(b));
     expect(onBuy).not.toHaveBeenCalled();
   });
+
+  it('disables every buy control while a purchase is in flight', () => {
+    render(
+      <I18nProvider>
+        <MultiplierShop player={makePlayer()} buying onBuy={vi.fn()} onBack={vi.fn()} />
+      </I18nProvider>,
+    );
+    screen.getAllByRole('button', { name: /comprar/i }).forEach(b => expect(b).toBeDisabled());
+  });
 });

@@ -2,9 +2,16 @@ import { and, eq } from 'drizzle-orm';
 import type { Database } from '../db/client.js';
 import { gameStateOperations, playerGameState } from '../db/schema.js';
 import { SAVE_SCHEMA_VERSION, saveSchema, type SaveEnvelope } from '../../../src/game/persistence.js';
-import { buyNet as applyNetPurchase, sellWarehouse as applyWarehouseSale } from '../../../src/game/stateRules.js';
+import {
+  buyMultiplier as applyMultiplierPurchase,
+  buyNet as applyNetPurchase,
+  sellWarehouse as applyWarehouseSale,
+} from '../../../src/game/stateRules.js';
 import { LOCATIONS } from '../../../src/game/data.js';
-import { NET_LIMIT, NET_PRICE } from '../../../src/game/types.js';
+import { MULTIPLIER_COST, MULTIPLIER_COST_4X, NET_LIMIT, NET_PRICE } from '../../../src/game/types.js';
+
+export type MultiplierType = 'luck' | 'strength';
+export type MultiplierPower = 2 | 4;
 import type { MemoryGameStateStore } from './memoryService.js';
 
 type Player = SaveEnvelope['player'];
@@ -22,6 +29,7 @@ type Compute = (envelope: SaveEnvelope) => Player;
 const OPS = {
   warehouseSell: 'warehouse_sell',
   netPurchase: 'net_purchase',
+  multiplierPurchase: 'multiplier_purchase',
 } as const;
 
 function computeSale(envelope: SaveEnvelope): Player {
@@ -36,9 +44,26 @@ function computeNetPurchase(envelope: SaveEnvelope): Player {
   return applyNetPurchase(player);
 }
 
+function computeMultiplierPurchase(
+  envelope: SaveEnvelope,
+  type: MultiplierType,
+  power: MultiplierPower,
+  now: number,
+): Player {
+  const cost = power === 4 ? MULTIPLIER_COST_4X : MULTIPLIER_COST;
+  if (envelope.player.coins < cost) throw new Error('INSUFFICIENT_FUNDS');
+  return applyMultiplierPurchase(envelope.player, type, power, now);
+}
+
 export interface GameStateEconomyService {
   sellWarehouse(userId: string, idempotencyKey: string): Promise<Result>;
   purchaseNet(userId: string, idempotencyKey: string): Promise<Result>;
+  purchaseMultiplier(
+    userId: string,
+    idempotencyKey: string,
+    type: MultiplierType,
+    power: MultiplierPower,
+  ): Promise<Result>;
 }
 
 /**
@@ -151,6 +176,11 @@ export function createMemoryGameStateEconomyService(store: MemoryGameStateStore)
     async purchaseNet(userId, idempotencyKey) {
       return runMemoryOp(store, ops, userId, OPS.netPurchase, idempotencyKey, computeNetPurchase);
     },
+    async purchaseMultiplier(userId, idempotencyKey, type, power) {
+      const now = Date.now();
+      return runMemoryOp(store, ops, userId, OPS.multiplierPurchase, idempotencyKey,
+        env => computeMultiplierPurchase(env, type, power, now));
+    },
   };
 }
 
@@ -161,6 +191,11 @@ export function createPgGameStateEconomyService(db: Database): GameStateEconomyS
     },
     async purchaseNet(userId, idempotencyKey) {
       return runPgOp(db, userId, OPS.netPurchase, idempotencyKey, computeNetPurchase);
+    },
+    async purchaseMultiplier(userId, idempotencyKey, type, power) {
+      const now = Date.now();
+      return runPgOp(db, userId, OPS.multiplierPurchase, idempotencyKey,
+        env => computeMultiplierPurchase(env, type, power, now));
     },
   };
 }

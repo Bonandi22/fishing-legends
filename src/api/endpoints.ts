@@ -27,3 +27,10 @@ export function sellWarehouse(idempotencyKey: string): Promise<GameStateEnvelope
 export function purchaseNet(idempotencyKey: string): Promise<GameStateEnvelope> {
   return apiFetch('/me/economy/nets/purchase', { method: 'POST', idempotencyKey });
 }
+export function purchaseMultiplier(
+  idempotencyKey: string,
+  type: 'luck' | 'strength',
+  power: 2 | 4,
+): Promise<GameStateEnvelope> {
+  return apiFetch('/me/economy/multipliers/purchase', { method: 'POST', body: { type, power }, idempotencyKey });
+}

@@ -10,9 +10,10 @@ interface Props {
   player: PlayerState;
   onBuy: (type: 'luck' | 'strength', power?: number) => void;
   onBack: () => void;
+  buying?: boolean;
 }
 
-export default function MultiplierShop({ player, onBuy, onBack }: Props) {
+export default function MultiplierShop({ player, onBuy, onBack, buying = false }: Props) {
   const { t } = useI18n();
   const now = Date.now();
   const luckActive = !!player.luckMultiplierEnd && player.luckMultiplierEnd > now;
@@ -53,7 +54,7 @@ export default function MultiplierShop({ player, onBuy, onBack }: Props) {
             ) : (
               <Button
                 onClick={() => onBuy(b.type, b.power)}
-                disabled={player.coins < b.cost}
+                disabled={player.coins < b.cost || buying}
                 className="w-full bg-lure font-semibold text-lure-foreground hover:bg-lure/90"
               >
                 {player.coins < b.cost ? t('mult.noCoins') : t('mult.buy')}
