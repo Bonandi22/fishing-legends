@@ -75,7 +75,7 @@ describe('FishingScreen HUD', () => {
 
   it('calls onCast after the cast + wait and shows the hooked fish', async () => {
     vi.useFakeTimers();
-    const onCast = vi.fn().mockResolvedValue({ fish: FISH[0], weight: 3, lucky: false, sessionId: 's1' });
+    const onCast = vi.fn().mockResolvedValue({ kind: 'rod', fish: FISH[0], weight: 3, lucky: false, sessionId: 's1' });
     render(
       <I18nProvider>
         <FishingScreen location={ocean} player={makePlayer()} onCast={onCast} onLand={noLand} onBack={vi.fn()} />
@@ -83,7 +83,7 @@ describe('FishingScreen HUD', () => {
     );
     fireEvent.click(screen.getByTestId('water'));
     await vi.advanceTimersByTimeAsync(15_000);
-    expect(onCast).toHaveBeenCalledWith(ocean.id);
+    expect(onCast).toHaveBeenCalledWith(ocean.id, 'rod');
     vi.useRealTimers();
   });
 });

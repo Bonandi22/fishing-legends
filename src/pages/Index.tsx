@@ -185,7 +185,7 @@ const IndexInner = () => {
           const catches = r.catches
             .map(c => ({ fish: FISH.find(f => f.id === c.fishId), weight: c.weight }))
             .filter((c): c is { fish: Fish; weight: number } => !!c.fish);
-          return { kind: 'net', net: { rarity: r.net.rarity, fishCount: r.net.fishCount, greenZoneSize: r.net.greenZoneSize, speed: r.net.speed }, catches, lucky: r.lucky, sessionId: r.sessionId };
+          return { kind: 'net', net: { rarity: r.net.rarity as Fish['rarity'], fishCount: r.net.fishCount, greenZoneSize: r.net.greenZoneSize, speed: r.net.speed }, catches, lucky: r.lucky, sessionId: r.sessionId };
         }
         const fish = FISH.find(f => f.id === r.fishId);
         if (!fish) return null;
