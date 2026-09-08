@@ -2050,7 +2050,30 @@ server-autoritativo. Branch `feature/task-10-3-economy-aquarium-place`. Bounded
   coberto pelos testes HTTP (`app.test.ts` + `economyService.integration.test.ts`):
   place transacional (1 op row `aquarium_place`, blob atualizado, `version +1`),
   replay, concorrência mesma-key, `AQUARIUM_FISH_NOT_FOUND` (404), sector 6 → 400.
-- **Integrado na `main`**: PR `Bonandi22/deep-blue-lure#NN` merged em `SHA`. *(a preencher)*
+- **Integrado na `main`**: PR `Bonandi22/deep-blue-lure#37` merged em `6230db3`.
+  (`claude-review` continua a falhar por infra — binário `claude` não instala no
+  action; jobs `quality` + `integration` verdes.)
+
+### Ponto de parada — 2026-09-09 (fatia 6c integrada)
+
+- `main` em `6230db3`, sincronizada, worktree limpo.
+- **Toda a Task 10.3 até 6c** integrada: economia (venda, rede, multiplicador,
+  skin, roletas, prendas), captura (vara, rede, submarino), **aquário** — tudo
+  server-autoritativo sobre o blob. `Index` sem `onCatch`.
+- **Retomar por**: Task 10.3 **fatia 7 — ranking + temporada (leitura)**. O
+  frontend passa a ler o ranking e a temporada ativa do servidor quando
+  autenticado. Endpoints já existem: `GET /api/v1/leaderboard` (paginado,
+  `createPgLeaderboardService`) e `GET /api/v1/seasons/current`
+  (`createPgSeasonsService`). Hoje o `Ranking.tsx` usa `src/game/leaderboard.ts`
+  (local, `syncCurrentPlayer`). Verificar o que o servidor devolve vs o que o
+  componente espera; provável adaptador em `endpoints.ts` + ramo autenticado no
+  `Index`/`Ranking`. **Leitura apenas** — sem op, sem escrita. Pode precisar de
+  brainstorm curto (bounded) para decidir o shape.
+- Depois: fatia 8 (apagar endpoints/tabelas dormentes — `/api/v1/economy/*`,
+  `/inventory/*`, `/rewards/daily/claim`, `player_progress`/`wallet`/
+  `warehouse_fish`/`aquarium_fish`), e por fim **retirar o write livre do
+  `PUT /me/state`** para autenticados (auditoria de segurança #8).
+- **Dependabot**: PRs #29–#35 continuam abertos — tarefa própria do utilizador.
 
 ### Task 10.3 fatia 6b-2 — captura no submarino server-autoritativa — 2026-09-08
 
