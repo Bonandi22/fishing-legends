@@ -1885,25 +1885,28 @@ Quarta op. **Preço passa a ser do servidor.** Branch
   compra); barco exclusivo ausente da loja; DB: `version` 5,
   `ownedSkins ["default","shark"]`, `ownedBoatSkins ["classic","yacht"]`, 2 linhas
   `game_state_operations` op `skin_purchase` (sem duplicados).
+- **Integrado na `main`**: PR `Bonandi22/deep-blue-lure#24` merged em `2947291`.
+  Branch `feature/task-10-3-economy-skin-purchase` apagada. `main` verde (341 unit
+  + 68 integração).
 
-### Ponto de parada — 2026-09-08 (fim de sessão)
+### Ponto de parada — 2026-09-08 (fatia 4 integrada)
 
-- `main` em `a9d8ba3`, sincronizada com `origin/main`, worktree limpo.
+- `main` em `2947291`, sincronizada com `origin/main`, worktree limpo (`.claude/`
+  fica untracked — settings local do harness; candidato a `.gitignore` à parte).
 - **Task 10.1** (auth foundation + persistência de estado), **10.2** (guarda de versão
-  + pull periódico), **limpeza** do fluxo de import, e **10.3 fatias 1–3** (venda do
-  armazém, compra de rede, compra de multiplicador) — todas integradas e verificadas.
-- **Retomar por**: Task 10.3 **fatia 4 — compra de skin** (`buySkin` / `buyBoatSkin`).
-  Design acordado: mesmo padrão (`POST /api/v1/me/economy/skins/purchase`, body
-  `{ skinId }`), mas o **servidor passa a possuir os preços** — lookup nos arrays
-  `SKINS` / `BOAT_SKINS` de `src/game/types.ts` (hoje o cliente passa o preço em
-  `buySkin(skinId, price)`, furo de confiança). `computeSkinPurchase` valida
-  skin já possuída / skin inexistente / `INSUFFICIENT_FUNDS`. Executar inline, TDD,
-  como as fatias 2 e 3.
+  + pull periódico), **limpeza** do fluxo de import, e **10.3 fatias 1–4** (venda do
+  armazém, compra de rede, compra de multiplicador, compra de skin) — todas
+  integradas e verificadas.
+- **Retomar por**: Task 10.3 **fatia 5 — roletas e prendas diárias**. Muda de padrão:
+  RNG e limite diário passam a ser **server-side** (o cliente não pode sortear nem
+  decidir quando já reclamou). Design próprio — ainda não acordado. Endpoints
+  prováveis: `POST /api/v1/me/economy/roulette/spin`, `.../skin-roulette/spin`,
+  `.../daily-gift/claim`. Ver `Roulette.tsx`, `SkinRoulette.tsx`, `DailyGifts.tsx`
+  e as regras em `src/game/` (`claimDailyGift`, `setLastRouletteDate`).
 - Infra do padrão pronta: `runMemoryOp`/`runPgOp` + `runEconomyOp` no cliente
   (`Index.tsx`), PK `game_state_operations` com `operation`, suporte a body com Zod
   (`economyRoutes.ts` já usa `withTypeProvider<ZodTypeProvider>`).
-- Depois da fatia 4: roletas e prendas diárias (RNG / limite diário server-side —
-  design próprio), depois captura e aquário. E a limpeza dos endpoints dormentes
+- Depois da fatia 5: captura e aquário. E a limpeza dos endpoints dormentes
   `/api/v1/economy/*` + `/api/v1/inventory/*` quando tudo estiver migrado.
 - Stack Docker fica de pé; a BD de dev partilha instância com os testes de integração
   (as contas de smoke são truncadas entre corridas — criar conta nova a cada smoke).
