@@ -3,13 +3,11 @@ import { PlayerState, CaughtFish, Fish, getXpForLevel, NET_LIMIT, NET_PRICE } fr
 import { LOCATIONS } from './data';
 import { parseSavedState, serializePlayerState } from './persistence';
 import {
-  addToWarehouse,
-  applyXp,
+  applyCatch,
   buyMultiplier as applyMultiplierPurchase,
   buyNet as applyNetPurchase,
   buyOwnedItem,
   consumeNet as applyNetConsumption,
-  getUnlockedLocationIds,
   placeAquariumFish,
   resolveDailyGift,
   sellWarehouse as applyWarehouseSale,
@@ -68,35 +66,9 @@ export function useGameState() {
 
   const catchFishBatch = useCallback((catches: Array<Pick<CaughtFish, 'fish' | 'weight' | 'location'>>, fromNet = false) => {
     if (catches.length === 0) return;
-    setPlayer(prev => {
-      const xpGain = catches.reduce((sum, caught) => sum + (fromNet ? Math.floor(caught.fish.xp * 0.3) : caught.fish.xp), 0);
-      const { xp, level, xpToNextLevel } = applyXp(prev.xp, prev.level, prev.xpToNextLevel, xpGain);
-      const timestampBase = Date.now();
-      const newCatches: CaughtFish[] = catches.map((caught, index) => ({
-        ...caught,
-        timestamp: timestampBase + index,
-      }));
-      const newCollection = [...prev.collection, ...newCatches];
-      const heaviest = newCatches.reduce<CaughtFish | null>(
-        (current, caught) => !current || caught.weight > current.weight ? caught : current,
-        prev.heaviestFish,
-      );
-      const unlockedLocations = getUnlockedLocationIds(level, LOCATIONS);
-      const inventory = newCatches.reduce(
-        (state, caught) => addToWarehouse(state.warehouse, state.aquariumWarehouse, caught),
-        { warehouse: prev.warehouse, aquariumWarehouse: prev.aquariumWarehouse || [] },
-      );
-
-      return {
-        ...prev,
-        level, xp, xpToNextLevel,
-        totalFishCaught: prev.totalFishCaught + newCatches.length,
-        collection: newCollection,
-        unlockedLocations,
-        heaviestFish: heaviest,
-        ...inventory,
-      };
-    });
+    const base = Date.now();
+    const withTimestamps: CaughtFish[] = catches.map((caught, index) => ({ ...caught, timestamp: base + index }));
+    setPlayer(prev => applyCatch(prev, withTimestamps, { fromNet }, LOCATIONS));
   }, []);
 
   const catchFish = useCallback((fish: Fish, weight: number, locationId: string, fromNet = false) => {

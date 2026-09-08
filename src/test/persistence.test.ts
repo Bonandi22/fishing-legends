@@ -41,6 +41,18 @@ describe("save persistence", () => {
     expect(loaded.nets).toBe(10);
   });
 
+  it("round-trips the lucky-mode fields, and loads a save without them", () => {
+    const withLucky = parseSavedState(
+      JSON.stringify({ ...fallback, luckyUntil: 1_060_000, luckyCooldownUntil: 1_420_000 }),
+      fallback,
+    );
+    expect(withLucky.luckyUntil).toBe(1_060_000);
+    expect(withLucky.luckyCooldownUntil).toBe(1_420_000);
+
+    const without = parseSavedState(JSON.stringify(fallback), fallback);
+    expect(without.level).toBe(1);
+  });
+
   it("rejects malformed saves without corrupting the fallback", () => {
     const loaded = parseSavedState(JSON.stringify({ level: "not-a-number" }), fallback);
     expect(loaded).toEqual(fallback);

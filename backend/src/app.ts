@@ -16,7 +16,8 @@ import { createMemoryPlayerRepository } from './players/memoryRepository.js';
 import { createPgPlayerRepository } from './players/pgRepository.js';
 import { createCatalogService } from './catalog/service.js';
 import { registerCatalogRoutes } from './catalog/routes.js';
-import { createFishingService } from './fishing/service.js';
+import { createMemoryFishingService } from './fishing/service.js';
+import { createPgFishingService } from './fishing/pgRepository.js';
 import { registerFishingRoutes } from './fishing/routes.js';
 import { createMemoryEconomyService } from './economy/service.js';
 import { registerEconomyRoutes } from './economy/routes.js';
@@ -24,7 +25,6 @@ import { createPgEconomyService } from './economy/pgRepository.js';
 import { createMemoryInventoryService } from './inventory/service.js';
 import { registerInventoryRoutes } from './inventory/routes.js';
 import { createPgInventoryService } from './inventory/pgRepository.js';
-import { createPgFishingService } from './fishing/pgService.js';
 import { registerMigrationRoutes } from './migration/routes.js';
 import { createMemoryMigrationService } from './migration/memoryRepository.js';
 import { createPgMigrationService } from './migration/pgRepository.js';
@@ -136,8 +136,8 @@ export async function createApp({ config }: AppDependencies): Promise<FastifyIns
     : createMemoryInventoryService(catalogService, economyService);
   registerInventoryRoutes(app, inventoryService);
   const fishingService = database
-    ? createPgFishingService(database, catalogService, playerRepository)
-    : createFishingService(catalogService, playerRepository, input => Promise.resolve(inventoryService.addCatch(input)));
+    ? createPgFishingService(database)
+    : createMemoryFishingService(memoryGameStateStore!);
   registerFishingRoutes(app, fishingService);
 
   return app;

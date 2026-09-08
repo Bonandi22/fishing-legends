@@ -1,7 +1,8 @@
 import { randomInt } from 'node:crypto';
-import { and, eq } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import type { Database } from '../db/client.js';
 import { gameStateOperations, playerGameState } from '../db/schema.js';
+import { readRecordedResult } from './opReplay.js';
 import { SAVE_SCHEMA_VERSION, saveSchema, type SaveEnvelope } from '../../../src/game/persistence.js';
 import {
   buyMultiplier as applyMultiplierPurchase,
@@ -171,19 +172,7 @@ function runPgOp(
   compute: Compute,
 ): Promise<Result> {
   return db.transaction(async (tx) => {
-    const readRecordedResult = async (): Promise<Result | null> => {
-      const found = await tx.select({ result: gameStateOperations.result })
-        .from(gameStateOperations)
-        .where(and(
-          eq(gameStateOperations.userId, userId),
-          eq(gameStateOperations.operation, operation),
-          eq(gameStateOperations.idempotencyKey, idempotencyKey),
-        ))
-        .limit(1);
-      return found[0] ? (found[0].result as Result) : null;
-    };
-
-    const priorResult = await readRecordedResult();
+    const priorResult = await readRecordedResult<Result>(tx, userId, operation, idempotencyKey);
     if (priorResult) return priorResult;
 
     const rows = await tx.select().from(playerGameState)
@@ -191,7 +180,7 @@ function runPgOp(
     const row = rows[0];
     if (!row) throw new Error('GAME_STATE_NOT_FOUND');
 
-    const lockedPriorResult = await readRecordedResult();
+    const lockedPriorResult = await readRecordedResult<Result>(tx, userId, operation, idempotencyKey);
     if (lockedPriorResult) return lockedPriorResult;
 
     const envelope = saveSchema.parse(row.state);

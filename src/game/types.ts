@@ -165,6 +165,9 @@ export interface PlayerState {
   strengthMultiplierEnd: number | null;
   luckMultiplierPower?: number;
   strengthMultiplierPower?: number;
+  /** Server-owned "lucky mode" window (epoch ms) — biases the fishing roll. */
+  luckyUntil?: number | null;
+  luckyCooldownUntil?: number | null;
   lastRouletteDate: string | null;
   aquariumWarehouse: CaughtFish[];
   aquariumSectors: Record<number, CaughtFish[]>;

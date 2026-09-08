@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { FISH, LOCATIONS } from '@/game/data';
 import {
+  applyCatch,
   applyXp,
   addToWarehouse,
   buyMultiplier,
@@ -11,6 +12,7 @@ import {
   grantOwnedItem,
   placeAquariumFish,
   resolveDailyGift,
+  resolveLuckyMode,
   sellWarehouse,
   spendCoins,
   spinDailyRoulette,
@@ -182,6 +184,74 @@ describe('spinDailyRoulette', () => {
   it('throws when already used today', () => {
     expect(() => spinDailyRoulette({ ...base, lastRouletteDate: '2026-09-08' }, '2026-09-08', 0, queuedRoll(0)))
       .toThrow('ROULETTE_ALREADY_USED');
+  });
+});
+
+describe('applyCatch', () => {
+  const c = (over: Partial<{ fish: typeof FISH[number]; weight: number; location: string; timestamp: number }> = {}) => ({
+    fish: FISH[0], weight: 2, location: 'atlantic', timestamp: 1, ...over,
+  });
+  const base = {
+    ...player, level: 3, xp: 0, xpToNextLevel: 300, warehouse: [], collection: [],
+    aquariumWarehouse: [], heaviestFish: null, totalFishCaught: 0, unlockedLocations: [],
+  };
+
+  it('adds the catch to warehouse + collection, applies XP, bumps totalFishCaught', () => {
+    const r = applyCatch(base, [c()], { fromNet: false }, LOCATIONS);
+    expect(r.warehouse).toHaveLength(1);
+    expect(r.collection).toHaveLength(1);
+    expect(r.totalFishCaught).toBe(1);
+    expect(r.xp).toBe(FISH[0].xp);
+  });
+
+  it('overflows to the aquarium warehouse when the warehouse is full (15)', () => {
+    const full = { ...base, warehouse: Array.from({ length: 15 }, (_, i) => c({ timestamp: i + 100 })) };
+    const r = applyCatch(full, [c({ timestamp: 999 })], { fromNet: false }, LOCATIONS);
+    expect(r.warehouse).toHaveLength(15);
+    expect(r.aquariumWarehouse).toHaveLength(1);
+  });
+
+  it('net catches give floor(xp * 0.3)', () => {
+    const r = applyCatch(base, [c()], { fromNet: true }, LOCATIONS);
+    expect(r.xp).toBe(Math.floor(FISH[0].xp * 0.3));
+  });
+
+  it('updates heaviestFish only on a heavier fish', () => {
+    const withHeavy = { ...base, heaviestFish: c({ weight: 10 }) };
+    expect(applyCatch(withHeavy, [c({ weight: 3 })], { fromNet: false }, LOCATIONS).heaviestFish!.weight).toBe(10);
+    expect(applyCatch(withHeavy, [c({ weight: 20 })], { fromNet: false }, LOCATIONS).heaviestFish!.weight).toBe(20);
+  });
+
+  it('unlocks locations when a catch crosses a level threshold', () => {
+    const almost = { ...base, level: 1, xp: 0, xpToNextLevel: 1 };
+    const r = applyCatch(almost, [c()], { fromNet: false }, LOCATIONS);
+    expect(r.level).toBeGreaterThan(1);
+    expect(r.unlockedLocations.length).toBeGreaterThan(0);
+  });
+});
+
+describe('resolveLuckyMode', () => {
+  const s = (over: Partial<{ luckyUntil: number | null; luckyCooldownUntil: number | null }> = {}) =>
+    ({ ...player, luckyUntil: null, luckyCooldownUntil: null, ...over });
+
+  it('fresh state, roll < 0.5 -> lucky for 60s, 7min cooldown', () => {
+    expect(resolveLuckyMode(s(), 1_000_000, () => 0.4))
+      .toEqual({ lucky: true, luckyUntil: 1_060_000, luckyCooldownUntil: 1_420_000 });
+  });
+
+  it('fresh state, roll >= 0.5 -> not lucky, still starts the cooldown', () => {
+    expect(resolveLuckyMode(s(), 1_000_000, () => 0.6))
+      .toEqual({ lucky: false, luckyUntil: null, luckyCooldownUntil: 1_420_000 });
+  });
+
+  it('inside an active window -> stays lucky without re-rolling', () => {
+    expect(resolveLuckyMode(s({ luckyUntil: 2_000_000, luckyCooldownUntil: 2_360_000 }), 1_999_000, () => 0.99))
+      .toEqual({ lucky: true, luckyUntil: 2_000_000, luckyCooldownUntil: 2_360_000 });
+  });
+
+  it('inside cooldown, no active window -> not lucky, fields unchanged', () => {
+    expect(resolveLuckyMode(s({ luckyUntil: 500_000, luckyCooldownUntil: 1_400_000 }), 1_000_000, () => 0.1))
+      .toEqual({ lucky: false, luckyUntil: 500_000, luckyCooldownUntil: 1_400_000 });
   });
 });
 

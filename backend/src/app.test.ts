@@ -253,38 +253,34 @@ describe('backend foundation', () => {
     expect(response.json().locations.length).toBeGreaterThan(0);
   });
 
-  it('creates an idempotent fishing session and completes it server-side', async () => {
+  it('casts and lands a fish server-side, applying the catch to the game-state blob', async () => {
     const app = await createApp({ config: testConfig });
     apps.add(app);
     const client = await registerAndAuth(app);
 
-    const first = await client.request({
-      method: 'POST',
-      url: '/api/v1/fishing/sessions',
-      payload: { locationId: 'amazon' },
-      idempotencyKey: 'fishing-key-123456',
-    });
-    const second = await client.request({
-      method: 'POST',
-      url: '/api/v1/fishing/sessions',
-      payload: { locationId: 'amazon' },
-      idempotencyKey: 'fishing-key-123456',
-    });
+    const seedState = {
+      schemaVersion: 1,
+      player: {
+        level: 6, xp: 0, xpToNextLevel: 600, totalFishCaught: 0, collection: [],
+        unlockedLocations: ['atlantic'], heaviestFish: null, warehouse: [], coins: 0,
+        activeSkin: 'default', ownedSkins: ['default'], activeBoatSkin: 'classic', ownedBoatSkins: ['classic'],
+        luckMultiplierEnd: null, strengthMultiplierEnd: null, lastRouletteDate: null,
+        aquariumWarehouse: [], aquariumSectors: { 1: [], 2: [], 3: [], 4: [], 5: [] },
+        dailyGiftsLastClaim: null, dailyGiftsDay: 1, dailyGiftsWeek: 1, nets: 0,
+      },
+    };
+    expect((await client.request({ method: 'PUT', url: '/api/v1/me/state', payload: { state: seedState, baseVersion: null } })).statusCode).toBe(200);
+
+    const first = await client.request({ method: 'POST', url: '/api/v1/me/fishing/cast', payload: { locationId: 'atlantic' }, idempotencyKey: 'fishing-key-123456' });
+    const second = await client.request({ method: 'POST', url: '/api/v1/me/fishing/cast', payload: { locationId: 'atlantic' }, idempotencyKey: 'fishing-key-123456' });
     expect(first.statusCode).toBe(200);
-    expect(second.json().id).toBe(first.json().id);
+    expect(second.json().sessionId).toBe(first.json().sessionId);
 
-    const completed = await client.request({
-      method: 'POST',
-      url: `/api/v1/fishing/sessions/${first.json().id}/complete`,
-    });
-    expect(completed.statusCode).toBe(200);
-    expect(completed.json().result.fishId).toEqual(expect.any(String));
-    expect(completed.json().result.weight).toBeGreaterThan(0);
-
-    // The catch is reflected in the player's progress (same as the PostgreSQL path)
-    const profile = await client.request({ method: 'GET', url: '/api/v1/me' });
-    expect(profile.json().user.totalFishCaught).toBe(1);
-    expect(profile.json().user.xp > 0 || profile.json().user.level > 1).toBe(true);
+    const landed = await client.request({ method: 'POST', url: '/api/v1/me/fishing/land', payload: { sessionId: first.json().sessionId } });
+    expect(landed.statusCode).toBe(200);
+    expect(landed.json().caught.fishId).toEqual(expect.any(String));
+    expect(landed.json().state.player.warehouse).toHaveLength(1);
+    expect(landed.json().state.player.totalFishCaught).toBe(1);
   });
 
   it('exposes a server-owned wallet balance', async () => {

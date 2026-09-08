@@ -4,8 +4,9 @@ import { Button } from '@/components/ui/button';
 import { FishingScene3D, RodOverlayCanvas } from './FishingScene';
 import PullMinigame from './PullMinigame';
 import { FishingLocation, Fish, PlayerState, BOAT_SKINS, BoatSkin } from '@/game/types';
+import type { Hooked } from '@/game/fishing';
 import { FISH_IMAGES } from '@/game/fishImages';
-import { rollFish, rollWeight, getWaitTime } from '@/game/fishingLogic';
+import { getWaitTime } from '@/game/fishingLogic';
 import { useI18n, getRarityLabel } from '@/game/i18n';
 import * as THREE from 'three';
 
@@ -291,22 +292,23 @@ function BoatOverlay({ skinId }: { skinId: string }) {
 interface Props {
   location: FishingLocation;
   player: PlayerState;
-  onCatch: (fish: Fish, weight: number, locationId: string) => void;
+  onCast: (locationId: string) => Promise<Hooked | null>;
+  onLand: (hooked: Hooked, locationId: string) => Promise<'landed' | 'failed'>;
   onBack: () => void;
   onCastNet?: () => void;
   onOpenNetShop?: () => void;
 }
 
-export default function FishingScreen({ location, player, onCatch, onBack, onCastNet, onOpenNetShop }: Props) {
+export default function FishingScreen({ location, player, onCast, onLand, onBack, onCastNet, onOpenNetShop }: Props) {
   const { lang, t } = useI18n();
   const [phase, setPhase] = useState<Phase>('idle');
   const [bobberPos, setBobberPos] = useState<[number, number, number]>([0, 0, 0]);
   const [currentFish, setCurrentFish] = useState<Fish | null>(null);
   const [currentWeight, setCurrentWeight] = useState(0);
+  const [hooked, setHooked] = useState<Hooked | null>(null);
   const [message, setMessage] = useState(t('fish.castPrompt'));
   const [luckyMode, setLuckyMode] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout>>();
-  const luckyTimerRef = useRef<ReturnType<typeof setTimeout>>();
 
   const clearFishingTimer = useCallback(() => {
     if (timerRef.current) {
@@ -317,29 +319,6 @@ export default function FishingScreen({ location, player, onCatch, onBack, onCas
 
   useEffect(() => {
     return clearFishingTimer;
-  }, [clearFishingTimer]);
-
-  // Lucky mode: every 7min, 50% chance to trigger, lasts 1min
-  useEffect(() => {
-    const CYCLE = 7 * 60 * 1000;
-    const DURATION = 1 * 60 * 1000;
-
-    const startCycle = () => {
-      luckyTimerRef.current = setTimeout(() => {
-        if (Math.random() < 0.5) {
-          setLuckyMode(true);
-          luckyTimerRef.current = setTimeout(() => {
-            setLuckyMode(false);
-            startCycle();
-          }, DURATION);
-        } else {
-          startCycle();
-        }
-      }, CYCLE);
-    };
-
-    startCycle();
-    return () => { if (luckyTimerRef.current) clearTimeout(luckyTimerRef.current); };
   }, [clearFishingTimer]);
 
   const handleBack = useCallback(() => {
@@ -441,36 +420,32 @@ export default function FishingScreen({ location, player, onCatch, onBack, onCas
       setMessage(t('fish.waiting'));
 
       const wait = getWaitTime();
-      timerRef.current = setTimeout(() => {
-        const luckMultActive = player.luckMultiplierEnd ? player.luckMultiplierEnd > Date.now() : false;
-        const luckPower = luckMultActive ? (player.luckMultiplierPower ?? 2) : 2;
-        const fish = rollFish(location, player.level, luckyMode || luckMultActive, luckPower);
-        const weight = rollWeight(fish);
-        setCurrentFish(fish);
-        setCurrentWeight(weight);
+      timerRef.current = setTimeout(async () => {
+        const h = await onCast(location.id);
+        if (!h) {
+          setPhase('idle');
+          setMessage(t('fish.castPrompt'));
+          return;
+        }
+        setHooked(h);
+        setCurrentFish(h.fish);
+        setCurrentWeight(h.weight);
+        setLuckyMode(h.lucky);
         setPhase('hooked');
         setMessage(t('fish.hooked'));
       }, wait);
     }, 800);
-  }, [
-    phase,
-    location,
-    player.level,
-    player.luckMultiplierEnd,
-    player.luckMultiplierPower,
-    luckyMode,
-    t,
-  ]);
+  }, [phase, location.id, onCast, t]);
 
   const handlePull = useCallback(() => {
     setPhase('pulling');
   }, []);
 
-  const handleWin = useCallback(() => {
-    if (!currentFish) return;
-    setPhase('caught');
-    onCatch(currentFish, currentWeight, location.id);
-  }, [currentFish, currentWeight, location.id, onCatch]);
+  const handleWin = useCallback(async () => {
+    if (!hooked) return;
+    const outcome = await onLand(hooked, location.id);
+    setPhase(outcome === 'landed' ? 'caught' : 'lost');
+  }, [hooked, location.id, onLand]);
 
   const handleLose = useCallback(() => {
     setPhase('lost');
@@ -481,6 +456,7 @@ export default function FishingScreen({ location, player, onCatch, onBack, onCas
     setPhase('idle');
     setCurrentFish(null);
     setCurrentWeight(0);
+    setHooked(null);
     setMessage(t('fish.castPrompt'));
   }, [clearFishingTimer, t]);
 

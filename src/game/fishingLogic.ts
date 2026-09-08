@@ -1,6 +1,6 @@
-import { Fish, Rarity, RARITY_CONFIG } from './types';
-import { getFishForLocation } from './data';
-import type { FishingLocation } from './types';
+import { Fish, Rarity, RARITY_CONFIG } from './types.js';
+import { getFishForLocation } from './data.js';
+import type { FishingLocation } from './types.js';
 
 export function getNormalizedRarityWeights(
   available: Fish[],
@@ -20,7 +20,13 @@ export function getNormalizedRarityWeights(
     : [];
 }
 
-export function rollFish(location: FishingLocation, playerLevel: number, luckyMode = false, luckPower = 2): Fish {
+export function rollFish(
+  location: FishingLocation,
+  playerLevel: number,
+  luckyMode = false,
+  luckPower = 2,
+  random: () => number = Math.random,
+): Fish {
   const available = getFishForLocation(location);
   if (available.length === 0) {
     throw new Error(`Location "${location.id}" has no fish available`);
@@ -39,17 +45,17 @@ export function rollFish(location: FishingLocation, playerLevel: number, luckyMo
         { r: 'legends', w: 0.08 },
         { r: 'cosmic', w: 0.04 },
       ];
-      const rand = Math.random();
+      const rand = random();
       let cum = 0;
       for (const { r, w } of weights) {
         cum += w;
         if (rand < cum) {
           const c = topOnly.filter(f => f.rarity === r);
-          if (c.length > 0) return c[Math.floor(Math.random() * c.length)];
+          if (c.length > 0) return c[Math.floor(random() * c.length)];
           break;
         }
       }
-      return topOnly[Math.floor(Math.random() * topOnly.length)];
+      return topOnly[Math.floor(random() * topOnly.length)];
     }
   }
 
@@ -57,17 +63,17 @@ export function rollFish(location: FishingLocation, playerLevel: number, luckyMo
     const rareOnly = available.filter(f => f.rarity === 'mythic' || f.rarity === 'legendary' || f.rarity === 'abyssal');
     if (rareOnly.length > 0) {
       // Weighted: abyssal 15%, legendary 35%, mythic 50%
-      const rand = Math.random();
+      const rand = random();
       let targetRarity: Rarity = 'mythic';
       if (rand < 0.15) targetRarity = 'abyssal';
       else if (rand < 0.50) targetRarity = 'legendary';
       const candidates = rareOnly.filter(f => f.rarity === targetRarity);
-      if (candidates.length > 0) return candidates[Math.floor(Math.random() * candidates.length)];
-      return rareOnly[Math.floor(Math.random() * rareOnly.length)];
+      if (candidates.length > 0) return candidates[Math.floor(random() * candidates.length)];
+      return rareOnly[Math.floor(random() * rareOnly.length)];
     }
   }
 
-  const rand = Math.random();
+  const rand = random();
   const weights = getNormalizedRarityWeights(available, playerLevel);
   let cumulative = 0;
   let targetRarity = weights[weights.length - 1]?.rarity ?? available[0].rarity;
@@ -81,14 +87,14 @@ export function rollFish(location: FishingLocation, playerLevel: number, luckyMo
 
   const candidates = available.filter(f => f.rarity === targetRarity);
   if (candidates.length === 0) {
-    return available[Math.floor(Math.random() * available.length)];
+    return available[Math.floor(random() * available.length)];
   }
 
-  return candidates[Math.floor(Math.random() * candidates.length)];
+  return candidates[Math.floor(random() * candidates.length)];
 }
 
-export function rollWeight(fish: Fish): number {
-  const weight = fish.minWeight + Math.random() * (fish.maxWeight - fish.minWeight);
+export function rollWeight(fish: Fish, random: () => number = Math.random): number {
+  const weight = fish.minWeight + random() * (fish.maxWeight - fish.minWeight);
   return Math.round(weight * 100) / 100;
 }
 

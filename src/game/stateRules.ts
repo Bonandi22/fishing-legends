@@ -1,4 +1,5 @@
 import {
+  CaughtFish,
   FishingLocation,
   AQUARIUM_REWARDS,
   BOAT_SKINS,
@@ -42,6 +43,76 @@ export function sellWarehouse(state: PlayerState, locations: FishingLocation[]):
     warehouse: [],
     coins: state.coins + bonusCoins,
   };
+}
+
+/**
+ * Applies one or more catches to the player: XP (net = ×0.3), level-up, unlocked
+ * locations, collection, `heaviestFish`, warehouse (cap 15 → overflow to the
+ * aquarium warehouse), `totalFishCaught`. Ported verbatim from the former
+ * `useGameState.catchFishBatch`. `catches` carry their timestamps already.
+ */
+export function applyCatch(
+  state: PlayerState,
+  catches: CaughtFish[],
+  opts: { fromNet: boolean },
+  locations: FishingLocation[],
+): PlayerState {
+  if (catches.length === 0) return state;
+
+  const xpGain = catches.reduce(
+    (sum, caught) => sum + (opts.fromNet ? Math.floor(caught.fish.xp * 0.3) : caught.fish.xp),
+    0,
+  );
+  const progression = applyXp(state.xp, state.level, state.xpToNextLevel, xpGain);
+  const collection = [...state.collection, ...catches];
+  const heaviestFish = catches.reduce<CaughtFish | null>(
+    (current, caught) => (!current || caught.weight > current.weight ? caught : current),
+    state.heaviestFish,
+  );
+  const unlockedLocations = getUnlockedLocationIds(progression.level, locations);
+  const inventory = catches.reduce(
+    (inv, caught) => addToWarehouse(inv.warehouse, inv.aquariumWarehouse, caught),
+    { warehouse: state.warehouse, aquariumWarehouse: state.aquariumWarehouse || [] },
+  );
+
+  return {
+    ...state,
+    ...progression,
+    totalFishCaught: state.totalFishCaught + catches.length,
+    collection,
+    unlockedLocations,
+    heaviestFish,
+    ...inventory,
+  };
+}
+
+const LUCKY_WINDOW_MS = 60_000;
+const LUCKY_COOLDOWN_MS = 7 * 60_000;
+
+/**
+ * Server-owned "lucky mode": if a window is active it stays lucky; past the
+ * cooldown it re-rolls (`random() < 0.5` → a 60s window + 7min cooldown; a miss
+ * still starts the cooldown); inside the cooldown it is not lucky and the fields
+ * are unchanged. `now` and `random` are injected for purity.
+ */
+export function resolveLuckyMode(
+  state: PlayerState,
+  now: number,
+  random: () => number = Math.random,
+): { lucky: boolean; luckyUntil: number | null; luckyCooldownUntil: number | null } {
+  const until = state.luckyUntil ?? null;
+  const cooldown = state.luckyCooldownUntil ?? null;
+
+  if (until && now < until) {
+    return { lucky: true, luckyUntil: until, luckyCooldownUntil: cooldown };
+  }
+  if (!cooldown || now >= cooldown) {
+    if (random() < 0.5) {
+      return { lucky: true, luckyUntil: now + LUCKY_WINDOW_MS, luckyCooldownUntil: now + LUCKY_COOLDOWN_MS };
+    }
+    return { lucky: false, luckyUntil: null, luckyCooldownUntil: now + LUCKY_COOLDOWN_MS };
+  }
+  return { lucky: false, luckyUntil: until, luckyCooldownUntil: cooldown };
 }
 
 export function placeAquariumFish(
