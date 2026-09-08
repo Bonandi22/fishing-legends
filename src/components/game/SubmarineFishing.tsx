@@ -3,18 +3,24 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { PlayerState, Fish } from '@/game/types';
 import { FISH } from '@/game/data';
-import { rollWeight } from '@/game/fishingLogic';
+import { SUBMARINE_ROSTER_REFILL_AT } from '@/game/fishingLogic';
+import type { Hooked, SubmarineHooked } from '@/game/fishing';
 import { useI18n, getRarityLabel } from '@/game/i18n';
 import { FISH_IMAGES } from '@/game/fishImages';
 
+type LandOutcome = { outcome: 'landed' | 'failed'; caught?: { fishId: string; weight: number; location: string } };
+
 interface Props {
   player: PlayerState;
-  onCatch: (fish: Fish, weight: number, locationId: string) => void;
+  onCast: (locationId: string, mode: 'submarine') => Promise<Hooked | null>;
+  onLand: (hooked: Hooked, locationId: string, catchId: string) => Promise<LandOutcome>;
   onBack: () => void;
 }
 
 interface SwimmingFish {
   id: string;
+  catchId: string;
+  sessionId: string;
   fish: Fish;
   x: number;
   y: number;
@@ -27,26 +33,15 @@ interface SwimmingFish {
 
 let fishCounter = 0;
 
-function spawnFish(canvasW: number, canvasH: number, playerLevel: number): SwimmingFish {
-  const available = FISH.filter(f => {
-    const rand = Math.random();
-    if (f.rarity === 'cosmic') return rand < 0.002;
-    if (f.rarity === 'legends') return rand < 0.005;
-    if (f.rarity === 'platinum') return rand < 0.01;
-    if (f.rarity === 'volcanic') return rand < 0.02;
-    if (f.rarity === 'abyssal') return rand < 0.03;
-    if (f.rarity === 'legendary') return rand < 0.08;
-    if (f.rarity === 'mythic') return rand < 0.15;
-    if (f.rarity === 'uncommon') return rand < 0.3;
-    return true;
-  });
-  const fish = available[Math.floor(Math.random() * available.length)] || FISH[0];
-  const direction = Math.random() > 0.5 ? 1 : -1 as 1 | -1;
+/** Turn a rolled roster entry into an on-screen swimming fish. */
+function swimmingFrom(entry: SubmarineHooked['catches'][number], sessionId: string, canvasW: number, canvasH: number): SwimmingFish {
+  const direction: 1 | -1 = Math.random() > 0.5 ? 1 : -1;
   const size = 40 + Math.random() * 30;
-
   return {
     id: `sf-${fishCounter++}`,
-    fish,
+    catchId: entry.id,
+    sessionId,
+    fish: entry.fish,
     x: direction === 1 ? -size : canvasW + size,
     y: 80 + Math.random() * (canvasH - 160),
     speed: 0.5 + Math.random() * 1.5,
@@ -132,30 +127,77 @@ function HarpoonProjectileSVG({ size = 80 }: { size?: number }) {
   );
 }
 
-export default function SubmarineFishing({ player, onCatch, onBack }: Props) {
+export default function SubmarineFishing({ player, onCast, onLand, onBack }: Props) {
   const { lang, t } = useI18n();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [fishes, setFishes] = useState<SwimmingFish[]>([]);
   const [harpoon, setHarpoon] = useState<{ x: number; y: number; targetX: number; targetY: number; progress: number } | null>(null);
   const [caughtFish, setCaughtFish] = useState<{ fish: Fish; weight: number } | null>(null);
+  const [phase, setPhase] = useState<'casting' | 'active' | 'empty'>('casting');
   const animRef = useRef<number>(0);
   const fishesRef = useRef<SwimmingFish[]>([]);
   const harpoonRef = useRef(harpoon);
   const containerRef = useRef<HTMLDivElement>(null);
 
+  // The server-rolled roster and per-entry bookkeeping.
+  const hookedRef = useRef<SubmarineHooked | null>(null);
+  const spawnedIds = useRef<Set<string>>(new Set());
+  const harvestedIds = useRef<Set<string>>(new Set());
+  const refillingRef = useRef(false);
+
   fishesRef.current = fishes;
   harpoonRef.current = harpoon;
 
+  const castRoster = useCallback(async (): Promise<SubmarineHooked | null> => {
+    const h = await onCast('submarine', 'submarine');
+    return h && h.kind === 'submarine' ? h : null;
+  }, [onCast]);
+
+  // Cast the first roster on mount.
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const h = await castRoster();
+      if (cancelled) return;
+      if (!h) { setPhase('empty'); return; }
+      hookedRef.current = h;
+      setPhase('active');
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   useEffect(() => {
     const interval = setInterval(() => {
-      if (harpoonRef.current || fishesRef.current.length >= 8) return;
-      const el = containerRef.current;
-      if (!el) return;
-      const newFish = spawnFish(el.clientWidth, el.clientHeight, player.level);
-      setFishes(prev => [...prev, newFish]);
+      void (async () => {
+        const el = containerRef.current;
+        const hooked = hookedRef.current;
+        if (!el || !hooked || harpoonRef.current) return;
+
+        const pending = hooked.catches.filter(
+          c => !spawnedIds.current.has(c.id) && !harvestedIds.current.has(c.id),
+        );
+
+        // Top the roster up before it runs dry — a fresh cast, merged in.
+        if (pending.length <= SUBMARINE_ROSTER_REFILL_AT && !refillingRef.current) {
+          refillingRef.current = true;
+          castRoster()
+            .then(next => {
+              if (next) {
+                const live = hookedRef.current?.catches.filter(c => !harvestedIds.current.has(c.id)) ?? [];
+                hookedRef.current = { kind: 'submarine', sessionId: next.sessionId, catches: [...live, ...next.catches] };
+              }
+            })
+            .finally(() => { refillingRef.current = false; });
+        }
+
+        if (fishesRef.current.length >= 8 || pending.length === 0) return;
+        setFishes(prev => [...prev, swimmingFrom(pending[0], hooked.sessionId, el.clientWidth, el.clientHeight)]);
+        spawnedIds.current.add(pending[0].id);
+      })();
     }, 1500);
     return () => clearInterval(interval);
-  }, [player.level]);
+  }, [castRoster]);
 
   useEffect(() => {
     let running = true;
@@ -351,19 +393,21 @@ export default function SubmarineFishing({ player, onCatch, onBack }: Props) {
 
     const startX = el.clientWidth - 80;
     const startY = el.clientHeight / 2;
-    const targetX = sf.x;
-    const targetY = sf.y + sf.yOffset;
+    setHarpoon({ x: startX, y: startY, targetX: sf.x, targetY: sf.y + sf.yOffset, progress: 0 });
+    harvestedIds.current.add(sf.catchId);
 
-    setHarpoon({ x: startX, y: startY, targetX, targetY, progress: 0 });
-
-    setTimeout(() => {
-      const weight = rollWeight(sf.fish);
-      onCatch(sf.fish, weight, 'submarine');
-      setCaughtFish({ fish: sf.fish, weight });
+    setTimeout(async () => {
       setFishes(prev => prev.filter(f => f.id !== sf.id));
       setHarpoon(null);
+      // This fish's own session — after a refill hookedRef.sessionId is newer.
+      const hooked: SubmarineHooked = { kind: 'submarine', sessionId: sf.sessionId, catches: hookedRef.current?.catches ?? [] };
+      const res = await onLand(hooked, 'submarine', sf.catchId);
+      if (res.outcome === 'landed' && res.caught) {
+        const fish = FISH.find(f => f.id === res.caught!.fishId) ?? sf.fish;
+        setCaughtFish({ fish, weight: res.caught.weight });
+      }
     }, 600);
-  }, [harpoon, caughtFish, onCatch]);
+  }, [harpoon, caughtFish, onLand]);
 
   const handleDismissCatch = useCallback(() => {
     setCaughtFish(null);
@@ -372,6 +416,19 @@ export default function SubmarineFishing({ player, onCatch, onBack }: Props) {
   return (
     <div ref={containerRef} className="relative w-full h-screen overflow-hidden">
       <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" />
+
+      {phase === 'casting' && (
+        <div className="absolute inset-0 z-40 flex items-center justify-center">
+          <p className="hud-panel rounded-xl px-5 py-2 text-sm font-medium text-foreground">{t('sub.title')}…</p>
+        </div>
+      )}
+
+      {phase === 'empty' && (
+        <div className="absolute inset-0 z-40 flex flex-col items-center justify-center gap-4 bg-abyss/80 backdrop-blur-sm">
+          <p className="text-lg font-semibold text-foreground">{t('sub.unavailable')}</p>
+          <Button variant="outline" onClick={onBack} className="hud-panel">{t('sub.back')}</Button>
+        </div>
+      )}
 
       {/* Swimming fish */}
       {fishes.map(sf => (

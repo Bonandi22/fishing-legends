@@ -13,7 +13,7 @@ interface Props {
   location: FishingLocation;
   player: PlayerState;
   onCast: (locationId: string, mode?: 'rod' | 'net' | 'submarine') => Promise<Hooked | null>;
-  onLand: (hooked: Hooked, locationId: string) => Promise<'landed' | 'failed'>;
+  onLand: (hooked: Hooked, locationId: string, catchId?: string) => Promise<{ outcome: 'landed' | 'failed'; caught?: { fishId: string; weight: number; location: string } }>;
   onBack: () => void;
   onOpenShop?: () => void;
 }
@@ -83,8 +83,8 @@ export default function NetFishing({ location, player, onCast, onLand, onBack, o
     cancelAnimationFrame(frameRef.current);
     if (!inGreen) { setPhase('lost'); return; }
 
-    const outcome = await onLand(hooked, location.id);
-    setPhase(outcome === 'landed' ? 'pulled' : 'lost');
+    const res = await onLand(hooked, location.id);
+    setPhase(res.outcome === 'landed' ? 'pulled' : 'lost');
   }, [hooked, greenStart, greenSize, onLand, location.id]);
 
   const haul = hooked?.catches ?? [];

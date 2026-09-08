@@ -12,4 +12,14 @@ export type NetHooked = {
   sessionId: string;
 };
 
-export type Hooked = RodHooked | NetHooked;
+/** One roster entry the server (or the local roll) produced for the submarine. */
+export type SubmarineCatch = { id: string; fish: Fish; weight: number };
+
+/** A server-rolled submarine roster, harvested one fish per click by `id`. */
+export type SubmarineHooked = {
+  kind: 'submarine';
+  catches: SubmarineCatch[];
+  sessionId: string;   // '' for the anonymous local roll
+};
+
+export type Hooked = RodHooked | NetHooked | SubmarineHooked;

@@ -285,6 +285,41 @@ describe('backend foundation', () => {
     expect(landed.json().state.player.totalFishCaught).toBe(1);
   });
 
+  it('submarine: casts a roster then harvests two fish into the blob', async () => {
+    const app = await createApp({ config: testConfig });
+    apps.add(app);
+    const client = await registerAndAuth(app);
+
+    const seedState = {
+      schemaVersion: 1,
+      player: {
+        level: 6, xp: 0, xpToNextLevel: 999999, totalFishCaught: 0, collection: [],
+        unlockedLocations: ['atlantic'], heaviestFish: null, warehouse: [], coins: 0,
+        activeSkin: 'default', ownedSkins: ['default'], activeBoatSkin: 'classic', ownedBoatSkins: ['classic'],
+        luckMultiplierEnd: null, strengthMultiplierEnd: null, lastRouletteDate: null,
+        aquariumWarehouse: [], aquariumSectors: { 1: [], 2: [], 3: [], 4: [], 5: [] },
+        dailyGiftsLastClaim: null, dailyGiftsDay: 1, dailyGiftsWeek: 1, nets: 0,
+      },
+    };
+    expect((await client.request({ method: 'PUT', url: '/api/v1/me/state', payload: { state: seedState, baseVersion: null } })).statusCode).toBe(200);
+
+    const cast = (await client.request({ method: 'POST', url: '/api/v1/me/fishing/cast',
+      payload: { locationId: 'submarine', mode: 'submarine' } })).json();
+    expect(cast.mode).toBe('submarine');
+    expect(cast.catches).toHaveLength(24);
+
+    for (let i = 0; i < 2; i++) {
+      const r = await client.request({ method: 'POST', url: '/api/v1/me/fishing/land',
+        payload: { sessionId: cast.sessionId, catchId: cast.catches[i].id },
+        idempotencyKey: `sub-app-${i}-aaaaaaaaaaaa` });
+      expect(r.statusCode).toBe(200);
+      expect(r.json().caught).toHaveLength(1);
+    }
+
+    const me = (await client.request({ method: 'GET', url: '/api/v1/me/state' })).json();
+    expect(me.state.player.totalFishCaught).toBe(2);
+  });
+
   it('exposes a server-owned wallet balance', async () => {
     const app = await createApp({ config: testConfig });
     apps.add(app);

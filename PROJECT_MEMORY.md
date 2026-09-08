@@ -2014,6 +2014,65 @@ plano `docs/superpowers/plans/2026-09-08-server-fishing-catch-6a.md` (15 tarefas
   Branch `feature/task-10-3-fishing-catch-6a` apagada. `main` verde (406 unit + 72
   integração).
 
+### Task 10.3 fatia 6b-2 — captura no submarino server-autoritativa — 2026-09-08
+
+Terceira sub-fatia da captura (fecha o 6b). Branch `feature/task-10-3-fishing-catch-6b2`.
+Spec `docs/superpowers/specs/2026-09-08-server-fishing-catch-6b2-submarine.md`,
+plano `.../plans/2026-09-08-server-fishing-catch-6b2-submarine.md` (9 tarefas,
+`executing-plans`, inline, TDD).
+
+- **Modelo**: `cast { mode:'submarine' }` sorteia um **roster de 24** peixes
+  (`rollSubmarineBatch`, tabela de raridade própria portada de `SubmarineFishing.spawnFish`)
+  para `result_catches`, cria sessão `open` com `mode:'submarine'`. **Cast neutro**:
+  não corre `resolveLuckyMode`, **não escreve no blob**, **não bumpa `version`**.
+  `land { sessionId, catchId }` aplica exatamente a entrada com esse `id` sintético
+  (`fromNet:false`), remove-a de `result_catches`, **renova `created_at`**, e marca
+  `completed` quando o roster esvazia. Op `fishing_land`, key fresca por clique,
+  `version +1` por colheita.
+- **Coluna `mode` real** (`fishing_sessions.mode varchar(16)`, migração `0021`,
+  check `rod|net|submarine`, backfill `net WHERE result_catches IS NOT NULL`).
+  Substitui a inferência `result_catches != null ⇒ net` — o submarino também usa
+  `result_catches`. `modeOf()` eliminado; lê-se `session.mode`. `result_catches`
+  `$type` ganha `id?` (só o submarino põe).
+- **`SUBMARINE_LOCATION_ID = 'submarine'`** (`src/game/data.ts`), aceite como caso
+  especial em `caughtFishSchema` (`persistence.ts`). **Corrige o bug de corrupção
+  de save**: uma captura de submarino (`location:'submarine'`) já não faz
+  `saveSchema.parse` rejeitar o blob inteiro. `LOCATIONS` fica intacto (não
+  aparece no seletor de locais).
+- **`applyLand`** ganha `opts: { catchId? }` e devolve `remaining` (roster pós-colheita
+  para o submarino; `null` para rod/net). `FishingService.land` ganha `catchId?`.
+  `land` body: `{ sessionId: uuid, catchId?: uuid }` (era `fishId?`).
+- **Frontend**: `endpoints` — `SubmarineCast`, `landCatch(key, sid, catchId?)`.
+  `Index.handleCast('submarine','submarine')` (servidor: `castLine` → `SubmarineHooked`;
+  anon: `rollSubmarineBatch` local com `id`s gerados). `Index.handleLand` passa a
+  devolver **`{ outcome, caught? }`** (rod/net lêem `.outcome`; submarino lê `.caught`).
+  Ramo `hooked.kind === 'submarine'` (servidor `landCatch`; anon `catchFish(..., 'submarine')`).
+  **`handleCatch` removido → `Index` não tem mais nenhum `onCatch`.**
+- **`SubmarineFishing.tsx`** reescrito: props `{ player, onCast, onLand, onBack }`.
+  Mantém todo o canvas/arpão/HUD/overlay. Muda: os peixes que nadam vêm do roster
+  de `onCast` (cada `SwimmingFish` carrega `catchId` + `sessionId`); refill em
+  background quando restam ≤4 não-colhidos (`SUBMARINE_ROSTER_REFILL_AT`), fundido
+  no roster; `handleFishClick` → `onLand(hooked, 'submarine', sf.catchId)` (com o
+  `sessionId` do próprio peixe, porque um refill traz sessão nova). `spawnFish`
+  standalone eliminado (lógica movida para `fishingLogic.rollSubmarineFish`).
+  Fases `casting` / `active` / `empty` (`sub.unavailable` i18n nova).
+- Sem mudança de balanceamento (raridade do submarino, peso, XP `fromNet:false`).
+  Sem custo/limite (buraco de economia conhecido, deferido, como o trust hole do
+  minigame).
+- Verificação: `tsc app` ✅ · `backend:typecheck` ✅ · `lint` ✅ 0 erros ·
+  `npm test` ✅ **437** · `build` ✅ · `test:integration` ✅ **76**.
+- Smoke browser (Playwright, stack Docker): caminho **anónimo** — abrir a Pesca
+  Submarina, roster sorteado localmente e a nadar, clicar num peixe → arpão →
+  overlay "Capturado! Tilápia 1.57 kg +10 XP" (`catchFish(..., 'submarine')`),
+  **reload** → o save mantém-se (nível 10, `totalFishCaught` 37→38, 1 entrada
+  `location:'submarine'` no `collection` + overflow para `aquariumWarehouse`) —
+  antes deste fix o `parseSavedState` descartava o save inteiro. Caminho
+  **servidor** coberto pelos testes HTTP end-to-end (`app.test.ts` + 76 de
+  integração): cast de 24 sem op row nem `version` bump, colheitas bumpam
+  `version`, roster encolhe, `created_at` renovado, drain → `completed`, coluna
+  `mode='submarine'`, guards `INVALID_FISHING_SESSION` (sem `catchId` / `catchId`
+  inválido / já colhido).
+
 ### Task 10.3 fatia 6b-1 — captura à rede server-autoritativa — 2026-09-08
 
 Segunda das 3 sub-fatias da captura (6b = rede + submarino; 6b-1 = rede). Mesmo

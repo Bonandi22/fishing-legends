@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { createMemoryGameStateStore } from '../gamestate/memoryService.js';
 import { createMemoryFishingService } from './service.js';
 import { SAVE_SCHEMA_VERSION } from '../../../src/game/persistence.js';
+import { SUBMARINE_ROSTER_SIZE } from '../../../src/game/fishingLogic.js';
 
 const blob = (over: Record<string, unknown> = {}) => ({
   schemaVersion: SAVE_SCHEMA_VERSION,
@@ -147,5 +148,99 @@ describe('memory fishing service — net mode', () => {
     const a = await svc.land('u1', 'land-net-eeeeeeeeeeee', cast.sessionId);
     const b = await svc.land('u1', 'land-net-eeeeeeeeeeee', cast.sessionId);
     expect(b).toEqual(a);
+  });
+});
+
+describe('memory fishing service — submarine mode', () => {
+  it('cast submarine: 24 roster entries with ids, blob + version untouched, session mode submarine', async () => {
+    const store = createMemoryGameStateStore();
+    store.set('u1', { state: blob({ level: 6 }), updatedAt: 'now', version: 1 });
+    const svc = createMemoryFishingService(store);
+
+    const res = await svc.cast('u1', 'cast-sub-aaaaaaaaaaaa', 'submarine', 'submarine');
+    if (res.mode !== 'submarine') throw new Error('expected a submarine cast');
+    expect(res.catches).toHaveLength(SUBMARINE_ROSTER_SIZE);
+    expect(res.catches.every(c => typeof c.id === 'string' && c.id.length > 0)).toBe(true);
+    expect(res.catches.every(c => typeof c.fishId === 'string' && c.weight > 0)).toBe(true);
+    expect(res.version).toBe(1);
+    expect(res.lucky).toBe(false);
+    const p = (store.get('u1')!.state as { player: Record<string, unknown> }).player;
+    expect(p.luckyUntil).toBeUndefined();
+    expect(store.get('u1')!.version).toBe(1);
+  });
+
+  it('cast submarine dedupes on the idempotency key', async () => {
+    const store = createMemoryGameStateStore();
+    store.set('u1', { state: blob(), updatedAt: 'now', version: 1 });
+    const svc = createMemoryFishingService(store);
+    const a = await svc.cast('u1', 'cast-sub-bbbbbbbbbbbb', 'submarine', 'submarine');
+    const b = await svc.cast('u1', 'cast-sub-bbbbbbbbbbbb', 'submarine', 'submarine');
+    if (a.mode !== 'submarine' || b.mode !== 'submarine') throw new Error('expected submarine casts');
+    expect(b.sessionId).toBe(a.sessionId);
+    expect(b.catches).toEqual(a.catches);
+  });
+
+  it('cast submarine with no blob -> GAME_STATE_NOT_FOUND', async () => {
+    const svc = createMemoryFishingService(createMemoryGameStateStore());
+    await expect(svc.cast('u1', 'cast-sub-cccccccccccc', 'submarine', 'submarine'))
+      .rejects.toThrow('GAME_STATE_NOT_FOUND');
+  });
+
+  it('land a submarine harvest: applies one, roster shrinks, session stays open, version +1', async () => {
+    const store = createMemoryGameStateStore();
+    store.set('u1', { state: blob({ level: 6, xp: 0, xpToNextLevel: 100000 }), updatedAt: 'now', version: 1 });
+    const svc = createMemoryFishingService(store);
+    const cast = await svc.cast('u1', 'cast-sub-dddddddddddd', 'submarine', 'submarine');
+    if (cast.mode !== 'submarine') throw new Error('expected a submarine cast');
+
+    const first = cast.catches[0];
+    const land = await svc.land('u1', 'land-sub-dddddddddddd-1', cast.sessionId, first.id);
+    expect(land.version).toBe(2);
+    expect(land.caught).toEqual([{ fishId: first.fishId, weight: first.weight, location: 'submarine' }]);
+    expect(land.state.player.warehouse).toHaveLength(1);
+    expect(land.state.player.totalFishCaught).toBe(1);
+  });
+
+  it('harvest every roster entry -> session completes on the last one', async () => {
+    const store = createMemoryGameStateStore();
+    store.set('u1', { state: blob({ level: 6, xp: 0, xpToNextLevel: 999999 }), updatedAt: 'now', version: 1 });
+    const svc = createMemoryFishingService(store);
+    const cast = await svc.cast('u1', 'cast-sub-eeeeeeeeeeee', 'submarine', 'submarine');
+    if (cast.mode !== 'submarine') throw new Error('expected a submarine cast');
+    for (let i = 0; i < cast.catches.length; i++) {
+      await svc.land('u1', `land-sub-eeeeeeeeeeee-${i}`, cast.sessionId, cast.catches[i].id);
+    }
+    await expect(svc.land('u1', 'land-sub-eeeeeeeeeeee-after', cast.sessionId, cast.catches[0].id))
+      .rejects.toThrow('INVALID_FISHING_SESSION');
+  });
+
+  it('land a submarine session with no catchId -> INVALID_FISHING_SESSION', async () => {
+    const store = createMemoryGameStateStore();
+    store.set('u1', { state: blob({ level: 6 }), updatedAt: 'now', version: 1 });
+    const svc = createMemoryFishingService(store);
+    const cast = await svc.cast('u1', 'cast-sub-ffffffffffff', 'submarine', 'submarine');
+    await expect(svc.land('u1', 'land-sub-ffffffffffff', cast.sessionId))
+      .rejects.toThrow('INVALID_FISHING_SESSION');
+  });
+
+  it('land a submarine harvest with an unknown catchId -> INVALID_FISHING_SESSION', async () => {
+    const store = createMemoryGameStateStore();
+    store.set('u1', { state: blob({ level: 6 }), updatedAt: 'now', version: 1 });
+    const svc = createMemoryFishingService(store);
+    const cast = await svc.cast('u1', 'cast-sub-gggggggggggg', 'submarine', 'submarine');
+    await expect(svc.land('u1', 'land-sub-gggggggggggg', cast.sessionId, '00000000-0000-0000-0000-000000000000'))
+      .rejects.toThrow('INVALID_FISHING_SESSION');
+  });
+
+  it('submarine harvest replays on the same key: identical body, roster shrank by one', async () => {
+    const store = createMemoryGameStateStore();
+    store.set('u1', { state: blob({ level: 6 }), updatedAt: 'now', version: 1 });
+    const svc = createMemoryFishingService(store);
+    const cast = await svc.cast('u1', 'cast-sub-hhhhhhhhhhhh', 'submarine', 'submarine');
+    if (cast.mode !== 'submarine') throw new Error('expected a submarine cast');
+    const a = await svc.land('u1', 'land-sub-hhhhhhhhhhhh', cast.sessionId, cast.catches[0].id);
+    const b = await svc.land('u1', 'land-sub-hhhhhhhhhhhh', cast.sessionId, cast.catches[0].id);
+    expect(b).toEqual(a);
+    expect(store.get('u1')!.version).toBe(2);
   });
 });

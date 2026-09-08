@@ -88,6 +88,43 @@ describe('POST /api/v1/me/fishing/cast + land', () => {
     expect(res.statusCode).toBe(401);
   });
 
+  it('cast submarine -> 200 { mode: "submarine", catches: [{id,fishId,weight}] }', async () => {
+    const a = await app(); const client = await registerAndAuth(a);
+    await seed(client, blob());
+    const res = await client.request({ method: 'POST', url: '/api/v1/me/fishing/cast',
+      payload: { locationId: 'submarine', mode: 'submarine' } });
+    expect(res.statusCode).toBe(200);
+    const b = res.json();
+    expect(b.mode).toBe('submarine');
+    expect(b.catches).toHaveLength(24);
+    expect(typeof b.catches[0].id).toBe('string');
+    expect(b.version).toBe(1);
+  });
+
+  it('land a submarine harvest -> 200 caught[] of length 1', async () => {
+    const a = await app(); const client = await registerAndAuth(a);
+    await seed(client, blob());
+    const cast = (await client.request({ method: 'POST', url: '/api/v1/me/fishing/cast',
+      payload: { locationId: 'submarine', mode: 'submarine' } })).json();
+    const res = await client.request({ method: 'POST', url: '/api/v1/me/fishing/land',
+      payload: { sessionId: cast.sessionId, catchId: cast.catches[0].id },
+      idempotencyKey: 'land-sub-route-aaaaaaaa' });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().caught).toHaveLength(1);
+  });
+
+  it('land a submarine session with no catchId -> 422', async () => {
+    const a = await app(); const client = await registerAndAuth(a);
+    await seed(client, blob());
+    const cast = (await client.request({ method: 'POST', url: '/api/v1/me/fishing/cast',
+      payload: { locationId: 'submarine', mode: 'submarine' } })).json();
+    const res = await client.request({ method: 'POST', url: '/api/v1/me/fishing/land',
+      payload: { sessionId: cast.sessionId },
+      idempotencyKey: 'land-sub-route-bbbbbbbb' });
+    expect(res.statusCode).toBe(422);
+    expect(res.json().error.code).toBe('INVALID_FISHING_SESSION');
+  });
+
   it('cast { mode: net } -> 200 with net + catches; land -> caught array', async () => {
     const a = await app(); const client = await registerAndAuth(a);
     await seed(client, blob({ nets: 3, level: 8, unlockedLocations: ['titicaca'] }));

@@ -338,6 +338,10 @@ export const LOCATIONS: FishingLocation[] = [
   },
 ];
 
+/** Pseudo-location for submarine catches. Not in LOCATIONS (it is a mode, not a
+ *  place you travel to) — the save schema allowlists it explicitly. */
+export const SUBMARINE_LOCATION_ID = 'submarine';
+
 export function getFishById(id: string): Fish | undefined {
   return FISH.find(f => f.id === id);
 }

@@ -29,11 +29,16 @@ export function registerFishingRoutes(app: FastifyInstance, service: FishingServ
   r.post('/api/v1/me/fishing/land', {
     schema: {
       tags: ['gamestate'],
-      summary: 'Land the fish the cast rolled (needs Idempotency-Key)',
-      body: z.object({ sessionId: z.string().uuid(), fishId: z.string().min(1).max(120).optional() }),
+      summary: 'Land the fish/batch the cast rolled, or harvest one submarine fish (needs Idempotency-Key)',
+      body: z.object({ sessionId: z.string().uuid(), catchId: z.string().uuid().optional() }),
     },
     preHandler: app.requireAuth,
   }, async (request) => {
-    return service.land(request.userId, idempotencyKey(request.headers['idempotency-key']), request.body.sessionId);
+    return service.land(
+      request.userId,
+      idempotencyKey(request.headers['idempotency-key']),
+      request.body.sessionId,
+      request.body.catchId,
+    );
   });
 }

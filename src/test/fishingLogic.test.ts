@@ -1,7 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
-import { getFishForLocation, LOCATIONS } from "@/game/data";
+import { FISH, getFishForLocation, LOCATIONS } from "@/game/data";
 import { RARITY_CONFIG } from "@/game/types";
-import { getNormalizedRarityWeights, getWaitTime, rollFish, rollWeight } from "@/game/fishingLogic";
+import {
+  getNormalizedRarityWeights, getWaitTime, rollFish, rollWeight,
+  rollSubmarineFish, rollSubmarineBatch, SUBMARINE_ROSTER_SIZE,
+} from "@/game/fishingLogic";
 
 describe("fishing rules", () => {
   it("selects only fish available in the selected location", () => {
@@ -72,5 +75,21 @@ describe("fishing rules", () => {
       expect(wait).toBeGreaterThanOrEqual(3000);
       expect(wait).toBeLessThanOrEqual(10000);
     }
+  });
+});
+
+describe("submarine roll", () => {
+  it("rollSubmarineFish returns a catalog fish; a mid random keeps only commons eligible", () => {
+    // 0.5 fails every rarity gate except `common` (which returns true); the index
+    // pick is Math.floor(0.5 * commonCount) — still a common.
+    const fish = rollSubmarineFish(1, () => 0.5);
+    expect(fish.rarity).toBe("common");
+    expect(FISH.some((f) => f.id === fish.id)).toBe(true);
+  });
+
+  it("rollSubmarineBatch returns `size` catalog fish", () => {
+    const batch = rollSubmarineBatch(SUBMARINE_ROSTER_SIZE, 1, () => 0);
+    expect(batch).toHaveLength(SUBMARINE_ROSTER_SIZE);
+    expect(batch.every((f) => FISH.some((c) => c.id === f.id))).toBe(true);
   });
 });
