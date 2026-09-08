@@ -2,6 +2,7 @@ import { sql } from 'drizzle-orm';
 import {
   type AnyPgColumn,
   bigint,
+  boolean,
   char,
   check,
   date,
@@ -86,6 +87,7 @@ export const fishingSessions = pgTable('fishing_sessions', {
   resultFishId: varchar('result_fish_id', { length: 120 }),
   resultWeight: numeric('result_weight', { precision: 12, scale: 2 }),
   resultXp: integer('result_xp'),
+  resultLucky: boolean('result_lucky').notNull().default(false),
 }, table => ({
   idempotencyUnique: uniqueIndex('fishing_sessions_idempotency_unique').on(table.userId, table.idempotencyKey),
   statusCheck: check('fishing_sessions_status_check', sql`${table.status} IN ('open', 'completed', 'expired')`),
