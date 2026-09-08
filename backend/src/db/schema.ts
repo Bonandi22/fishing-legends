@@ -88,6 +88,7 @@ export const fishingSessions = pgTable('fishing_sessions', {
   resultWeight: numeric('result_weight', { precision: 12, scale: 2 }),
   resultXp: integer('result_xp'),
   resultLucky: boolean('result_lucky').notNull().default(false),
+  resultCatches: jsonb('result_catches').$type<Array<{ fishId: string; weight: number }>>(),
 }, table => ({
   idempotencyUnique: uniqueIndex('fishing_sessions_idempotency_unique').on(table.userId, table.idempotencyKey),
   statusCheck: check('fishing_sessions_status_check', sql`${table.status} IN ('open', 'completed', 'expired')`),
