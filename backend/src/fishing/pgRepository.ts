@@ -5,13 +5,26 @@ import { fishingSessions, gameStateOperations, playerGameState } from '../db/sch
 import { readRecordedResult } from '../gamestate/opReplay.js';
 import { SAVE_SCHEMA_VERSION, saveSchema, type SaveEnvelope } from '../../../src/game/persistence.js';
 import { isSessionExpired } from './session.js';
-import { applyLand, rollCast, type CastResult, type FishingService, type LandResult } from './service.js';
+import {
+  applyLand, castPlayerPatch, rollCast,
+  type Caught, type CastResult, type FishingService, type LandResult,
+} from './service.js';
 
 const RULESET_VERSION = 'blob-1';
 
+/** The session's mode is `rod` unless it carries a batch. */
+function modeOf(session: { resultCatches: unknown }): 'rod' | 'net' {
+  return session.resultCatches ? 'net' : 'rod';
+}
+
+function recordedCaught(session: typeof fishingSessions.$inferSelect): Caught[] {
+  const rows = session.resultCatches ?? [{ fishId: session.resultFishId ?? '', weight: Number(session.resultWeight ?? 0) }];
+  return rows.map(r => ({ fishId: r.fishId, weight: r.weight, location: session.locationId }));
+}
+
 export function createPgFishingService(db: Database): FishingService {
   return {
-    async cast(userId, idempotencyKey, locationId): Promise<CastResult> {
+    async cast(userId, idempotencyKey, locationId, mode = 'rod'): Promise<CastResult> {
       return db.transaction(async (tx) => {
         const dupe = await tx.select().from(fishingSessions)
           .where(and(eq(fishingSessions.userId, userId), eq(fishingSessions.idempotencyKey, idempotencyKey)))
@@ -21,37 +34,42 @@ export function createPgFishingService(db: Database): FishingService {
           .where(eq(playerGameState.userId, userId)).limit(1).for('update');
         const row = rows[0];
         if (!row) throw new Error('GAME_STATE_NOT_FOUND');
+        const currentPlayer = saveSchema.parse(row.state).player;
 
         if (dupe[0]) {
           const s = dupe[0];
-          return {
-            sessionId: s.id, fishId: s.resultFishId ?? '', weight: Number(s.resultWeight ?? 0),
-            xp: s.resultXp ?? 0, lucky: s.resultLucky,
-            state: { schemaVersion: SAVE_SCHEMA_VERSION, player: saveSchema.parse(row.state).player },
-            version: row.version,
-          };
+          const state: SaveEnvelope = { schemaVersion: SAVE_SCHEMA_VERSION, player: currentPlayer };
+          return modeOf(s) === 'net'
+            ? {
+                sessionId: s.id, mode: 'net', lucky: s.resultLucky, state, version: row.version,
+                net: { id: '', rarity: '', fishCount: s.resultCatches!.length, greenZoneSize: 0.5, speed: 1 },
+                catches: s.resultCatches!,
+              }
+            : {
+                sessionId: s.id, mode: 'rod', lucky: s.resultLucky, state, version: row.version,
+                fishId: s.resultFishId ?? '', weight: Number(s.resultWeight ?? 0), xp: s.resultXp ?? 0,
+              };
         }
 
-        const player = saveSchema.parse(row.state).player;
         const now = Date.now();
-        const roll = rollCast(player, locationId, now);
+        const roll = rollCast(currentPlayer, locationId, mode, now);
 
         const version = row.version + 1;
-        const state: SaveEnvelope = {
-          schemaVersion: SAVE_SCHEMA_VERSION,
-          player: { ...player, luckyUntil: roll.luckyUntil, luckyCooldownUntil: roll.luckyCooldownUntil },
-        };
+        const state: SaveEnvelope = { schemaVersion: SAVE_SCHEMA_VERSION, player: castPlayerPatch(currentPlayer, roll) };
         await tx.update(playerGameState).set({ state, version, updatedAt: new Date() })
           .where(eq(playerGameState.userId, userId));
 
         const [session] = await tx.insert(fishingSessions).values({
           id: randomUUID(), userId, locationId, rulesetVersion: RULESET_VERSION, idempotencyKey, status: 'open',
-          resultFishId: roll.fishId, resultWeight: roll.weight.toFixed(2), resultXp: roll.xp, resultLucky: roll.lucky,
+          resultLucky: roll.lucky,
+          ...(roll.mode === 'net'
+            ? { resultCatches: roll.catches }
+            : { resultFishId: roll.fishId, resultWeight: roll.weight.toFixed(2), resultXp: roll.xp }),
         }).returning();
 
-        return {
-          sessionId: session.id, fishId: roll.fishId, weight: roll.weight, xp: roll.xp, lucky: roll.lucky, state, version,
-        };
+        return roll.mode === 'net'
+          ? { sessionId: session.id, mode: 'net', net: roll.net, catches: roll.catches, lucky: roll.lucky, state, version }
+          : { sessionId: session.id, mode: 'rod', fishId: roll.fishId, weight: roll.weight, xp: roll.xp, lucky: roll.lucky, state, version };
       });
     },
 
@@ -77,9 +95,7 @@ export function createPgFishingService(db: Database): FishingService {
           return {
             state: { schemaVersion: SAVE_SCHEMA_VERSION, player: saveSchema.parse(blob.state).player },
             version: blob.version,
-            caught: {
-              fishId: session.resultFishId ?? '', weight: Number(session.resultWeight ?? 0), location: session.locationId,
-            },
+            caught: recordedCaught(session),
           };
         }
         if (session.status === 'expired' || isSessionExpired(session.createdAt)) {
@@ -90,9 +106,11 @@ export function createPgFishingService(db: Database): FishingService {
 
         const now = Date.now();
         const applied = applyLand(saveSchema.parse(blob.state).player, {
-          resultFishId: session.resultFishId ?? '',
-          resultWeight: Number(session.resultWeight ?? 0),
+          mode: modeOf(session),
           locationId: session.locationId,
+          resultFishId: session.resultFishId,
+          resultWeight: session.resultWeight === null ? null : Number(session.resultWeight),
+          resultCatches: session.resultCatches,
         }, now);
         const version = blob.version + 1;
         const state: SaveEnvelope = { schemaVersion: SAVE_SCHEMA_VERSION, player: applied.player };

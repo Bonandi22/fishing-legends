@@ -23,6 +23,7 @@ describe('memory fishing service', () => {
     const svc = createMemoryFishingService(store);
 
     const res = await svc.cast('u1', 'cast-key-aaaaaaaaaaaa', 'atlantic');
+    if (res.mode !== 'rod') throw new Error('expected a rod cast');
     expect(res.version).toBe(2);
     expect(typeof res.fishId).toBe('string');
     expect(res.weight).toBeGreaterThan(0);
@@ -60,9 +61,11 @@ describe('memory fishing service', () => {
     store.set('u1', { state: blob(), updatedAt: 'now', version: 1 });
     const svc = createMemoryFishingService(store);
     const cast = await svc.cast('u1', 'cast-key-eeeeeeeeeeee', 'atlantic');
+    if (cast.mode !== 'rod') throw new Error('expected a rod cast');
     const land = await svc.land('u1', 'land-key-eeeeeeeeeeee', cast.sessionId);
     expect(land.version).toBe(3);
-    expect(land.caught.fishId).toBe(cast.fishId);
+    expect(land.caught).toHaveLength(1);
+    expect(land.caught[0].fishId).toBe(cast.fishId);
     expect(land.state.player.warehouse).toHaveLength(1);
     expect(land.state.player.totalFishCaught).toBe(1);
   });
@@ -93,5 +96,56 @@ describe('memory fishing service', () => {
     const svc = createMemoryFishingService(createMemoryGameStateStore());
     await expect(svc.land('u1', 'land-key-hhhhhhhhhhhh', '00000000-0000-0000-0000-000000000000'))
       .rejects.toThrow('INVALID_FISHING_SESSION');
+  });
+});
+
+describe('memory fishing service — net mode', () => {
+  it('cast net: decrements nets, rolls a full batch, writes lucky window, version +1', async () => {
+    const store = createMemoryGameStateStore();
+    store.set('u1', { state: blob({ nets: 3, level: 8, unlockedLocations: ['titicaca'] }), updatedAt: 'now', version: 1 });
+    const svc = createMemoryFishingService(store);
+
+    const res = await svc.cast('u1', 'cast-net-aaaaaaaaaaaa', 'titicaca', 'net');
+    if (res.mode !== 'net') throw new Error('expected a net cast');
+    expect(res.version).toBe(2);
+    expect(res.catches).toHaveLength(res.net.fishCount);
+    expect((store.get('u1')!.state as { player: { nets: number } }).player.nets).toBe(2);
+  });
+
+  it('cast net with no nets -> NO_NETS, nothing written', async () => {
+    const store = createMemoryGameStateStore();
+    store.set('u1', { state: blob({ nets: 0, level: 8, unlockedLocations: ['titicaca'] }), updatedAt: 'now', version: 1 });
+    const svc = createMemoryFishingService(store);
+    await expect(svc.cast('u1', 'cast-net-bbbbbbbbbbbb', 'titicaca', 'net')).rejects.toThrow('NO_NETS');
+    expect(store.get('u1')!.version).toBe(1);
+  });
+
+  it('cast net still honours the location level gate', async () => {
+    const store = createMemoryGameStateStore();
+    store.set('u1', { state: blob({ nets: 3, level: 1 }), updatedAt: 'now', version: 1 });
+    const svc = createMemoryFishingService(store);
+    await expect(svc.cast('u1', 'cast-net-cccccccccccc', 'abyss-trench', 'net')).rejects.toThrow('LOCATION_LOCKED');
+  });
+
+  it('land a net session applies the whole batch with fromNet xp, caught[] length = batch', async () => {
+    const store = createMemoryGameStateStore();
+    store.set('u1', { state: blob({ nets: 3, level: 8, unlockedLocations: ['titicaca'], xp: 0, xpToNextLevel: 100000 }), updatedAt: 'now', version: 1 });
+    const svc = createMemoryFishingService(store);
+    const cast = await svc.cast('u1', 'cast-net-dddddddddddd', 'titicaca', 'net');
+    if (cast.mode !== 'net') throw new Error('expected a net cast');
+    const land = await svc.land('u1', 'land-net-dddddddddddd', cast.sessionId);
+    expect(land.caught).toHaveLength(cast.catches.length);
+    expect(land.state.player.warehouse.length + land.state.player.aquariumWarehouse.length).toBe(cast.catches.length);
+    expect(land.state.player.totalFishCaught).toBe(cast.catches.length);
+  });
+
+  it('net land replays: identical body, batch not doubled', async () => {
+    const store = createMemoryGameStateStore();
+    store.set('u1', { state: blob({ nets: 3, level: 8, unlockedLocations: ['titicaca'] }), updatedAt: 'now', version: 1 });
+    const svc = createMemoryFishingService(store);
+    const cast = await svc.cast('u1', 'cast-net-eeeeeeeeeeee', 'titicaca', 'net');
+    const a = await svc.land('u1', 'land-net-eeeeeeeeeeee', cast.sessionId);
+    const b = await svc.land('u1', 'land-net-eeeeeeeeeeee', cast.sessionId);
+    expect(b).toEqual(a);
   });
 });

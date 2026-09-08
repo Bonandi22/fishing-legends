@@ -51,10 +51,11 @@ describe('pg fishing service (integration)', () => {
     await gameState.put(userId, blob(), null);
 
     const cast = await fishing.cast(userId, 'cast-int-aaaaaaaa', 'atlantic');
+    if (cast.mode !== 'rod') throw new Error('expected a rod cast');
     expect(cast.version).toBe(2);
     const land = await fishing.land(userId, 'land-int-aaaaaaaa', cast.sessionId);
     expect(land.version).toBe(3);
-    expect(land.caught.fishId).toBe(cast.fishId);
+    expect(land.caught[0].fishId).toBe(cast.fishId);
     expect(land.state.player.warehouse).toHaveLength(1);
 
     const sessions = await harness.db.select().from(fishingSessions).where(eq(fishingSessions.userId, userId));
