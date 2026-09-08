@@ -314,3 +314,89 @@ describe('memory game-state economy service — purchaseSkin', () => {
     expect(store.get('u1')!.version).toBe(3);        // net -> 2, skin -> 3
   });
 });
+
+describe('memory game-state economy service — reward ops', () => {
+  it('claimDailyGift: grants day 1 (150 coins), version bump, reward in the result', async () => {
+    const store = createMemoryGameStateStore();
+    store.set('u1', { state: withCoins({ coins: 0 }), updatedAt: 'now', version: 1 });
+    const svc = createMemoryGameStateEconomyService(store);
+
+    const res = await svc.claimDailyGift('u1', 'gift-key-aaaaaaaaaaaa');
+
+    expect(res.version).toBe(2);
+    expect(res.state.player.coins).toBe(150);
+    expect(res.reward).toEqual({ type: 'coins', amount: 150 });
+    expect(res.state.player.dailyGiftsDay).toBe(2);
+  });
+
+  it('claimDailyGift replays the same key without granting twice', async () => {
+    const store = createMemoryGameStateStore();
+    store.set('u1', { state: withCoins({ coins: 0 }), updatedAt: 'now', version: 1 });
+    const svc = createMemoryGameStateEconomyService(store);
+    const first = await svc.claimDailyGift('u1', 'gift-key-bbbbbbbbbbbb');
+    const replay = await svc.claimDailyGift('u1', 'gift-key-bbbbbbbbbbbb');
+    expect(replay).toEqual(first);
+    expect(store.get('u1')!.version).toBe(2);
+  });
+
+  it('claimDailyGift twice with distinct keys same day → DAILY_GIFT_ALREADY_CLAIMED', async () => {
+    const store = createMemoryGameStateStore();
+    store.set('u1', { state: withCoins({ coins: 0 }), updatedAt: 'now', version: 1 });
+    const svc = createMemoryGameStateEconomyService(store);
+    await svc.claimDailyGift('u1', 'gift-key-cccccccccccc');
+    await expect(svc.claimDailyGift('u1', 'gift-key-dddddddddddd')).rejects.toThrow('DAILY_GIFT_ALREADY_CLAIMED');
+    expect(store.get('u1')!.version).toBe(2);
+  });
+
+  it('spinRoulette: applies a reward, bumps version, marks lastRouletteDate', async () => {
+    const store = createMemoryGameStateStore();
+    store.set('u1', { state: withCoins({ coins: 0 }), updatedAt: 'now', version: 3 });
+    const svc = createMemoryGameStateEconomyService(store);
+    const res = await svc.spinRoulette('u1', 'roul-key-aaaaaaaaaaaa');
+    expect(res.version).toBe(4);
+    expect(res.reward).toBeDefined();
+    expect(typeof res.state.player.lastRouletteDate).toBe('string');
+  });
+
+  it('spinRoulette twice with distinct keys same day → ROULETTE_ALREADY_USED', async () => {
+    const store = createMemoryGameStateStore();
+    store.set('u1', { state: withCoins({ coins: 0 }), updatedAt: 'now', version: 1 });
+    const svc = createMemoryGameStateEconomyService(store);
+    await svc.spinRoulette('u1', 'roul-key-bbbbbbbbbbbb');
+    await expect(svc.spinRoulette('u1', 'roul-key-cccccccccccc')).rejects.toThrow('ROULETTE_ALREADY_USED');
+  });
+
+  it('spinSkinRoulette: -1500 coins (± dup refund), a skin reward, version bump', async () => {
+    const store = createMemoryGameStateStore();
+    store.set('u1', { state: withCoins({ coins: 5_000 }), updatedAt: 'now', version: 1 });
+    const svc = createMemoryGameStateEconomyService(store);
+    const res = await svc.spinSkinRoulette('u1', 'skinroul-key-aaaaaa');
+    expect(res.state.player.coins).toBeGreaterThanOrEqual(5_000 - 1_500);
+    expect(res.state.player.coins).toBeLessThanOrEqual(5_000 - 1_500 + 500);
+    expect(res.reward!.type === 'rodSkin' || res.reward!.type === 'boatSkin').toBe(true);
+  });
+
+  it('spinSkinRoulette below the cost → INSUFFICIENT_FUNDS', async () => {
+    const store = createMemoryGameStateStore();
+    store.set('u1', { state: withCoins({ coins: 1_499 }), updatedAt: 'now', version: 1 });
+    const svc = createMemoryGameStateEconomyService(store);
+    await expect(svc.spinSkinRoulette('u1', 'skinroul-key-bbbbbb')).rejects.toThrow('INSUFFICIENT_FUNDS');
+    expect(store.get('u1')!.version).toBe(1);
+  });
+
+  it('F2: a roulette spin does not replay a daily claim under the same key', async () => {
+    const store = createMemoryGameStateStore();
+    store.set('u1', { state: withCoins({ coins: 0 }), updatedAt: 'now', version: 1 });
+    const svc = createMemoryGameStateEconomyService(store);
+    const key = 'shared-key-gift-roul1';
+    await svc.claimDailyGift('u1', key);            // ${u1}:daily_gift_claim:${key}
+    const roul = await svc.spinRoulette('u1', key); // must run fresh
+    expect(roul.state.player.lastRouletteDate).not.toBeNull();
+    expect(store.get('u1')!.version).toBe(3);
+  });
+
+  it('rejects a user with no blob with GAME_STATE_NOT_FOUND', async () => {
+    const svc = createMemoryGameStateEconomyService(createMemoryGameStateStore());
+    await expect(svc.claimDailyGift('ghost', 'gift-key-eeeeeeeeeeee')).rejects.toThrow('GAME_STATE_NOT_FOUND');
+  });
+});

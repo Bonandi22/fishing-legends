@@ -1,3 +1,4 @@
+import { randomInt } from 'node:crypto';
 import { and, eq } from 'drizzle-orm';
 import type { Database } from '../db/client.js';
 import { gameStateOperations, playerGameState } from '../db/schema.js';
@@ -6,8 +7,12 @@ import {
   buyMultiplier as applyMultiplierPurchase,
   buyNet as applyNetPurchase,
   buyOwnedItem as applySkinPurchase,
+  resolveDailyGift,
   sellWarehouse as applyWarehouseSale,
+  spinDailyRoulette,
+  spinSkinRoulette,
 } from '../../../src/game/stateRules.js';
+import type { RewardGrant } from '../../../src/game/rewards.js';
 import { LOCATIONS } from '../../../src/game/data.js';
 import {
   BOAT_SKINS,
@@ -24,34 +29,40 @@ export type SkinKind = 'rod' | 'boat';
 import type { MemoryGameStateStore } from './memoryService.js';
 
 type Player = SaveEnvelope['player'];
-type Result = { state: SaveEnvelope; version: number };
+type Result = { state: SaveEnvelope; version: number; reward?: RewardGrant };
 
 /**
  * A pure blob transformation: takes the parsed envelope, returns the next player
- * state, or throws a mapped domain error (`WAREHOUSE_EMPTY`, `INSUFFICIENT_FUNDS`,
- * `NET_LIMIT_REACHED`, …) BEFORE any write. The stateRules functions return the
- * state unchanged on a failed precondition, so each `compute` checks the
+ * state (and an optional `reward` descriptor for the reward ops), or throws a
+ * mapped domain error (`WAREHOUSE_EMPTY`, `INSUFFICIENT_FUNDS`, `NET_LIMIT_REACHED`,
+ * `ROULETTE_ALREADY_USED`, …) BEFORE any write. Each `compute` checks the
  * preconditions explicitly and only then delegates to the pure rule.
  */
-type Compute = (envelope: SaveEnvelope) => Player;
+type Compute = (envelope: SaveEnvelope) => { player: Player; reward?: RewardGrant };
 
 const OPS = {
   warehouseSell: 'warehouse_sell',
   netPurchase: 'net_purchase',
   multiplierPurchase: 'multiplier_purchase',
   skinPurchase: 'skin_purchase',
+  rouletteSpin: 'roulette_spin',
+  skinRouletteSpin: 'skin_roulette_spin',
+  dailyGiftClaim: 'daily_gift_claim',
 } as const;
 
-function computeSale(envelope: SaveEnvelope): Player {
+const roll = (n: number) => randomInt(n);
+const todayUtc = () => new Date().toISOString().slice(0, 10);
+
+function computeSale(envelope: SaveEnvelope): { player: Player } {
   if (envelope.player.warehouse.length === 0) throw new Error('WAREHOUSE_EMPTY');
-  return applyWarehouseSale(envelope.player, LOCATIONS);
+  return { player: applyWarehouseSale(envelope.player, LOCATIONS) };
 }
 
-function computeNetPurchase(envelope: SaveEnvelope): Player {
+function computeNetPurchase(envelope: SaveEnvelope): { player: Player } {
   const player = envelope.player;
   if ((player.nets ?? NET_LIMIT) >= NET_LIMIT) throw new Error('NET_LIMIT_REACHED');
   if (player.coins < NET_PRICE) throw new Error('INSUFFICIENT_FUNDS');
-  return applyNetPurchase(player);
+  return { player: applyNetPurchase(player) };
 }
 
 function computeMultiplierPurchase(
@@ -59,10 +70,10 @@ function computeMultiplierPurchase(
   type: MultiplierType,
   power: MultiplierPower,
   now: number,
-): Player {
+): { player: Player } {
   const cost = power === 4 ? MULTIPLIER_COST_4X : MULTIPLIER_COST;
   if (envelope.player.coins < cost) throw new Error('INSUFFICIENT_FUNDS');
-  return applyMultiplierPurchase(envelope.player, type, power, now);
+  return { player: applyMultiplierPurchase(envelope.player, type, power, now) };
 }
 
 /**
@@ -70,7 +81,7 @@ function computeMultiplierPurchase(
  * catalog, never from the client. Exclusive skins are roulette-only and cannot be
  * bought here (treated as not found).
  */
-function computeSkinPurchase(envelope: SaveEnvelope, kind: SkinKind, skinId: string): Player {
+function computeSkinPurchase(envelope: SaveEnvelope, kind: SkinKind, skinId: string): { player: Player } {
   const catalog = kind === 'rod' ? ROD_SKINS : BOAT_SKINS;
   const skin = catalog.find(s => s.id === skinId);
   if (!skin || skin.exclusive) throw new Error('SKIN_NOT_FOUND');
@@ -79,7 +90,7 @@ function computeSkinPurchase(envelope: SaveEnvelope, kind: SkinKind, skinId: str
   if (owned.includes(skinId)) throw new Error('SKIN_ALREADY_OWNED');
   if (envelope.player.coins < skin.price) throw new Error('INSUFFICIENT_FUNDS');
 
-  return applySkinPurchase(envelope.player, kind, skinId, skin.price);
+  return { player: applySkinPurchase(envelope.player, kind, skinId, skin.price) };
 }
 
 export interface GameStateEconomyService {
@@ -97,6 +108,9 @@ export interface GameStateEconomyService {
     kind: SkinKind,
     skinId: string,
   ): Promise<Result>;
+  spinRoulette(userId: string, idempotencyKey: string): Promise<Result>;
+  spinSkinRoulette(userId: string, idempotencyKey: string): Promise<Result>;
+  claimDailyGift(userId: string, idempotencyKey: string): Promise<Result>;
 }
 
 /**
@@ -121,11 +135,11 @@ function runMemoryOp(
   const entry = store.get(userId);
   if (!entry) throw new Error('GAME_STATE_NOT_FOUND');
   const envelope = saveSchema.parse(entry.state);
-  const nextPlayer = compute(envelope);
+  const { player: nextPlayer, reward } = compute(envelope);
   const version = entry.version + 1;
   const state: SaveEnvelope = { schemaVersion: SAVE_SCHEMA_VERSION, player: nextPlayer };
   store.set(userId, { state, updatedAt: new Date().toISOString(), version });
-  const result: Result = { state, version };
+  const result: Result = { state, version, ...(reward ? { reward } : {}) };
   ops.set(opKey, result);
   return result;
 }
@@ -181,7 +195,7 @@ function runPgOp(
     if (lockedPriorResult) return lockedPriorResult;
 
     const envelope = saveSchema.parse(row.state);
-    const nextPlayer = compute(envelope);
+    const { player: nextPlayer, reward } = compute(envelope);
     const version = row.version + 1;
     const state: SaveEnvelope = { schemaVersion: SAVE_SCHEMA_VERSION, player: nextPlayer };
 
@@ -189,7 +203,7 @@ function runPgOp(
       .set({ state, version, updatedAt: new Date() })
       .where(eq(playerGameState.userId, userId));
 
-    const result: Result = { state, version };
+    const result: Result = { state, version, ...(reward ? { reward } : {}) };
     await tx.insert(gameStateOperations).values({
       userId,
       idempotencyKey,
@@ -218,6 +232,28 @@ export function createMemoryGameStateEconomyService(store: MemoryGameStateStore)
       return runMemoryOp(store, ops, userId, OPS.skinPurchase, idempotencyKey,
         env => computeSkinPurchase(env, kind, skinId));
     },
+    async spinRoulette(userId, idempotencyKey) {
+      const today = todayUtc();
+      const now = Date.now();
+      return runMemoryOp(store, ops, userId, OPS.rouletteSpin, idempotencyKey, env => {
+        const { next, reward } = spinDailyRoulette(env.player, today, now, roll);
+        return { player: next, reward };
+      });
+    },
+    async spinSkinRoulette(userId, idempotencyKey) {
+      return runMemoryOp(store, ops, userId, OPS.skinRouletteSpin, idempotencyKey, env => {
+        const { next, reward } = spinSkinRoulette(env.player, roll);
+        return { player: next, reward };
+      });
+    },
+    async claimDailyGift(userId, idempotencyKey) {
+      const today = todayUtc();
+      const now = Date.now();
+      return runMemoryOp(store, ops, userId, OPS.dailyGiftClaim, idempotencyKey, env => {
+        const { next, reward } = resolveDailyGift(env.player, today, now);
+        return { player: next, reward };
+      });
+    },
   };
 }
 
@@ -237,6 +273,28 @@ export function createPgGameStateEconomyService(db: Database): GameStateEconomyS
     async purchaseSkin(userId, idempotencyKey, kind, skinId) {
       return runPgOp(db, userId, OPS.skinPurchase, idempotencyKey,
         env => computeSkinPurchase(env, kind, skinId));
+    },
+    async spinRoulette(userId, idempotencyKey) {
+      const today = todayUtc();
+      const now = Date.now();
+      return runPgOp(db, userId, OPS.rouletteSpin, idempotencyKey, env => {
+        const { next, reward } = spinDailyRoulette(env.player, today, now, roll);
+        return { player: next, reward };
+      });
+    },
+    async spinSkinRoulette(userId, idempotencyKey) {
+      return runPgOp(db, userId, OPS.skinRouletteSpin, idempotencyKey, env => {
+        const { next, reward } = spinSkinRoulette(env.player, roll);
+        return { player: next, reward };
+      });
+    },
+    async claimDailyGift(userId, idempotencyKey) {
+      const today = todayUtc();
+      const now = Date.now();
+      return runPgOp(db, userId, OPS.dailyGiftClaim, idempotencyKey, env => {
+        const { next, reward } = resolveDailyGift(env.player, today, now);
+        return { player: next, reward };
+      });
     },
   };
 }
