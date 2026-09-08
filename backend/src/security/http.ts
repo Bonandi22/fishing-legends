@@ -5,10 +5,30 @@ type SecurityOptions = {
   allowedOrigins: string[];
   rateLimitMax: number;
   rateLimitWindowMs: number;
+  authRateLimitMax: number;
+  authRateLimitWindowMs: number;
 };
 
+// Credential endpoints get a second, tighter budget so a brute-force run there
+// cannot hide inside the general gameplay allowance (and vice versa).
+const AUTH_RATE_LIMITED_URLS = new Set(['/api/v1/auth/login', '/api/v1/auth/register']);
+
+type Bucket = { count: number; resetAt: number };
+
+/** Count one hit against `store` for `key`; return true when the caller is over `max`. */
+function overLimit(store: Map<string, Bucket>, key: string, max: number, windowMs: number, now: number): boolean {
+  const current = store.get(key);
+  if (!current || current.resetAt <= now) {
+    store.set(key, { count: 1, resetAt: now + windowMs });
+    return false;
+  }
+  current.count += 1;
+  return current.count > max;
+}
+
 export function registerSecurityHooks(app: FastifyInstance, options: SecurityOptions): void {
-  const requests = new Map<string, { count: number; resetAt: number }>();
+  const requests = new Map<string, Bucket>();
+  const authRequests = new Map<string, Bucket>();
 
   const { allowedOrigins } = options;
 
@@ -52,14 +72,16 @@ export function registerSecurityHooks(app: FastifyInstance, options: SecurityOpt
 
     const key = clientKey(request);
     const now = Date.now();
-    const current = requests.get(key);
-    if (!current || current.resetAt <= now) {
-      requests.set(key, { count: 1, resetAt: now + options.rateLimitWindowMs });
-      return;
+
+    if (request.method === 'POST' && AUTH_RATE_LIMITED_URLS.has(request.url)) {
+      if (overLimit(authRequests, key, options.authRateLimitMax, options.authRateLimitWindowMs, now)) {
+        reply.header('retry-after', Math.ceil((authRequests.get(key)!.resetAt - now) / 1000));
+        return reply.status(429).send({ error: { code: 'RATE_LIMITED', message: 'Too many requests' } });
+      }
     }
-    current.count += 1;
-    if (current.count > options.rateLimitMax) {
-      reply.header('retry-after', Math.ceil((current.resetAt - now) / 1000));
+
+    if (overLimit(requests, key, options.rateLimitMax, options.rateLimitWindowMs, now)) {
+      reply.header('retry-after', Math.ceil((requests.get(key)!.resetAt - now) / 1000));
       return reply.status(429).send({ error: { code: 'RATE_LIMITED', message: 'Too many requests' } });
     }
   });

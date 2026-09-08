@@ -82,6 +82,8 @@ export async function createApp({ config }: AppDependencies): Promise<FastifyIns
     allowedOrigins: config.corsOrigins ?? [],
     rateLimitMax: config.rateLimitMax ?? 120,
     rateLimitWindowMs: config.rateLimitWindowMs ?? 60_000,
+    authRateLimitMax: config.authRateLimitMax ?? 20,
+    authRateLimitWindowMs: config.authRateLimitWindowMs ?? 300_000,
   });
 
   registerErrorHandling(app);

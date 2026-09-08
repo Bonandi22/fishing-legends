@@ -15,6 +15,8 @@ const baseConfig: AppConfig = {
   corsOrigins: [],
   rateLimitMax: 2,
   rateLimitWindowMs: 60_000,
+  authRateLimitMax: 50,
+  authRateLimitWindowMs: 300_000,
   trustProxy: false,
   cookieSecure: false,
 };
@@ -74,6 +76,31 @@ describe('rate limiting', () => {
     expect(second.statusCode).toBe(200);
     expect(third.statusCode).toBe(429);
     expect(third.json().error.code).toBe('RATE_LIMITED');
+  });
+
+  it('applies a tighter dedicated bucket to auth POSTs, separate from the general one', async () => {
+    const app = await createApp({
+      config: { ...baseConfig, rateLimitMax: 100, authRateLimitMax: 3, authRateLimitWindowMs: 300_000 },
+    });
+    apps.add(app);
+
+    const login = () =>
+      app.inject({
+        method: 'POST',
+        url: '/api/v1/auth/login',
+        payload: { email: 'nobody@example.test', password: 'wrong-password' },
+      });
+
+    expect((await login()).statusCode).toBe(401);
+    expect((await login()).statusCode).toBe(401);
+    expect((await login()).statusCode).toBe(401);
+
+    const limited = await login();
+    expect(limited.statusCode).toBe(429);
+    expect(limited.json().error.code).toBe('RATE_LIMITED');
+
+    // A different route is still served — the auth bucket is its own.
+    expect((await app.inject({ method: 'GET', url: '/health' })).statusCode).toBe(200);
   });
 
   it('separates buckets by forwarded client IP when a proxy is trusted', async () => {

@@ -12,6 +12,8 @@ const envSchema = z.object({
   CORS_ORIGINS: z.string().default(''),
   RATE_LIMIT_MAX: z.coerce.number().int().positive().default(120),
   RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(60_000),
+  AUTH_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(20),
+  AUTH_RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(300_000),
   TRUST_PROXY: z.string().default('false'),
   COOKIE_SECURE: z.enum(['true', 'false']).default('true'),
   COOKIE_DOMAIN: z.string().trim().optional(),
@@ -31,6 +33,8 @@ export type AppConfig = {
   corsOrigins: string[];
   rateLimitMax: number;
   rateLimitWindowMs: number;
+  authRateLimitMax: number;
+  authRateLimitWindowMs: number;
   trustProxy: TrustProxy;
   cookieSecure: boolean;
   cookieDomain?: string;
@@ -64,6 +68,8 @@ export function loadConfig(source: NodeJS.ProcessEnv = process.env): AppConfig {
     corsOrigins: parsed.CORS_ORIGINS.split(',').map(value => value.trim()).filter(Boolean),
     rateLimitMax: parsed.RATE_LIMIT_MAX,
     rateLimitWindowMs: parsed.RATE_LIMIT_WINDOW_MS,
+    authRateLimitMax: parsed.AUTH_RATE_LIMIT_MAX,
+    authRateLimitWindowMs: parsed.AUTH_RATE_LIMIT_WINDOW_MS,
     trustProxy: parseTrustProxy(parsed.TRUST_PROXY),
     cookieSecure: parsed.COOKIE_SECURE === 'true',
     cookieDomain: parsed.COOKIE_DOMAIN && parsed.COOKIE_DOMAIN.length > 0 ? parsed.COOKIE_DOMAIN : undefined,
