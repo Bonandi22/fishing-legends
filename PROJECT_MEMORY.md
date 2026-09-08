@@ -1948,25 +1948,29 @@ Quinta op. **Muda de padrão: RNG e portas temporais no servidor.** Branch
   ganhou `pirate`); 3 linhas `game_state_operations` com `reward`, estado correto,
   **sem `PUT /me/state` redundante**, botões de cooldown desativam; anónimo → regra
   local, revelação ok.
+- **Integrado na `main`**: PR `Bonandi22/deep-blue-lure#25` merged em `4c88b7c`.
+  Branch `feature/task-10-3-roulettes-daily-gifts` apagada. `main` verde (384 unit
+  + 73 integração). Nota de processo: **`docker compose restart frontend` antes de
+  cada smoke** — o Vite no contentor não faz HMR das mudanças bind-mounted neste
+  host; e usar Playwright MCP (a extensão Chrome congela).
 
-### Ponto de parada — 2026-09-08 (fatia 4 integrada)
+### Ponto de parada — 2026-09-08 (fatia 5 integrada)
 
-- `main` em `2947291`, sincronizada com `origin/main`, worktree limpo (`.claude/`
+- `main` em `4c88b7c`, sincronizada com `origin/main`, worktree limpo (`.claude/`
   fica untracked — settings local do harness; candidato a `.gitignore` à parte).
 - **Task 10.1** (auth foundation + persistência de estado), **10.2** (guarda de versão
-  + pull periódico), **limpeza** do fluxo de import, e **10.3 fatias 1–4** (venda do
-  armazém, compra de rede, compra de multiplicador, compra de skin) — todas
-  integradas e verificadas.
-- **Retomar por**: Task 10.3 **fatia 5 — roletas e prendas diárias**. Muda de padrão:
-  RNG e limite diário passam a ser **server-side** (o cliente não pode sortear nem
-  decidir quando já reclamou). Design próprio — ainda não acordado. Endpoints
-  prováveis: `POST /api/v1/me/economy/roulette/spin`, `.../skin-roulette/spin`,
-  `.../daily-gift/claim`. Ver `Roulette.tsx`, `SkinRoulette.tsx`, `DailyGifts.tsx`
-  e as regras em `src/game/` (`claimDailyGift`, `setLastRouletteDate`).
-- Infra do padrão pronta: `runMemoryOp`/`runPgOp` + `runEconomyOp` no cliente
-  (`Index.tsx`), PK `game_state_operations` com `operation`, suporte a body com Zod
-  (`economyRoutes.ts` já usa `withTypeProvider<ZodTypeProvider>`).
-- Depois da fatia 5: captura e aquário. E a limpeza dos endpoints dormentes
-  `/api/v1/economy/*` + `/api/v1/inventory/*` quando tudo estiver migrado.
+  + pull periódico), **limpeza** do fluxo de import, e **10.3 fatias 1–5** (venda do
+  armazém, compra de rede, compra de multiplicador, compra de skin, roletas + prendas
+  diárias) — todas integradas e verificadas.
+- **Retomar por**: Task 10.3 **fatia 6 — captura + aquário** (a maior). Mover o sorteio
+  de peixe (`rollFish` + raridade + peso, de `fishingLogic.ts`, com localização e
+  multiplicadores do blob) para o servidor. Já existe `/api/v1/fishing/sessions` +
+  `/complete`, mas contra o modelo antigo e a ignorar raridade — reescrever sobre o
+  blob. Precisa de spec própria (SDD). Ver `docs/analysis/task-10-roadmap.md` §Fatia 6.
+- Infra do padrão pronta: `runMemoryOp`/`runPgOp` + `runEconomyOp`/`runRewardOp` no
+  cliente (`Index.tsx`), PK `game_state_operations` com `operation`, `Compute`
+  devolve `{ player, reward? }`, `src/game/rewards.ts` para tabelas partilhadas.
+- Depois da fatia 6: ranking + temporada (leitura), depois a limpeza dos endpoints
+  dormentes `/api/v1/economy/*` + `/api/v1/inventory/*` + `/api/v1/rewards/daily/claim`.
 - Stack Docker fica de pé; a BD de dev partilha instância com os testes de integração
   (as contas de smoke são truncadas entre corridas — criar conta nova a cada smoke).
