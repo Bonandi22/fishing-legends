@@ -51,9 +51,6 @@ jobs:
     name: Dependency audit (advisory)
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    # Advisory only: known transitive vulns are tracked separately (see CLAUDE.md).
-    # This surfaces new advisories in the PR checks without blocking the merge.
-    continue-on-error: true
 
     steps:
       - name: Checkout
@@ -68,8 +65,15 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # Advisory only: known transitive vulns are tracked separately (see
+      # CLAUDE.md). The step never fails the check — it writes the report to the
+      # job summary so a new advisory is visible without blocking the merge.
       - name: npm audit (high and critical)
-        run: npm audit --audit-level=high
+        run: |
+          echo '## npm audit (high+critical)' >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          npm audit --audit-level=high >> "$GITHUB_STEP_SUMMARY" 2>&1 || true
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
 
   integration:
     name: Backend integration (PostgreSQL)
