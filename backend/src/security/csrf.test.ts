@@ -7,7 +7,7 @@ const config: AppConfig = {
   environment: 'test', host: '127.0.0.1', port: 8090,
   accessTokenSecret: Buffer.from('test-secret-that-is-at-least-32-bytes-long'),
   logLevel: 'silent', accessTokenTtlSeconds: 900, refreshTokenTtlSeconds: 2_592_000,
-  corsOrigins: [], rateLimitMax: 1000, rateLimitWindowMs: 60_000, trustProxy: false, cookieSecure: false,
+  corsOrigins: [], rateLimitMax: 1000, rateLimitWindowMs: 60_000, authRateLimitMax: 1000, authRateLimitWindowMs: 300_000, trustProxy: false, cookieSecure: false,
 };
 const apps = new Set<Awaited<ReturnType<typeof createApp>>>();
 afterEach(async () => { await Promise.all([...apps].map(a => a.close())); apps.clear(); });

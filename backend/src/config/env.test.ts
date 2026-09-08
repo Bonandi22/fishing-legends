@@ -23,6 +23,22 @@ const base = {
   ACCESS_TOKEN_SECRET: 'x'.repeat(32),
 };
 
+describe('loadConfig rate limiting', () => {
+  it('defaults the auth bucket to 20 attempts per 5 minutes', () => {
+    const config = loadConfig({ ...base } as NodeJS.ProcessEnv);
+    expect(config.authRateLimitMax).toBe(20);
+    expect(config.authRateLimitWindowMs).toBe(300_000);
+  });
+
+  it('reads AUTH_RATE_LIMIT_MAX and AUTH_RATE_LIMIT_WINDOW_MS', () => {
+    const config = loadConfig({
+      ...base, AUTH_RATE_LIMIT_MAX: '5', AUTH_RATE_LIMIT_WINDOW_MS: '60000',
+    } as NodeJS.ProcessEnv);
+    expect(config.authRateLimitMax).toBe(5);
+    expect(config.authRateLimitWindowMs).toBe(60_000);
+  });
+});
+
 describe('loadConfig cookie settings', () => {
   it('defaults cookieSecure to true and leaves cookieDomain undefined', () => {
     const config = loadConfig({ ...base } as NodeJS.ProcessEnv);

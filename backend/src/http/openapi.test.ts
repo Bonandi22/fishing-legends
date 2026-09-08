@@ -16,6 +16,8 @@ const config: AppConfig = {
   corsOrigins: [],
   rateLimitMax: 120,
   rateLimitWindowMs: 60_000,
+  authRateLimitMax: 1000,
+  authRateLimitWindowMs: 300_000,
   trustProxy: false,
   cookieSecure: false,
 };
