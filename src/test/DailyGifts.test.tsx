@@ -16,12 +16,14 @@ function makePlayer(over: Partial<PlayerState> = {}): PlayerState {
   };
 }
 
-function renderGifts(over: Partial<PlayerState> = {}) {
-  const onClaim = vi.fn();
+function renderGifts(
+  over: Partial<PlayerState> = {},
+  onClaim: () => Promise<unknown> = vi.fn().mockResolvedValue({ type: 'coins', amount: 150 }),
+) {
   const onBack = vi.fn();
   render(
     <I18nProvider>
-      <DailyGifts player={makePlayer(over)} onClaim={onClaim} onBack={onBack} />
+      <DailyGifts player={makePlayer(over)} onClaim={onClaim as () => Promise<never>} onBack={onBack} />
     </I18nProvider>,
   );
   return { onClaim, onBack };
@@ -32,14 +34,15 @@ const today = new Date().toISOString().slice(0, 10);
 beforeEach(() => cleanup());
 
 describe('DailyGifts', () => {
-  it('claims the current day and shows the reward popup', () => {
-    const { onClaim } = renderGifts({ dailyGiftsLastClaim: null, dailyGiftsDay: 1 });
+  it('claims the current day and shows the reward returned by the server', async () => {
+    const onClaim = vi.fn().mockResolvedValue({ type: 'coins', amount: 150 });
+    renderGifts({ dailyGiftsLastClaim: null, dailyGiftsDay: 1 }, onClaim);
 
     fireEvent.click(screen.getByRole('button', { name: /resgatar dia 1/i }));
 
     expect(onClaim).toHaveBeenCalledTimes(1);
-    // day 1 of week 1 is 150 coins
-    expect(within(screen.getByRole('dialog')).getByText(/150/)).toBeInTheDocument();
+    const dialog = await screen.findByRole('dialog');
+    expect(within(dialog).getByText(/150/)).toBeInTheDocument();
   });
 
   it('disables claiming once today\'s gift is taken', () => {
