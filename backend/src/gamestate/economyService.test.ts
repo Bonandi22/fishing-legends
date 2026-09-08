@@ -3,6 +3,7 @@ import { createMemoryGameStateStore } from './memoryService.js';
 import { createMemoryGameStateEconomyService } from './economyService.js';
 import { SAVE_SCHEMA_VERSION } from '../../../src/game/persistence.js';
 import { FISH } from '../../../src/game/data.js';
+import { AQUARIUM_REWARDS } from '../../../src/game/types.js';
 
 const withFish = (over: Record<string, unknown> = {}) => ({
   schemaVersion: SAVE_SCHEMA_VERSION,
@@ -398,5 +399,46 @@ describe('memory game-state economy service — reward ops', () => {
   it('rejects a user with no blob with GAME_STATE_NOT_FOUND', async () => {
     const svc = createMemoryGameStateEconomyService(createMemoryGameStateStore());
     await expect(svc.claimDailyGift('ghost', 'gift-key-eeeeeeeeeeee')).rejects.toThrow('GAME_STATE_NOT_FOUND');
+  });
+});
+
+describe('memory game-state economy service — placeAquariumFish', () => {
+  const withAquariumFish = (over: Record<string, unknown> = {}) => withCoins({
+    coins: 100, xp: 0, xpToNextLevel: 999999,
+    aquariumWarehouse: [{ fish: FISH[0], weight: 1.5, location: 'atlantic', timestamp: 42 }],
+    ...over,
+  });
+
+  it('moves the fish into the sector, adds AQUARIUM_REWARDS coins+xp, bumps version', async () => {
+    const store = createMemoryGameStateStore();
+    store.set('u1', { state: withAquariumFish(), updatedAt: 'now', version: 4 });
+    const svc = createMemoryGameStateEconomyService(store);
+
+    const res = await svc.placeAquariumFish('u1', 'aqua-key-aaaaaaaaaaaa', 42, 3);
+
+    expect(res.version).toBe(5);
+    expect(res.state.player.aquariumWarehouse).toEqual([]);
+    expect(res.state.player.aquariumSectors[3]).toHaveLength(1);
+    expect(res.state.player.coins).toBe(100 + AQUARIUM_REWARDS[FISH[0].rarity].coins);
+    expect(res.state.player.xp).toBe(AQUARIUM_REWARDS[FISH[0].rarity].xp);
+    expect(store.get('u1')!.version).toBe(5);
+  });
+
+  it('replays the same key without moving the fish or rewards again', async () => {
+    const store = createMemoryGameStateStore();
+    store.set('u1', { state: withAquariumFish(), updatedAt: 'now', version: 1 });
+    const svc = createMemoryGameStateEconomyService(store);
+    const a = await svc.placeAquariumFish('u1', 'aqua-key-bbbbbbbbbbbb', 42, 2);
+    const b = await svc.placeAquariumFish('u1', 'aqua-key-bbbbbbbbbbbb', 42, 2);
+    expect(b).toEqual(a);
+    expect(store.get('u1')!.version).toBe(2);
+  });
+
+  it('an unknown timestamp -> AQUARIUM_FISH_NOT_FOUND, nothing written', async () => {
+    const store = createMemoryGameStateStore();
+    store.set('u1', { state: withAquariumFish(), updatedAt: 'now', version: 1 });
+    const svc = createMemoryGameStateEconomyService(store);
+    await expect(svc.placeAquariumFish('u1', 'aqua-key-cccccccccccc', 999, 1)).rejects.toThrow('AQUARIUM_FISH_NOT_FOUND');
+    expect(store.get('u1')!.version).toBe(1);
   });
 });

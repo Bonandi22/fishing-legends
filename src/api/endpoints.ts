@@ -55,6 +55,10 @@ export function claimDailyGift(idempotencyKey: string): Promise<RewardEnvelope> 
   return apiFetch('/me/economy/daily-gift/claim', { method: 'POST', idempotencyKey });
 }
 
+export function placeAquariumFish(idempotencyKey: string, timestamp: number, sector: number): Promise<GameStateEnvelope> {
+  return apiFetch('/me/economy/aquarium/place', { method: 'POST', body: { timestamp, sector }, idempotencyKey });
+}
+
 export type FishMode = 'rod' | 'net' | 'submarine';
 export interface NetInfo { id: string; rarity: string; fishCount: number; greenZoneSize: number; speed: number }
 export interface BatchEntry { fishId: string; weight: number }
