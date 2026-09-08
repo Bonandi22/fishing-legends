@@ -2014,6 +2014,56 @@ plano `docs/superpowers/plans/2026-09-08-server-fishing-catch-6a.md` (15 tarefas
   Branch `feature/task-10-3-fishing-catch-6a` apagada. `main` verde (406 unit + 72
   integração).
 
+### Task 10.3 fatia 6b-1 — captura à rede server-autoritativa — 2026-09-08
+
+Segunda das 3 sub-fatias da captura (6b = rede + submarino; 6b-1 = rede). Mesmo
+`cast`/`land` do 6a, agora com lote. Branch `feature/task-10-3-fishing-catch-6b1`.
+Spec `docs/superpowers/specs/2026-09-08-server-fishing-catch-6b.md` (M1–M5, §6b-1),
+plano `.../plans/2026-09-08-server-fishing-catch-6b1-net.md` (10 tarefas,
+`executing-plans`, inline).
+
+- **Modelo partilhado**: `cast` body ganha `mode: 'rod'|'net'|'submarine'` (default
+  `rod`); `land` body ganha `fishId?` (aceite, só usado no 6b-2). Coluna
+  `fishing_sessions.result_catches jsonb` (migração `0020`) — `rod` usa
+  `result_fish_id/weight/xp`, `net` usa `result_catches`; o mode infere-se de
+  `result_catches != null`. `LandResult.caught` passa a **array** (rod = 1 elemento).
+- **`src/game/netTypes.ts`** (movido de `src/components/game/netfishing/`) — `NET_TYPES`
+  + `rollNet(random)`. O caminho antigo re-exporta.
+- **Backend**: `rollCast(player, locationId, mode, now)` devolve `RodRoll | NetRoll`
+  discriminado; net verifica `nets >= 1` (senão `NO_NETS`, 409, código novo),
+  decrementa `nets` no blob, sorteia `NetType` + `fishCount` peixes da rarity da
+  rede (fallback: pool da localização). `applyLand` lê `result_catches` e chama
+  `applyCatch(..., { fromNet: true })`. Helpers partilhados `castPlayerPatch` /
+  `castResultFor` / `sessionRowFor`. Memória + PG.
+- **Frontend**: `endpoints.castLine(key, loc, mode)` / `landCatch(key, sid, fishId?)`;
+  `CastResult` discriminado (`RodCast | NetCast`), `LandResult.caught` array.
+  `Index.handleCast(loc, mode)` roteia net/rod (servidor ou roll local — o roll
+  anónimo de rede decrementa `nets` via `replaceFromServer`); `handleLand` é
+  batch-aware. `Hooked = RodHooked | NetHooked`. **A rede consome-se no `cast`** —
+  `Index` deixa de chamar `consumeNet` ao entrar no ecrã de rede; `NetFishing`
+  deixa de chamar `onUseNet`.
+- **`NetFishing`** reescrito: lança a rede no mount via `onCast(_, 'net')`, corre o
+  minigame com `net.{greenZoneSize,speed}` do servidor, pull-verde → `onLand` →
+  revelação do lote de `hooked.catches`; pull-vermelho ou `land` falhado → rede
+  vazia. `handleNetCatch`/`consumeNet` removidos do `Index`; `handleCatch` só serve
+  o submarino agora (6b-2 remove-o).
+- Sem mudança de balanceamento (`NET_TYPES`, sorteio de peso, `fromNet` XP ×0.3).
+- Testes: `netTypes.test.ts` (+2, novo), `service.test.ts` (+6 net), `routes.test.ts`
+  (+2), `pgRepository.integration.test.ts` (+2), `endpoints.test.ts` (+2 reescritos),
+  `NetFishing.test.tsx` (reescrito), `FishingScreen`/`app`/`pg` 6a tests ajustados
+  a `caught[]`.
+- Verificação: `tsc app` ✅ · `backend:typecheck` ✅ · `lint` ✅ 0 erros · `npm test`
+  ✅ **416** · `build` ✅ · `test:integration` ✅ **74**.
+- Smoke browser (Playwright, stack Docker, conta nova nível 8 + 5 redes semeados):
+  lago Titicaca → "Lançar a rede" → `POST .../fishing/cast { mode: net }` 200
+  (servidor sorteou "Rede Abissal / 5 peixes", `result_lucky: t`), minigame no
+  cliente, pull-verde → `POST .../fishing/land` 200 → "Recebeste 5 peixes" com o
+  lote do servidor. 4 redes lançadas: 4 op rows `fishing_land` (lotes 5/8/4/8),
+  `nets` 5→1, armazém 15 (cheio) + `aquariumWarehouse` 12 (overflow do `applyCatch`),
+  4 sessões `completed`. Um 409 na consola durante o mashing agressivo do smoke
+  (`STATE_VERSION_CONFLICT` entre um `PUT` de flush e um `cast` — comportamento de
+  concorrência otimista pré-existente, o cliente retenta).
+
 ### Ponto de parada — 2026-09-08 (fatia 6a integrada)
 
 - `main` em `a35f7dc`, sincronizada com `origin/main`, worktree limpo (`.claude/`
