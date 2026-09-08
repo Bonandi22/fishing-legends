@@ -66,14 +66,16 @@ describe('endpoints', () => {
     expect(spy).toHaveBeenCalledWith('/me/fishing/cast', { method: 'POST', body: { locationId: 'atlantic', mode: 'rod' }, idempotencyKey: 'idem-key-castcast0001' });
     await castLine('idem-key-castnet00001', 'titicaca', 'net');
     expect(spy).toHaveBeenLastCalledWith('/me/fishing/cast', { method: 'POST', body: { locationId: 'titicaca', mode: 'net' }, idempotencyKey: 'idem-key-castnet00001' });
+    await castLine('idem-key-castsub00001', 'submarine', 'submarine');
+    expect(spy).toHaveBeenLastCalledWith('/me/fishing/cast', { method: 'POST', body: { locationId: 'submarine', mode: 'submarine' }, idempotencyKey: 'idem-key-castsub00001' });
   });
 
-  it('landCatch omits fishId when not given, includes it when given', async () => {
+  it('landCatch omits catchId when not given, includes it when given', async () => {
     const spy = vi.spyOn(client, 'apiFetch').mockResolvedValue({} as never);
     await landCatch('idem-key-landland0001', 'sess-1');
     expect(spy).toHaveBeenCalledWith('/me/fishing/land', { method: 'POST', body: { sessionId: 'sess-1' }, idempotencyKey: 'idem-key-landland0001' });
-    await landCatch('idem-key-landland0002', 'sess-1', 'atum');
-    expect(spy).toHaveBeenLastCalledWith('/me/fishing/land', { method: 'POST', body: { sessionId: 'sess-1', fishId: 'atum' }, idempotencyKey: 'idem-key-landland0002' });
+    await landCatch('idem-key-landland0002', 'sess-1', 'c-42');
+    expect(spy).toHaveBeenLastCalledWith('/me/fishing/land', { method: 'POST', body: { sessionId: 'sess-1', catchId: 'c-42' }, idempotencyKey: 'idem-key-landland0002' });
   });
 
   it('spinRoulette POSTs /me/economy/roulette/spin with the idempotency key', async () => {

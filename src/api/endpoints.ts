@@ -60,14 +60,15 @@ export interface NetInfo { id: string; rarity: string; fishCount: number; greenZ
 export interface BatchEntry { fishId: string; weight: number }
 
 type CastBase = GameStateEnvelope & { sessionId: string; lucky: boolean };
-export type CastResult =
-  | (CastBase & { mode: 'rod'; fishId: string; weight: number; xp: number })
-  | (CastBase & { mode: 'net'; net: NetInfo; catches: BatchEntry[] });
+export type RodCast = CastBase & { mode: 'rod'; fishId: string; weight: number; xp: number };
+export type NetCast = CastBase & { mode: 'net'; net: NetInfo; catches: BatchEntry[] };
+export type SubmarineCast = CastBase & { mode: 'submarine'; catches: Array<{ id: string; fishId: string; weight: number }> };
+export type CastResult = RodCast | NetCast | SubmarineCast;
 export type LandResult = GameStateEnvelope & { caught: Array<{ fishId: string; weight: number; location: string }> };
 
 export function castLine(idempotencyKey: string, locationId: string, mode: FishMode = 'rod'): Promise<CastResult> {
   return apiFetch('/me/fishing/cast', { method: 'POST', body: { locationId, mode }, idempotencyKey });
 }
-export function landCatch(idempotencyKey: string, sessionId: string, fishId?: string): Promise<LandResult> {
-  return apiFetch('/me/fishing/land', { method: 'POST', body: { sessionId, ...(fishId ? { fishId } : {}) }, idempotencyKey });
+export function landCatch(idempotencyKey: string, sessionId: string, catchId?: string): Promise<LandResult> {
+  return apiFetch('/me/fishing/land', { method: 'POST', body: { sessionId, ...(catchId ? { catchId } : {}) }, idempotencyKey });
 }
