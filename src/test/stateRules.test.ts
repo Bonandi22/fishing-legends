@@ -10,9 +10,20 @@ import {
   getUnlockedLocationIds,
   grantOwnedItem,
   placeAquariumFish,
+  resolveDailyGift,
   sellWarehouse,
   spendCoins,
+  spinDailyRoulette,
+  spinSkinRoulette,
 } from '@/game/stateRules';
+import { ROD_SKINS } from '@/game/types';
+import { SKIN_ROULETTE_COST } from '@/game/rewards';
+
+/** A roll() stub: returns queued values in order, then 0. */
+const queuedRoll = (...vals: number[]) => {
+  const q = [...vals];
+  return () => (q.length ? q.shift()! : 0);
+};
 
 const player = {
   level: 1, xp: 0, xpToNextLevel: 100, totalFishCaught: 0, collection: [],
@@ -85,5 +96,122 @@ describe('state rules', () => {
     expect(placed.aquariumWarehouse).toEqual([]);
     expect(placed.aquariumSectors[1]).toHaveLength(1);
     expect(placed.coins).toBe(6005);
+  });
+});
+
+describe('resolveDailyGift', () => {
+  const base = { ...player, coins: 1000, dailyGiftsLastClaim: null, dailyGiftsDay: 1, dailyGiftsWeek: 1 };
+
+  it('grants day 1 of week 1 (150 coins) and advances to day 2', () => {
+    const { next, reward } = resolveDailyGift(base, '2026-09-08', 1_000_000);
+    expect(reward).toEqual({ type: 'coins', amount: 150 });
+    expect(next.coins).toBe(1150);
+    expect(next.dailyGiftsLastClaim).toBe('2026-09-08');
+    expect(next.dailyGiftsDay).toBe(2);
+    expect(next.dailyGiftsWeek).toBe(1);
+  });
+
+  it('grants the day 3 luck multiplier ending now + MULTIPLIER_DURATION', () => {
+    const { next, reward } = resolveDailyGift({ ...base, dailyGiftsDay: 3 }, '2026-09-08', 5_000);
+    expect(reward).toEqual({ type: 'multiplier', kind: 'luck' });
+    expect(next.luckMultiplierEnd).toBe(5_000 + 60_000);
+  });
+
+  it('grants the day 7 rod skin, wraps to day 1 and bumps the week', () => {
+    const { next, reward } = resolveDailyGift({ ...base, dailyGiftsDay: 7 }, '2026-09-08', 0);
+    expect(reward).toEqual({ type: 'rodSkin', skinId: 'daily_aurora' });
+    expect(next.ownedSkins).toContain('daily_aurora');
+    expect(next.dailyGiftsDay).toBe(1);
+    expect(next.dailyGiftsWeek).toBe(2);
+  });
+
+  it('refunds 1000 coins for an already-owned skin day', () => {
+    const { next, reward } = resolveDailyGift(
+      { ...base, dailyGiftsDay: 7, ownedSkins: ['default', 'daily_aurora'] }, '2026-09-08', 0,
+    );
+    expect(reward).toEqual({ type: 'rodSkin', skinId: 'daily_aurora', duplicate: true });
+    expect(next.coins).toBe(2000);
+    expect(next.ownedSkins).toEqual(['default', 'daily_aurora']);
+  });
+
+  it('uses the rotation table from week 2 (day 6 = 1000 coins)', () => {
+    const { reward } = resolveDailyGift({ ...base, dailyGiftsWeek: 2, dailyGiftsDay: 6 }, '2026-09-08', 0);
+    expect(reward).toEqual({ type: 'coins', amount: 1000 });
+  });
+
+  it('throws when already claimed today', () => {
+    expect(() => resolveDailyGift({ ...base, dailyGiftsLastClaim: '2026-09-08' }, '2026-09-08', 0))
+      .toThrow('DAILY_GIFT_ALREADY_CLAIMED');
+  });
+});
+
+describe('spinDailyRoulette', () => {
+  const base = {
+    ...player, coins: 0, lastRouletteDate: null,
+    ownedSkins: ['default'], ownedBoatSkins: ['classic'],
+  };
+
+  it('slot 0 → 100 coins, marks the date', () => {
+    const { next, reward } = spinDailyRoulette(base, '2026-09-08', 0, queuedRoll(0));
+    expect(reward).toEqual({ type: 'coins', amount: 100 });
+    expect(next.coins).toBe(100);
+    expect(next.lastRouletteDate).toBe('2026-09-08');
+  });
+
+  it('slot 1 → luck multiplier', () => {
+    const { next, reward } = spinDailyRoulette(base, '2026-09-08', 7_000, queuedRoll(1));
+    expect(reward).toEqual({ type: 'multiplier', kind: 'luck' });
+    expect(next.luckMultiplierEnd).toBe(7_000 + 60_000);
+  });
+
+  it('slot 5 (rod skinOrCoins) → an unowned rod skin', () => {
+    const { next, reward } = spinDailyRoulette(base, '2026-09-08', 0, queuedRoll(5, 0));
+    expect(reward.type).toBe('rodSkin');
+    if (reward.type === 'rodSkin') expect(next.ownedSkins).toContain(reward.skinId);
+  });
+
+  it('slot 5 falls back to coins when every qualifying rod skin is owned', () => {
+    const allRods = ROD_SKINS.filter(s => s.price > 0 || s.exclusive).map(s => s.id);
+    const { next, reward } = spinDailyRoulette(
+      { ...base, ownedSkins: ['default', ...allRods] }, '2026-09-08', 0, queuedRoll(5),
+    );
+    expect(reward).toEqual({ type: 'coins', amount: 1000 });
+    expect(next.coins).toBe(1000);
+  });
+
+  it('throws when already used today', () => {
+    expect(() => spinDailyRoulette({ ...base, lastRouletteDate: '2026-09-08' }, '2026-09-08', 0, queuedRoll(0)))
+      .toThrow('ROULETTE_ALREADY_USED');
+  });
+});
+
+describe('spinSkinRoulette', () => {
+  const base = { ...player, coins: 5000, ownedSkins: ['default'], ownedBoatSkins: ['classic'] };
+
+  it('charges the cost and grants an unowned rod skin', () => {
+    const { next, reward } = spinSkinRoulette(base, queuedRoll(0, 0));
+    expect(next.coins).toBe(5000 - SKIN_ROULETTE_COST);
+    expect(reward.type).toBe('rodSkin');
+    if (reward.type === 'rodSkin') expect(next.ownedSkins).toContain(reward.skinId);
+  });
+
+  it('grants a boat skin when roll(2) picks 1', () => {
+    const { reward } = spinSkinRoulette(base, queuedRoll(1, 0));
+    expect(reward.type).toBe('boatSkin');
+  });
+
+  it('refunds 500 coins and does not re-add an already-owned skin', () => {
+    const firstRod = ROD_SKINS.filter(s => s.price > 0 || s.exclusive)[0];
+    const { next, reward } = spinSkinRoulette(
+      { ...base, ownedSkins: ['default', firstRod.id] }, queuedRoll(0, 0),
+    );
+    expect(reward).toEqual({ type: 'rodSkin', skinId: firstRod.id, duplicate: true });
+    expect(next.coins).toBe(5000 - SKIN_ROULETTE_COST + 500);
+    expect(next.ownedSkins).toEqual(['default', firstRod.id]);
+  });
+
+  it('throws INSUFFICIENT_FUNDS below the cost', () => {
+    expect(() => spinSkinRoulette({ ...base, coins: 1499 }, queuedRoll(0, 0)))
+      .toThrow('INSUFFICIENT_FUNDS');
   });
 });
