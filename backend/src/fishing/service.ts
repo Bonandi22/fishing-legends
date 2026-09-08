@@ -1,81 +1,179 @@
-import { randomUUID } from 'node:crypto';
-import type { createCatalogService } from '../catalog/service.js';
-import type { PlayerRepository } from '../players/types.js';
-import { rollCatch } from './roll.js';
+import { randomInt, randomUUID } from 'node:crypto';
+import type { MemoryGameStateStore } from '../gamestate/memoryService.js';
+import { SAVE_SCHEMA_VERSION, saveSchema, type SaveEnvelope } from '../../../src/game/persistence.js';
+import { rollFish, rollWeight } from '../../../src/game/fishingLogic.js';
+import { applyCatch, resolveLuckyMode } from '../../../src/game/stateRules.js';
+import { FISH, LOCATIONS } from '../../../src/game/data.js';
 import { isSessionExpired } from './session.js';
 
-type FishingSession = {
+/** Server RNG in [0, 1). Not audited this slice (matches slice 5's roulettes). */
+const random = () => randomInt(1_000_000) / 1_000_000;
+
+export type FishingSessionRow = {
   id: string;
   userId: string;
   locationId: string;
-  rulesetVersion: string;
   idempotencyKey: string;
   status: 'open' | 'completed' | 'expired';
   createdAt: Date;
-  result?: {
-    fishId: string;
-    weight: number;
-    xp: number;
-  };
+  resultFishId: string;
+  resultWeight: number;
+  resultXp: number;
+  resultLucky: boolean;
 };
 
-export function createFishingService(
-  catalog: ReturnType<typeof createCatalogService>,
-  players: PlayerRepository,
-  onCatch?: (input: { userId: string; fishId: string; locationId: string; weight: number; xp: number }) => Promise<unknown>,
-  now: () => Date = () => new Date(),
-) {
-  const sessions = new Map<string, FishingSession>();
-  const idempotentSessions = new Map<string, FishingSession>();
+export type CastResult = {
+  sessionId: string;
+  fishId: string;
+  weight: number;
+  xp: number;
+  lucky: boolean;
+  state: SaveEnvelope;
+  version: number;
+};
+
+export type LandResult = {
+  state: SaveEnvelope;
+  version: number;
+  caught: { fishId: string; weight: number; location: string };
+};
+
+export interface FishingService {
+  cast(userId: string, idempotencyKey: string, locationId: string): Promise<CastResult>;
+  land(userId: string, idempotencyKey: string, sessionId: string): Promise<LandResult>;
+}
+
+/** Roll a fish + weight for a cast. Shared by the memory and PG services. */
+export function rollCast(
+  player: SaveEnvelope['player'],
+  locationId: string,
+  now: number,
+): {
+  fishId: string;
+  weight: number;
+  xp: number;
+  lucky: boolean;
+  luckyUntil: number | null;
+  luckyCooldownUntil: number | null;
+} {
+  const location = LOCATIONS.find(l => l.id === locationId);
+  if (!location) throw new Error('INVALID_FISHING_REQUEST');
+  if (player.level < location.requiredLevel) throw new Error('LOCATION_LOCKED');
+
+  const luck = resolveLuckyMode(player, now, random);
+  const luckActive = !!player.luckMultiplierEnd && player.luckMultiplierEnd > now;
+  const luckPower = luckActive ? (player.luckMultiplierPower ?? 2) : 2;
+
+  let fish;
+  try {
+    fish = rollFish(location, player.level, luck.lucky || luckActive, luckPower, random);
+  } catch {
+    throw new Error('NO_FISH_AVAILABLE');
+  }
+  const weight = rollWeight(fish, random);
+  return {
+    fishId: fish.id,
+    weight,
+    xp: fish.xp,
+    lucky: luck.lucky,
+    luckyUntil: luck.luckyUntil,
+    luckyCooldownUntil: luck.luckyCooldownUntil,
+  };
+}
+
+/** Apply a session's roll to a player blob. Shared by both services. */
+export function applyLand(
+  player: SaveEnvelope['player'],
+  session: Pick<FishingSessionRow, 'resultFishId' | 'resultWeight' | 'locationId'>,
+  now: number,
+): { player: SaveEnvelope['player']; caught: { fishId: string; weight: number; location: string } } {
+  const fish = FISH.find(f => f.id === session.resultFishId);
+  if (!fish) throw new Error('INVALID_FISHING_SESSION');
+  const caught = { fish, weight: session.resultWeight, location: session.locationId, timestamp: now };
+  return {
+    player: applyCatch(player, [caught], { fromNet: false }, LOCATIONS),
+    caught: { fishId: fish.id, weight: session.resultWeight, location: session.locationId },
+  };
+}
+
+export function createMemoryFishingService(store: MemoryGameStateStore): FishingService {
+  const sessions = new Map<string, FishingSessionRow>();
+  const castByKey = new Map<string, string>();   // `${userId}:${key}` -> sessionId
+  const landByKey = new Map<string, LandResult>(); // `${userId}:${key}` -> result
+
+  const envelopeOf = (state: unknown): SaveEnvelope => saveSchema.parse(state);
 
   return {
-    async start(userId: string, locationId: string, idempotencyKey: string) {
-      const profile = await players.getProfile(userId);
-      const location = catalog.findLocation(locationId);
-      if (!profile || !location) throw new Error('INVALID_FISHING_REQUEST');
-      if (profile.level < location.requiredLevel) throw new Error('LOCATION_LOCKED');
+    async cast(userId, idempotencyKey, locationId) {
+      const entry = store.get(userId);
+      if (!entry) throw new Error('GAME_STATE_NOT_FOUND');
 
-      const existing = idempotentSessions.get(`${userId}:${idempotencyKey}`);
-      if (existing) return existing;
+      const dedupeKey = `${userId}:${idempotencyKey}`;
+      const existingId = castByKey.get(dedupeKey);
+      if (existingId) {
+        const s = sessions.get(existingId)!;
+        return {
+          sessionId: s.id, fishId: s.resultFishId, weight: s.resultWeight, xp: s.resultXp,
+          lucky: s.resultLucky, state: { schemaVersion: SAVE_SCHEMA_VERSION, player: envelopeOf(entry.state).player },
+          version: entry.version,
+        };
+      }
 
-      const session: FishingSession = {
-        id: randomUUID(),
-        userId,
-        locationId,
-        rulesetVersion: catalog.getPublicCatalog().version,
-        idempotencyKey,
-        status: 'open',
-        createdAt: now(),
+      const player = envelopeOf(entry.state).player;
+      const now = Date.now();
+      const roll = rollCast(player, locationId, now);
+
+      const nextPlayer = { ...player, luckyUntil: roll.luckyUntil, luckyCooldownUntil: roll.luckyCooldownUntil };
+      const version = entry.version + 1;
+      const state: SaveEnvelope = { schemaVersion: SAVE_SCHEMA_VERSION, player: nextPlayer };
+      store.set(userId, { state, updatedAt: new Date().toISOString(), version });
+
+      const session: FishingSessionRow = {
+        id: randomUUID(), userId, locationId, idempotencyKey, status: 'open', createdAt: new Date(),
+        resultFishId: roll.fishId, resultWeight: roll.weight, resultXp: roll.xp, resultLucky: roll.lucky,
       };
       sessions.set(session.id, session);
-      idempotentSessions.set(`${userId}:${idempotencyKey}`, session);
-      return session;
+      castByKey.set(dedupeKey, session.id);
+
+      return { sessionId: session.id, fishId: roll.fishId, weight: roll.weight, xp: roll.xp, lucky: roll.lucky, state, version };
     },
 
-    async complete(userId: string, sessionId: string) {
+    async land(userId, idempotencyKey, sessionId) {
+      const replayKey = `${userId}:${idempotencyKey}`;
+      const replayed = landByKey.get(replayKey);
+      if (replayed) return replayed;
+
       const session = sessions.get(sessionId);
       if (!session || session.userId !== userId) throw new Error('INVALID_FISHING_SESSION');
-      if (session.status === 'completed' && session.result) return { session, result: session.result };
-      if (session.status === 'expired' || (session.status === 'open' && isSessionExpired(session.createdAt, now()))) {
+
+      const entry = store.get(userId);
+      if (!entry) throw new Error('GAME_STATE_NOT_FOUND');
+
+      if (session.status === 'completed') {
+        const player = envelopeOf(entry.state).player;
+        const result: LandResult = {
+          state: { schemaVersion: SAVE_SCHEMA_VERSION, player },
+          version: entry.version,
+          caught: { fishId: session.resultFishId, weight: session.resultWeight, location: session.locationId },
+        };
+        landByKey.set(replayKey, result);
+        return result;
+      }
+      if (session.status === 'expired' || isSessionExpired(session.createdAt)) {
         session.status = 'expired';
         throw new Error('FISHING_SESSION_EXPIRED');
       }
 
-      const location = catalog.findLocation(session.locationId);
-      if (!location) throw new Error('INVALID_FISHING_SESSION');
-      const available = location.fishIds
-        .map(id => catalog.findFish(id))
-        .filter((fish): fish is NonNullable<typeof fish> => Boolean(fish));
-      if (available.length === 0) throw new Error('INVALID_FISHING_SESSION');
-
-      const profile = await players.getProfile(userId);
-      const { fish, weight } = rollCatch(available, profile?.level ?? 1);
-      const result = { fishId: fish.id, weight, xp: fish.xp };
-      if (onCatch) await onCatch({ userId, fishId: fish.id, locationId: session.locationId, weight, xp: fish.xp });
-      await players.recordCatch?.(userId, result.xp);
+      const now = Date.now();
+      const applied = applyLand(envelopeOf(entry.state).player, session, now);
+      const version = entry.version + 1;
+      const state: SaveEnvelope = { schemaVersion: SAVE_SCHEMA_VERSION, player: applied.player };
+      store.set(userId, { state, updatedAt: new Date().toISOString(), version });
       session.status = 'completed';
-      session.result = result;
-      return { session, result };
+
+      const result: LandResult = { state, version, caught: applied.caught };
+      landByKey.set(replayKey, result);
+      return result;
     },
   };
 }
