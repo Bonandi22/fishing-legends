@@ -36,6 +36,8 @@ const DOMAIN_ERRORS: Record<string, DomainErrorSpec> = {
   INSUFFICIENT_FUNDS: { status: 409, message: 'Insufficient wallet balance' },
   SKIN_NOT_FOUND: { status: 404, message: 'That skin is not available for purchase' },
   SKIN_ALREADY_OWNED: { status: 409, message: 'That skin is already owned' },
+  ROULETTE_ALREADY_USED: { status: 409, message: 'The daily roulette was already used today' },
+  DAILY_GIFT_ALREADY_CLAIMED: { status: 409, message: 'The daily gift was already claimed today' },
   LOCAL_SAVE_ALREADY_IMPORTED: { status: 409, message: 'The local save has already been imported' },
   WAREHOUSE_FISH_NOT_FOUND: { status: 404, message: 'That warehouse fish was not found' },
   WAREHOUSE_EMPTY: { status: 422, message: 'The warehouse is empty' },

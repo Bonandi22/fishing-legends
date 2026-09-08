@@ -54,4 +54,25 @@ export function registerGameStateEconomyRoutes(app: FastifyInstance, service: Ga
     const { kind, skinId } = request.body;
     return service.purchaseSkin(request.userId, idempotencyKey(request.headers['idempotency-key']), kind, skinId);
   });
+
+  r.post('/api/v1/me/economy/roulette/spin', {
+    schema: { tags: ['gamestate'], summary: 'Spin the daily roulette (needs Idempotency-Key)' },
+    preHandler: app.requireAuth,
+  }, async (request) => {
+    return service.spinRoulette(request.userId, idempotencyKey(request.headers['idempotency-key']));
+  });
+
+  r.post('/api/v1/me/economy/skin-roulette/spin', {
+    schema: { tags: ['gamestate'], summary: 'Spin the paid skin roulette (needs Idempotency-Key)' },
+    preHandler: app.requireAuth,
+  }, async (request) => {
+    return service.spinSkinRoulette(request.userId, idempotencyKey(request.headers['idempotency-key']));
+  });
+
+  r.post('/api/v1/me/economy/daily-gift/claim', {
+    schema: { tags: ['gamestate'], summary: 'Claim the daily gift (needs Idempotency-Key)' },
+    preHandler: app.requireAuth,
+  }, async (request) => {
+    return service.claimDailyGift(request.userId, idempotencyKey(request.headers['idempotency-key']));
+  });
 }
