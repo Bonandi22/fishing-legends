@@ -52,7 +52,7 @@ describe('POST /api/v1/me/fishing/cast + land', () => {
     expect(land.statusCode).toBe(200);
     const b = land.json();
     expect(b.version).toBe(3);
-    expect(b.caught.fishId).toBe(cast.fishId);
+    expect(b.caught[0].fishId).toBe(cast.fishId);
     expect(b.state.player.warehouse).toHaveLength(1);
   });
 
@@ -86,5 +86,25 @@ describe('POST /api/v1/me/fishing/cast + land', () => {
     const a = await app();
     const res = await a.inject({ method: 'POST', url: '/api/v1/me/fishing/cast', payload: { locationId: 'atlantic' } });
     expect(res.statusCode).toBe(401);
+  });
+
+  it('cast { mode: net } -> 200 with net + catches; land -> caught array', async () => {
+    const a = await app(); const client = await registerAndAuth(a);
+    await seed(client, blob({ nets: 3, level: 8, unlockedLocations: ['titicaca'] }));
+    const cast = (await client.request({ method: 'POST', url: '/api/v1/me/fishing/cast', payload: { locationId: 'titicaca', mode: 'net' } })).json();
+    expect(cast.net.fishCount).toBeGreaterThan(0);
+    expect(cast.catches).toHaveLength(cast.net.fishCount);
+    const land = await client.request({ method: 'POST', url: '/api/v1/me/fishing/land', payload: { sessionId: cast.sessionId } });
+    expect(land.statusCode).toBe(200);
+    expect(Array.isArray(land.json().caught)).toBe(true);
+    expect(land.json().caught).toHaveLength(cast.catches.length);
+  });
+
+  it('cast net with no nets -> 409 NO_NETS', async () => {
+    const a = await app(); const client = await registerAndAuth(a);
+    await seed(client, blob({ nets: 0, level: 8, unlockedLocations: ['titicaca'] }));
+    const res = await client.request({ method: 'POST', url: '/api/v1/me/fishing/cast', payload: { locationId: 'titicaca', mode: 'net' } });
+    expect(res.statusCode).toBe(409);
+    expect(res.json().error.code).toBe('NO_NETS');
   });
 });
