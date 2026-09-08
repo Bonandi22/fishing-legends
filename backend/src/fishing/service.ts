@@ -121,12 +121,32 @@ export function rollCast(
   throw new Error('INVALID_FISHING_REQUEST'); // submarine — slice 6b-2
 }
 
-/** Apply a session's roll (rod single or net batch) to a player blob. */
+/**
+ * Apply a session's roll to a player blob. Rod → one fish; net → the whole batch
+ * (`fromNet`); submarine → exactly the roster entry whose `id` matches
+ * `opts.catchId`, and `remaining` carries the roster minus that entry (rod/net
+ * return `remaining: null`).
+ */
 export function applyLand(
   player: SaveEnvelope['player'],
   session: Pick<FishingSessionRow, 'mode' | 'locationId' | 'resultFishId' | 'resultWeight' | 'resultCatches'>,
   now: number,
-): { player: SaveEnvelope['player']; caught: Caught[] } {
+  opts: { catchId?: string } = {},
+): { player: SaveEnvelope['player']; caught: Caught[]; remaining: SessionCatch[] | null } {
+  if (session.mode === 'submarine') {
+    const roster = session.resultCatches ?? [];
+    const entry = opts.catchId ? roster.find(e => e.id === opts.catchId) : undefined;
+    if (!entry) throw new Error('INVALID_FISHING_SESSION');
+    const fish = FISH.find(f => f.id === entry.fishId);
+    if (!fish) throw new Error('INVALID_FISHING_SESSION');
+    const caught = { fish, weight: entry.weight, location: SUBMARINE_LOCATION_ID, timestamp: now };
+    return {
+      player: applyCatch(player, [caught], { fromNet: false }, LOCATIONS),
+      caught: [{ fishId: fish.id, weight: entry.weight, location: SUBMARINE_LOCATION_ID }],
+      remaining: roster.filter(e => e.id !== opts.catchId),
+    };
+  }
+
   const rows: BatchEntry[] = session.resultCatches
     ?? [{ fishId: session.resultFishId!, weight: Number(session.resultWeight) }];
   const catches = rows.map(r => {
@@ -137,6 +157,7 @@ export function applyLand(
   return {
     player: applyCatch(player, catches, { fromNet: session.mode === 'net' }, LOCATIONS),
     caught: catches.map(c => ({ fishId: c.fish.id, weight: c.weight, location: session.locationId })),
+    remaining: null,
   };
 }
 
@@ -218,7 +239,7 @@ export function createMemoryFishingService(store: MemoryGameStateStore): Fishing
       return castResultFor(roll, session.id, state, version);
     },
 
-    async land(userId, idempotencyKey, sessionId) {
+    async land(userId, idempotencyKey, sessionId, catchId) {
       const replayKey = `${userId}:${idempotencyKey}`;
       const replayed = landByKey.get(replayKey);
       if (replayed) return replayed;
@@ -234,6 +255,8 @@ export function createMemoryFishingService(store: MemoryGameStateStore): Fishing
           .map(r => ({ fishId: r.fishId, weight: r.weight, location: session.locationId }));
 
       if (session.status === 'completed') {
+        // A new key on a drained submarine roster is not a valid harvest.
+        if (session.mode === 'submarine') throw new Error('INVALID_FISHING_SESSION');
         const result: LandResult = {
           state: { schemaVersion: SAVE_SCHEMA_VERSION, player: envelopeOf(entry.state).player },
           version: entry.version,
@@ -248,11 +271,18 @@ export function createMemoryFishingService(store: MemoryGameStateStore): Fishing
       }
 
       const now = Date.now();
-      const applied = applyLand(envelopeOf(entry.state).player, session, now);
+      const applied = applyLand(envelopeOf(entry.state).player, session, now, { catchId });
       const version = entry.version + 1;
       const state: SaveEnvelope = { schemaVersion: SAVE_SCHEMA_VERSION, player: applied.player };
       store.set(userId, { state, updatedAt: new Date().toISOString(), version });
-      session.status = 'completed';
+
+      if (session.mode === 'submarine') {
+        session.resultCatches = applied.remaining;
+        session.createdAt = new Date(now);
+        if ((applied.remaining ?? []).length === 0) session.status = 'completed';
+      } else {
+        session.status = 'completed';
+      }
 
       const result: LandResult = { state, version, caught: applied.caught };
       landByKey.set(replayKey, result);
