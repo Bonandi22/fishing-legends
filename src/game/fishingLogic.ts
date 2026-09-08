@@ -1,6 +1,6 @@
-import { Fish, Rarity, RARITY_CONFIG } from './types';
-import { getFishForLocation } from './data';
-import type { FishingLocation } from './types';
+import { Fish, Rarity, RARITY_CONFIG } from './types.js';
+import { getFishForLocation } from './data.js';
+import type { FishingLocation } from './types.js';
 
 export function getNormalizedRarityWeights(
   available: Fish[],
