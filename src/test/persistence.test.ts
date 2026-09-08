@@ -69,6 +69,26 @@ describe("save persistence", () => {
     expect(loaded.activeSkin).toBe("default");
   });
 
+  it("accepts catches whose location is the submarine pseudo-location", () => {
+    const tilapia = {
+      fish: { id: "tilapia", name: "Tilápia", rarity: "common", waterType: "freshwater",
+              minWeight: 0.3, maxWeight: 2.5, xp: 10, description: "", emoji: "🐟" },
+      weight: 1, location: "submarine", timestamp: 1,
+    };
+    const loaded = parseSavedState(JSON.stringify({ ...fallback, warehouse: [tilapia] }), fallback);
+    expect(loaded.warehouse).toHaveLength(1);
+    expect(loaded.warehouse[0].location).toBe("submarine");
+  });
+
+  it("still rejects catches with an unknown location", () => {
+    const tilapia = {
+      fish: { id: "tilapia", name: "Tilápia", rarity: "common", waterType: "freshwater",
+              minWeight: 0.3, maxWeight: 2.5, xp: 10, description: "", emoji: "🐟" },
+      weight: 1, location: "atlantis", timestamp: 1,
+    };
+    expect(parseSavedState(JSON.stringify({ ...fallback, warehouse: [tilapia] }), fallback)).toEqual(fallback);
+  });
+
   it("rejects catches with unknown catalog ids or impossible weights", () => {
     const invalidCatch = {
       fish: {

@@ -240,8 +240,10 @@ const IndexInner = () => {
     }
     if (hooked.kind === 'net') {
       catchFishBatch(hooked.catches.map(c => ({ fish: c.fish, weight: c.weight, location: locationId })), true);
-    } else {
+    } else if (hooked.kind === 'rod') {
       catchFishBatch([{ fish: hooked.fish, weight: hooked.weight, location: locationId }], false);
+    } else {
+      return 'failed'; // submarine anon land is wired in slice 6b-2 Task 7
     }
     return 'landed';
   }, [syncEnabled, applyServerResult, catchFishBatch]);

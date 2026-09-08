@@ -204,6 +204,14 @@ describe('applyCatch', () => {
     expect(r.xp).toBe(FISH[0].xp);
   });
 
+  it('applies a single submarine catch (location "submarine", not fromNet)', () => {
+    const r = applyCatch(base, [c({ location: 'submarine' })], { fromNet: false }, LOCATIONS);
+    expect(r.warehouse).toHaveLength(1);
+    expect(r.warehouse[0].location).toBe('submarine');
+    expect(r.totalFishCaught).toBe(1);
+    expect(r.xp).toBe(FISH[0].xp);
+  });
+
   it('overflows to the aquarium warehouse when the warehouse is full (15)', () => {
     const full = { ...base, warehouse: Array.from({ length: 15 }, (_, i) => c({ timestamp: i + 100 })) };
     const r = applyCatch(full, [c({ timestamp: 999 })], { fromNet: false }, LOCATIONS);

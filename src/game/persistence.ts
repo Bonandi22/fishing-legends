@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { CaughtFish, MAX_LEVEL, NET_LIMIT, PlayerState } from './types.js';
-import { FISH, LOCATIONS } from './data.js';
+import { FISH, LOCATIONS, SUBMARINE_LOCATION_ID } from './data.js';
 
 export const SAVE_SCHEMA_VERSION = 1;
 
@@ -33,7 +33,8 @@ const caughtFishSchema = z.object({
     context.addIssue({ code: z.ZodIssueCode.custom, message: 'Fish weight is outside catalog bounds', path: ['weight'] });
   }
 
-  if (!LOCATIONS.some((location) => location.id === caught.location)) {
+  if (caught.location !== SUBMARINE_LOCATION_ID
+      && !LOCATIONS.some((location) => location.id === caught.location)) {
     context.addIssue({ code: z.ZodIssueCode.custom, message: `Unknown location id: ${caught.location}`, path: ['location'] });
   }
 });

@@ -1,5 +1,5 @@
 import { Fish, Rarity, RARITY_CONFIG } from './types.js';
-import { getFishForLocation } from './data.js';
+import { FISH, getFishForLocation } from './data.js';
 import type { FishingLocation } from './types.js';
 
 export function getNormalizedRarityWeights(
@@ -100,4 +100,33 @@ export function rollWeight(fish: Fish, random: () => number = Math.random): numb
 
 export function getWaitTime(): number {
   return 3000 + Math.random() * 7000; // 3-10 seconds
+}
+
+export const SUBMARINE_ROSTER_SIZE = 24;
+/** Client re-casts a fresh roster when this many unharvested fish remain. */
+export const SUBMARINE_ROSTER_REFILL_AT = 4;
+
+/**
+ * Rarity-weighted pick from the whole FISH catalog. Verbatim port of the inline
+ * logic in the old `SubmarineFishing.spawnFish`. `playerLevel` is unused today
+ * (kept for signature parity with `rollFish`). No odds change.
+ */
+export function rollSubmarineFish(playerLevel: number, random: () => number = Math.random): Fish {
+  const available = FISH.filter(f => {
+    const r = random();
+    if (f.rarity === 'cosmic') return r < 0.002;
+    if (f.rarity === 'legends') return r < 0.005;
+    if (f.rarity === 'platinum') return r < 0.01;
+    if (f.rarity === 'volcanic') return r < 0.02;
+    if (f.rarity === 'abyssal') return r < 0.03;
+    if (f.rarity === 'legendary') return r < 0.08;
+    if (f.rarity === 'mythic') return r < 0.15;
+    if (f.rarity === 'uncommon') return r < 0.3;
+    return true;
+  });
+  return available[Math.floor(random() * available.length)] ?? FISH[0];
+}
+
+export function rollSubmarineBatch(size: number, playerLevel: number, random: () => number = Math.random): Fish[] {
+  return Array.from({ length: size }, () => rollSubmarineFish(playerLevel, random));
 }
