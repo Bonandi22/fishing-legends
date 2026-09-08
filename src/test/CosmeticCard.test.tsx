@@ -41,6 +41,14 @@ describe('CosmeticCard', () => {
     expect(onBuy).not.toHaveBeenCalled();
   });
 
+  it('disables the buy control while a purchase is busy', () => {
+    const { onBuy } = renderCard({ busy: true });
+    const button = screen.getByRole('button', { name: /comprar/i });
+    expect(button).toBeDisabled();
+    fireEvent.click(button);
+    expect(onBuy).not.toHaveBeenCalled();
+  });
+
   it('equips an owned but unequipped item', () => {
     const { onEquip } = renderCard({ owned: true });
     fireEvent.click(screen.getByRole('button', { name: /equipar/i }));

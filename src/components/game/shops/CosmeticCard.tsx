@@ -13,6 +13,8 @@ interface Props {
   preview: ReactNode;
   onBuy: () => void;
   onEquip: () => void;
+  /** A purchase is in flight — hold the buy button. */
+  busy?: boolean;
 }
 
 /** One item in a cosmetic shop (rod skins, boat skins). */
@@ -25,6 +27,7 @@ export default function CosmeticCard({
   preview,
   onBuy,
   onEquip,
+  busy = false,
 }: Props) {
   const { t } = useI18n();
 
@@ -54,7 +57,7 @@ export default function CosmeticCard({
             <Button
               size="sm"
               onClick={onBuy}
-              disabled={!canAfford}
+              disabled={!canAfford || busy}
               className="w-full bg-lure text-xs font-semibold text-lure-foreground hover:bg-lure/90"
             >
               {canAfford ? t('skins.buy') : t('mult.noCoins')}

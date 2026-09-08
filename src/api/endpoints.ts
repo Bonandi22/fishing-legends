@@ -34,3 +34,10 @@ export function purchaseMultiplier(
 ): Promise<GameStateEnvelope> {
   return apiFetch('/me/economy/multipliers/purchase', { method: 'POST', body: { type, power }, idempotencyKey });
 }
+export function purchaseSkin(
+  idempotencyKey: string,
+  kind: 'rod' | 'boat',
+  skinId: string,
+): Promise<GameStateEnvelope> {
+  return apiFetch('/me/economy/skins/purchase', { method: 'POST', body: { kind, skinId }, idempotencyKey });
+}

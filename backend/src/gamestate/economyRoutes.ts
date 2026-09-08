@@ -9,6 +9,11 @@ const multiplierBody = z.object({
   power: z.union([z.literal(2), z.literal(4)]),
 });
 
+const skinBody = z.object({
+  kind: z.enum(['rod', 'boat']),
+  skinId: z.string().min(1).max(64),
+});
+
 export function registerGameStateEconomyRoutes(app: FastifyInstance, service: GameStateEconomyService): void {
   const r = app.withTypeProvider<ZodTypeProvider>();
 
@@ -36,5 +41,17 @@ export function registerGameStateEconomyRoutes(app: FastifyInstance, service: Ga
   }, async (request) => {
     const { type, power } = request.body;
     return service.purchaseMultiplier(request.userId, idempotencyKey(request.headers['idempotency-key']), type, power);
+  });
+
+  r.post('/api/v1/me/economy/skins/purchase', {
+    schema: {
+      tags: ['gamestate'],
+      summary: 'Buy a rod or boat skin at the server price (needs Idempotency-Key)',
+      body: skinBody,
+    },
+    preHandler: app.requireAuth,
+  }, async (request) => {
+    const { kind, skinId } = request.body;
+    return service.purchaseSkin(request.userId, idempotencyKey(request.headers['idempotency-key']), kind, skinId);
   });
 }

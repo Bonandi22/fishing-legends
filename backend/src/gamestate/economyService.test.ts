@@ -214,3 +214,103 @@ describe('memory game-state economy service — purchaseMultiplier', () => {
     await expect(svc.purchaseMultiplier('ghost', 'mult-key-eeeeeeeeeeee', 'strength', 2)).rejects.toThrow('GAME_STATE_NOT_FOUND');
   });
 });
+
+describe('memory game-state economy service — purchaseSkin', () => {
+  it('buys a rod skin at the server price: -1000 coins, id owned, version bump', async () => {
+    const store = createMemoryGameStateStore();
+    store.set('u1', { state: withCoins({ coins: 8_000 }), updatedAt: 'now', version: 2 });
+    const svc = createMemoryGameStateEconomyService(store);
+
+    const res = await svc.purchaseSkin('u1', 'skin-key-aaaaaaaaaaaa', 'rod', 'shark');
+
+    expect(res.version).toBe(3);
+    expect(res.state.player.coins).toBe(7_000);
+    expect(res.state.player.ownedSkins).toContain('shark');
+    expect(store.get('u1')!.version).toBe(3);
+  });
+
+  it('buys a boat skin at the server price: -2500 coins, id owned', async () => {
+    const store = createMemoryGameStateStore();
+    store.set('u1', { state: withCoins({ coins: 8_000 }), updatedAt: 'now', version: 1 });
+    const svc = createMemoryGameStateEconomyService(store);
+
+    const res = await svc.purchaseSkin('u1', 'skin-key-bbbbbbbbbbbb', 'boat', 'yacht');
+
+    expect(res.state.player.coins).toBe(5_500);
+    expect(res.state.player.ownedBoatSkins).toContain('yacht');
+    expect(res.state.player.ownedSkins).not.toContain('yacht');
+  });
+
+  it('ignores a client-supplied price — the server prices from the catalog', async () => {
+    // no `price` arg exists on the service; this asserts the charged amount is the
+    // catalog price regardless of anything the client could send.
+    const store = createMemoryGameStateStore();
+    store.set('u1', { state: withCoins({ coins: 8_000 }), updatedAt: 'now', version: 1 });
+    const svc = createMemoryGameStateEconomyService(store);
+
+    const res = await svc.purchaseSkin('u1', 'skin-key-priced012345', 'rod', 'dragon');
+    expect(res.state.player.coins).toBe(5_000); // dragon costs 3000
+  });
+
+  it('replays the same key without charging twice', async () => {
+    const store = createMemoryGameStateStore();
+    store.set('u1', { state: withCoins({ coins: 8_000 }), updatedAt: 'now', version: 1 });
+    const svc = createMemoryGameStateEconomyService(store);
+
+    const first = await svc.purchaseSkin('u1', 'skin-key-cccccccccccc', 'rod', 'shark');
+    const replay = await svc.purchaseSkin('u1', 'skin-key-cccccccccccc', 'rod', 'shark');
+
+    expect(replay).toEqual(first);
+    expect(store.get('u1')!.version).toBe(2); // not 3
+  });
+
+  it('rejects SKIN_ALREADY_OWNED', async () => {
+    const store = createMemoryGameStateStore();
+    store.set('u1', { state: withCoins({ coins: 8_000, ownedSkins: ['default', 'shark'] }), updatedAt: 'now', version: 1 });
+    const svc = createMemoryGameStateEconomyService(store);
+    await expect(svc.purchaseSkin('u1', 'skin-key-dddddddddddd', 'rod', 'shark')).rejects.toThrow('SKIN_ALREADY_OWNED');
+    expect(store.get('u1')!.version).toBe(1);
+  });
+
+  it('rejects SKIN_NOT_FOUND for an unknown id', async () => {
+    const store = createMemoryGameStateStore();
+    store.set('u1', { state: withCoins({ coins: 8_000 }), updatedAt: 'now', version: 1 });
+    const svc = createMemoryGameStateEconomyService(store);
+    await expect(svc.purchaseSkin('u1', 'skin-key-eeeeeeeeeeee', 'rod', 'nonesuch')).rejects.toThrow('SKIN_NOT_FOUND');
+  });
+
+  it('rejects SKIN_NOT_FOUND for an exclusive skin (roulette-only)', async () => {
+    const store = createMemoryGameStateStore();
+    store.set('u1', { state: withCoins({ coins: 200_000 }), updatedAt: 'now', version: 1 });
+    const svc = createMemoryGameStateEconomyService(store);
+    await expect(svc.purchaseSkin('u1', 'skin-key-ffffffffffff', 'rod', 'celestial')).rejects.toThrow('SKIN_NOT_FOUND');
+    await expect(svc.purchaseSkin('u1', 'skin-key-gggggggggggg', 'boat', 'daily_leviathan')).rejects.toThrow('SKIN_NOT_FOUND');
+  });
+
+  it('rejects INSUFFICIENT_FUNDS below the catalog price', async () => {
+    const store = createMemoryGameStateStore();
+    store.set('u1', { state: withCoins({ coins: 999 }), updatedAt: 'now', version: 1 });
+    const svc = createMemoryGameStateEconomyService(store);
+    await expect(svc.purchaseSkin('u1', 'skin-key-hhhhhhhhhhhh', 'rod', 'shark')).rejects.toThrow('INSUFFICIENT_FUNDS');
+    expect(store.get('u1')!.version).toBe(1);
+  });
+
+  it('rejects a user with no blob with GAME_STATE_NOT_FOUND', async () => {
+    const svc = createMemoryGameStateEconomyService(createMemoryGameStateStore());
+    await expect(svc.purchaseSkin('ghost', 'skin-key-iiiiiiiiiiii', 'rod', 'shark')).rejects.toThrow('GAME_STATE_NOT_FOUND');
+  });
+
+  it('F2: a skin purchase does NOT replay a net purchase recorded under the same key', async () => {
+    const store = createMemoryGameStateStore();
+    store.set('u1', { state: withCoins({ coins: 20_000, nets: 0 }), updatedAt: 'now', version: 1 });
+    const svc = createMemoryGameStateEconomyService(store);
+
+    const key = 'shared-key-skin-net01';
+    await svc.purchaseNet('u1', key);                       // ${u1}:net_purchase:${key}
+    const skin = await svc.purchaseSkin('u1', key, 'rod', 'shark'); // must run fresh
+
+    expect(skin.state.player.ownedSkins).toContain('shark');
+    expect(skin.state.player.nets).toBe(1);          // net purchase already applied
+    expect(store.get('u1')!.version).toBe(3);        // net -> 2, skin -> 3
+  });
+});

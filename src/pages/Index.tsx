@@ -21,7 +21,7 @@ import { useBackgroundMusic } from '@/game/useBackgroundMusic';
 import { I18nProvider } from '@/game/i18n';
 import { AuthProvider } from '@/game/auth/AuthProvider';
 import { useGameStateSync } from '@/game/auth/gameStateSync';
-import { sellWarehouse as sellWarehouseApi, purchaseNet as purchaseNetApi, purchaseMultiplier as purchaseMultiplierApi } from '@/api/endpoints';
+import { sellWarehouse as sellWarehouseApi, purchaseNet as purchaseNetApi, purchaseMultiplier as purchaseMultiplierApi, purchaseSkin as purchaseSkinApi } from '@/api/endpoints';
 import type { GameStateEnvelope } from '@/api/types';
 import { FishingLocation, Fish } from '@/game/types';
 
@@ -38,7 +38,7 @@ const IndexInner = () => {
   } = useGameState();
   const { isPlaying: musicPlaying, toggle: toggleMusic, trackId: musicTrack, setTrack: setMusicTrack } = useBackgroundMusic();
   const [syncEnabled, setSyncEnabled] = useState(false);
-  const [busyOp, setBusyOp] = useState<null | 'sell' | 'net' | 'multiplier'>(null);
+  const [busyOp, setBusyOp] = useState<null | 'sell' | 'net' | 'multiplier' | 'skin'>(null);
   const { flushNow, start: startSync, applyServerResult } = useGameStateSync({ player, enabled: syncEnabled, replace: replaceFromServer });
   const [screen, setScreen] = useState<Screen>('menu');
   const [selectedLocation, setSelectedLocation] = useState<FishingLocation | null>(null);
@@ -77,7 +77,7 @@ const IndexInner = () => {
   // change), then the server op, then adopt its authoritative result. Failure is
   // silent (no toast surface) and leaves local state untouched.
   const runEconomyOp = useCallback(async (
-    op: 'sell' | 'net' | 'multiplier',
+    op: 'sell' | 'net' | 'multiplier' | 'skin',
     local: () => void,
     api: (idempotencyKey: string) => Promise<GameStateEnvelope>,
   ) => {
@@ -108,6 +108,16 @@ const IndexInner = () => {
     },
     [runEconomyOp, buyMultiplier],
   );
+  const handleBuySkin = useCallback(
+    (skinId: string, price: number) =>
+      runEconomyOp('skin', () => buySkin(skinId, price), key => purchaseSkinApi(key, 'rod', skinId)),
+    [runEconomyOp, buySkin],
+  );
+  const handleBuyBoatSkin = useCallback(
+    (skinId: string, price: number) =>
+      runEconomyOp('skin', () => buyBoatSkin(skinId, price), key => purchaseSkinApi(key, 'boat', skinId)),
+    [runEconomyOp, buyBoatSkin],
+  );
 
   let content: JSX.Element;
   if (screen === 'locations') {
@@ -127,9 +137,9 @@ const IndexInner = () => {
   } else if (screen === 'multiplier') {
     content = <MultiplierShop player={player} onBuy={handleBuyMultiplier} buying={busyOp === 'multiplier'} onBack={() => setScreen('menu')} />;
   } else if (screen === 'skins') {
-    content = <SkinsShop player={player} onBuy={buySkin} onEquip={equipSkin} onBack={() => setScreen('menu')} onOpenBoatVisuals={() => setScreen('boatSkins')} />;
+    content = <SkinsShop player={player} onBuy={handleBuySkin} buying={busyOp === 'skin'} onEquip={equipSkin} onBack={() => setScreen('menu')} onOpenBoatVisuals={() => setScreen('boatSkins')} />;
   } else if (screen === 'boatSkins') {
-    content = <BoatSkinsShop player={player} onBuy={buyBoatSkin} onEquip={equipBoatSkin} onBack={() => setScreen('skins')} />;
+    content = <BoatSkinsShop player={player} onBuy={handleBuyBoatSkin} buying={busyOp === 'skin'} onEquip={equipBoatSkin} onBack={() => setScreen('skins')} />;
   } else if (screen === 'roulette') {
     content = <Roulette player={player} onAddCoins={addCoins} onAddSkin={addSkin} onAddBoatSkin={addBoatSkin} onAddMultiplier={addMultiplier} onSetLastRouletteDate={setLastRouletteDate} onBack={() => setScreen('menu')} />;
   } else if (screen === 'skinRoulette') {
