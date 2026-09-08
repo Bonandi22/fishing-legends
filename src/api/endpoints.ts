@@ -1,5 +1,6 @@
 import { apiFetch } from './client';
 import type { ApiUser, PlayerProfile, GameStateEnvelope } from './types';
+import type { RewardGrant } from '@/game/rewards';
 
 export interface RegisterInput { email: string; password: string; username: string; country: string; }
 
@@ -40,4 +41,16 @@ export function purchaseSkin(
   skinId: string,
 ): Promise<GameStateEnvelope> {
   return apiFetch('/me/economy/skins/purchase', { method: 'POST', body: { kind, skinId }, idempotencyKey });
+}
+
+export type RewardEnvelope = GameStateEnvelope & { reward: RewardGrant };
+
+export function spinRoulette(idempotencyKey: string): Promise<RewardEnvelope> {
+  return apiFetch('/me/economy/roulette/spin', { method: 'POST', idempotencyKey });
+}
+export function spinSkinRoulette(idempotencyKey: string): Promise<RewardEnvelope> {
+  return apiFetch('/me/economy/skin-roulette/spin', { method: 'POST', idempotencyKey });
+}
+export function claimDailyGift(idempotencyKey: string): Promise<RewardEnvelope> {
+  return apiFetch('/me/economy/daily-gift/claim', { method: 'POST', idempotencyKey });
 }

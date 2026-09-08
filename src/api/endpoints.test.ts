@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import * as client from './client';
-import { register, login, logout, getMe, getGameState, putGameState, sellWarehouse, purchaseNet, purchaseMultiplier, purchaseSkin } from './endpoints';
+import { register, login, logout, getMe, getGameState, putGameState, sellWarehouse, purchaseNet, purchaseMultiplier, purchaseSkin, spinRoulette, spinSkinRoulette, claimDailyGift } from './endpoints';
 
 describe('endpoints', () => {
   it('register POSTs /auth/register with the body', async () => {
@@ -58,6 +58,24 @@ describe('endpoints', () => {
     await purchaseNet('idem-key-9876543210');
     expect(spy).toHaveBeenCalledWith('/me/economy/nets/purchase', { method: 'POST', idempotencyKey: 'idem-key-9876543210' });
     spy.mockRestore();
+  });
+
+  it('spinRoulette POSTs /me/economy/roulette/spin with the idempotency key', async () => {
+    const spy = vi.spyOn(client, 'apiFetch').mockResolvedValue({} as never);
+    await spinRoulette('idem-key-roulette0001');
+    expect(spy).toHaveBeenCalledWith('/me/economy/roulette/spin', { method: 'POST', idempotencyKey: 'idem-key-roulette0001' });
+  });
+
+  it('spinSkinRoulette POSTs /me/economy/skin-roulette/spin with the idempotency key', async () => {
+    const spy = vi.spyOn(client, 'apiFetch').mockResolvedValue({} as never);
+    await spinSkinRoulette('idem-key-skinroul0001');
+    expect(spy).toHaveBeenCalledWith('/me/economy/skin-roulette/spin', { method: 'POST', idempotencyKey: 'idem-key-skinroul0001' });
+  });
+
+  it('claimDailyGift POSTs /me/economy/daily-gift/claim with the idempotency key', async () => {
+    const spy = vi.spyOn(client, 'apiFetch').mockResolvedValue({} as never);
+    await claimDailyGift('idem-key-dailygift001');
+    expect(spy).toHaveBeenCalledWith('/me/economy/daily-gift/claim', { method: 'POST', idempotencyKey: 'idem-key-dailygift001' });
   });
 
   it('purchaseSkin POSTs /me/economy/skins/purchase with the kind, skinId and idempotency key', async () => {
