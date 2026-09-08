@@ -2065,23 +2065,54 @@ plano `.../plans/2026-09-08-server-fishing-catch-6b1-net.md` (10 tarefas,
   concorrência otimista pré-existente, o cliente retenta).
 - **Integrado na `main`**: PR `Bonandi22/deep-blue-lure#27` merged em `26fe90d`.
 
-### Ponto de parada — 2026-09-08 (fatia 6b-1 integrada)
+### Task 10.3 — segurança, lote 1 (alto valor / baixo custo) — 2026-09-08
 
-- `main` em `26fe90d`, sincronizada com `origin/main`, worktree limpo (`.claude/`
-  fica untracked — candidato a `.gitignore`).
-- **Task 10.3 fatias 1–5** + **6a** (vara) + **6b-1** (rede, lote) — integradas e
-  verificadas.
-- **Auditoria de segurança**: `docs/analysis/security-checklist-20.md` (20 pontos,
-  2026-09-08). Bloqueiam produção: backups automáticos (#3), HTTPS/HSTS no edge
-  (#4/#18), retirar o write livre do blob `PUT /me/state` (#8 = concluir Task 10.3).
-  Alto valor/baixo custo: `npm audit` não-bloqueante no CI + `dependabot.yml` (#19),
-  headers de segurança no nginx da SPA (#18), balde de rate limit dedicado para
-  `auth/login`+`auth/register` (#11), `/.claude/` no `.gitignore` (#1).
-- **Retomar por**: ajustes de segurança acordados com o utilizador **ou** Task 10.3
-  **fatia 6b-2 — submarino** (mesmo `cast`/`land`, `mode:'submarine'`; precisa de
-  coluna `mode` para distinguir de `net`; `location:'submarine'` não está em
-  `LOCATIONS` — bug latente de corrupção de save a corrigir aqui). Depois **6c**
-  aquário, ranking+temporada (leitura), limpeza de endpoints dormentes.
+Primeiro lote da auditoria `docs/analysis/security-checklist-20.md`. Branch
+`security/quick-wins`. **Integrado na `main`**: PR `Bonandi22/deep-blue-lure#28`
+merged em `3d88662`.
+
+- **#1** `.claude/` deixa de ser versionado — `.claude/settings.json` tinha sido
+  commitado por acidente em `c2cdb17`. `git rm --cached` + `/.claude/` no
+  `.gitignore`. (O ficheiro local é recriado pelo harness; não afeta runtime.)
+- **#19** Job `audit` novo no `ci.yml`: corre `npm audit --audit-level=high`,
+  **nunca falha o check** (escreve o relatório no `$GITHUB_STEP_SUMMARY`), só
+  torna visível um advisory novo. `.github/dependabot.yml`: npm + github-actions
+  semanais, agrupado prod/dev. **Não** mexer nos transitivos agora (CLAUDE.md).
+- **#11** Balde de rate limit dedicado para `POST /api/v1/auth/{login,register}`:
+  contam também num segundo `Map` mais apertado. Env `AUTH_RATE_LIMIT_MAX`
+  (default 20) / `AUTH_RATE_LIMIT_WINDOW_MS` (default 300000). `overLimit()`
+  helper partilhado em `security/http.ts`. Keyed em `request.ip` como o geral —
+  ressalva do balde partilhado atrás de proxy documentada no `.env*.example`.
+- **#18** `docker/nginx.conf` bloco `location /`: `X-Frame-Options: DENY`,
+  `nosniff`, `Referrer-Policy`, `Permissions-Policy`, HSTS e CSP
+  (`script-src 'self'`; `style-src 'self' 'unsafe-inline' fonts.googleapis.com`;
+  `font-src … fonts.gstatic.com`; `worker-src 'self' blob:`). Só se aplica ao
+  nginx de produção (o Vite de dev não passa por aqui). **TODO**: self-hostar as
+  fontes para largar os 2 hosts Google.
+- Verificação: `tsc` app ✅ · `backend:typecheck` ✅ · `lint` ✅ 0 erros ·
+  `npm test` ✅ **419** · `build` ✅ · `test:integration` ✅ **74**.
+- Smoke: build da imagem de produção do frontend (`Dockerfile` target `runtime`),
+  container na rede do compose a apontar `/api` para o backend. Home + escolha de
+  local + cena 3D de pesca renderizam sem violações de CSP (só 401 `/me` e 403
+  `/auth/refresh`, esperados em anónimo). A CSP inicial partia o `@import` do
+  Google Fonts em `src/index.css` — daí os 2 hosts Google na policy final.
+
+### Ponto de parada — 2026-09-08 (segurança lote 1 integrado)
+
+- `main` em `3d88662`, sincronizada com `origin/main`, worktree limpo.
+  `.claude/` agora ignorado (untracked local, recriado pelo harness).
+- **Task 10.3 fatias 1–5** + **6a** (vara) + **6b-1** (rede) + **segurança lote 1**
+  — integradas e verificadas.
+- **Bloqueiam produção** (auditoria `docs/analysis/security-checklist-20.md`):
+  (a) backups automáticos do Postgres (#3) — infra;
+  (b) HTTPS forçado + HSTS no edge (#4/#18) — infra;
+  (c) retirar o write livre do blob `PUT /me/state` para utilizadores
+  autenticados (#8) — **isto é concluir a Task 10.3** (fatias 6b-2, 6c, 7, 8).
+- **Retomar por**: Task 10.3 **fatia 6b-2 — submarino** (mesmo `cast`/`land`,
+  `mode:'submarine'`; precisa de coluna `mode` para distinguir de `net`;
+  `location:'submarine'` não está em `LOCATIONS` — bug latente de corrupção de
+  save a corrigir aqui). Depois **6c** aquário, ranking+temporada (leitura),
+  limpeza de endpoints dormentes, e por fim retirar o write do blob.
 
 ### Ponto de parada — 2026-09-08 (fatia 6a integrada)
 
