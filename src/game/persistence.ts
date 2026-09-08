@@ -56,6 +56,8 @@ const playerSchema = z.object({
   strengthMultiplierEnd: z.number().finite().positive().nullable(),
   luckMultiplierPower: z.number().finite().positive().optional(),
   strengthMultiplierPower: z.number().finite().positive().optional(),
+  luckyUntil: z.number().finite().nullable().optional(),
+  luckyCooldownUntil: z.number().finite().nullable().optional(),
   lastRouletteDate: z.string().nullable(),
   aquariumWarehouse: z.array(caughtFishSchema),
   aquariumSectors: z.record(z.string(), z.array(caughtFishSchema)),
