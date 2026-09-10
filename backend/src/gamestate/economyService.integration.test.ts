@@ -418,6 +418,50 @@ describe('pg game-state economy service (integration)', () => {
     expect(ops).toHaveLength(1);
   });
 
+  it('equips an owned rod skin transactionally: version +1, one op row', async () => {
+    const userId = await seedUser();
+    await gameState.bootstrap(userId, netBlob({ ownedSkins: ['default', 'shark'] }));
+
+    const res = await economy.equipSkin(userId, 'equip-key-int-aaaaaaa1', 'rod', 'shark');
+    expect(res.version).toBe(2);
+    expect(res.state.player.activeSkin).toBe('shark');
+
+    const ops = await harness.db.select().from(gameStateOperations).where(eq(gameStateOperations.userId, userId));
+    expect(ops).toHaveLength(1);
+    expect(ops[0].operation).toBe('skin_equip');
+  });
+
+  it('equip replays the same key: identical result, still one row', async () => {
+    const userId = await seedUser();
+    await gameState.bootstrap(userId, netBlob({ ownedSkins: ['default', 'shark'] }));
+
+    const first = await economy.equipSkin(userId, 'equip-key-int-bbbbbbb1', 'rod', 'shark');
+    const replay = await economy.equipSkin(userId, 'equip-key-int-bbbbbbb1', 'rod', 'shark');
+    expect(replay).toEqual(first);
+
+    const ops = await harness.db.select().from(gameStateOperations).where(eq(gameStateOperations.userId, userId));
+    expect(ops).toHaveLength(1);
+  });
+
+  it('equip: concurrent same-key resolves identically, one op row, version 2', async () => {
+    const userId = await seedUser();
+    await gameState.bootstrap(userId, netBlob({ ownedSkins: ['default', 'shark'] }));
+
+    const [a, b] = await Promise.all([
+      economy.equipSkin(userId, 'equip-key-int-ccccccc1', 'rod', 'shark'),
+      economy.equipSkin(userId, 'equip-key-int-ccccccc1', 'rod', 'shark'),
+    ]);
+    expect(a).toEqual(b);
+    expect(a.version).toBe(2);
+  });
+
+  it('rejects equipping a skin the account does not own', async () => {
+    const userId = await seedUser();
+    await gameState.bootstrap(userId, netBlob({}));
+
+    await expect(economy.equipSkin(userId, 'equip-key-int-ddddddd1', 'rod', 'shark')).rejects.toThrow('SKIN_NOT_OWNED');
+  });
+
   it('deleting the user cascades game_state_operations', async () => {
     const userId = await seedUser();
     await gameState.bootstrap(userId, blob(oneFish));
