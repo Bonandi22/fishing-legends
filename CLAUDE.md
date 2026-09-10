@@ -47,8 +47,8 @@ backend/                  Backend (Node + Fastify + Drizzle)
     <module>/*.integration.test.ts  Testes contra PostgreSQL real (suíte separada)
     http/                errors.ts (handler central), routes/system.ts (health/ready/openapi)
     security/http.ts     Headers, CORS, rate limiting (in-process), auditoria de auth
-    <module>/            auth, players, catalog, fishing, economy, inventory,
-                         migration, leaderboard, rewards, seasons
+    <module>/            auth, players, catalog, fishing, gamestate,
+                         migration, leaderboard, seasons
       routes.ts          Rotas Fastify + validação Zod do módulo
       service.ts         Implementação em memória (dev/teste sem DATABASE_URL)
       pgRepository.ts /  Implementação PostgreSQL transacional (caminho de produção)
