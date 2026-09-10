@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import * as client from './client';
-import { register, login, logout, getMe, getGameState, putGameState, sellWarehouse, purchaseNet, purchaseMultiplier, purchaseSkin, spinRoulette, spinSkinRoulette, claimDailyGift, placeAquariumFish, castLine, landCatch } from './endpoints';
+import { register, login, logout, getMe, getGameState, putGameState, sellWarehouse, purchaseNet, purchaseMultiplier, purchaseSkin, spinRoulette, spinSkinRoulette, claimDailyGift, placeAquariumFish, castLine, landCatch, getLeaderboard, getCurrentSeason } from './endpoints';
 
 describe('endpoints', () => {
   it('register POSTs /auth/register with the body', async () => {
@@ -112,6 +112,22 @@ describe('endpoints', () => {
     const spy = vi.spyOn(client, 'apiFetch').mockResolvedValue({ state: {}, updatedAt: null, version: 4 } as never);
     await purchaseMultiplier('idem-key-multmultmult', 'luck', 4);
     expect(spy).toHaveBeenCalledWith('/me/economy/multipliers/purchase', { method: 'POST', body: { type: 'luck', power: 4 }, idempotencyKey: 'idem-key-multmultmult' });
+    spy.mockRestore();
+  });
+
+  it('getLeaderboard GETs /leaderboard with limit/offset, defaulting to 100/0', async () => {
+    const spy = vi.spyOn(client, 'apiFetch').mockResolvedValue({ season: 'all-time', entries: [], total: 0 } as never);
+    await getLeaderboard();
+    expect(spy).toHaveBeenCalledWith('/leaderboard?limit=100&offset=0');
+    await getLeaderboard(20, 40);
+    expect(spy).toHaveBeenLastCalledWith('/leaderboard?limit=20&offset=40');
+    spy.mockRestore();
+  });
+
+  it('getCurrentSeason GETs /seasons/current', async () => {
+    const spy = vi.spyOn(client, 'apiFetch').mockResolvedValue({ season: null } as never);
+    await getCurrentSeason();
+    expect(spy).toHaveBeenCalledWith('/seasons/current');
     spy.mockRestore();
   });
 });

@@ -68,5 +68,8 @@ export function createMemoryAuthRepository(): AuthRepository {
     async revokeSession(sessionId) {
       revokeFamily(sessionId);
     },
+    async listUsers() {
+      return [...users.values()];
+    },
   };
 }

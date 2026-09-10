@@ -1,9 +1,12 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { PlayerState } from '@/game/types';
 import { useI18n } from '@/game/i18n';
-import { getLeaderboard, getPlayerRank, LeaderboardPlayer } from '@/game/leaderboard';
+import { getLeaderboard, getPlayerRank, fromApiEntry, LeaderboardPlayer } from '@/game/leaderboard';
+import { useAuth } from '@/game/auth/AuthProvider';
+import * as endpoints from '@/api/endpoints';
+import type { Season } from '@/api/types';
 import GameScreen from './shell/GameScreen';
 import { screenItem } from './shell/motion';
 import ProfileModal from './ranking/ProfileModal';
@@ -18,15 +21,42 @@ const MEDAL = ['🥇', '🥈', '🥉'];
 
 export default function Ranking({ player, onBack }: Props) {
   const { t } = useI18n();
-  const leaderboard = useMemo(() => getLeaderboard(), []);
-  const playerRank = useMemo(() => getPlayerRank(player.totalFishCaught), [player.totalFishCaught]);
-  const inBoard = leaderboard.some(p => p.isCurrentPlayer);
+  const auth = useAuth();
+  const authed = auth.status === 'authenticated';
+
+  const localLeaderboard = useMemo(() => (authed ? [] : getLeaderboard()), [authed]);
+  const localPlayerRank = useMemo(() => (authed ? 0 : getPlayerRank(player.totalFishCaught)), [authed, player.totalFishCaught]);
+
+  const [serverLeaderboard, setServerLeaderboard] = useState<LeaderboardPlayer[] | null>(null);
+  const [season, setSeason] = useState<Season | null>(null);
+
+  useEffect(() => {
+    if (!authed) { setServerLeaderboard(null); setSeason(null); return; }
+    let alive = true;
+    endpoints.getLeaderboard().then(page => {
+      if (!alive) return;
+      setServerLeaderboard(page.entries.map(e => fromApiEntry(e, auth.user?.id ?? null)));
+    }).catch(() => { if (alive) setServerLeaderboard([]); });
+    endpoints.getCurrentSeason().then(res => { if (alive) setSeason(res.season); }).catch(() => { if (alive) setSeason(null); });
+    return () => { alive = false; };
+  }, [authed, auth.user?.id]);
+
+  const leaderboard = authed ? serverLeaderboard : localLeaderboard;
+  const loading = authed && serverLeaderboard === null;
+  const inBoard = !!leaderboard?.some(p => p.isCurrentPlayer);
+  const playerRank = authed ? (leaderboard?.find(p => p.isCurrentPlayer)?.rank ?? 0) : localPlayerRank;
 
   const [selected, setSelected] = useState<LeaderboardPlayer | null>(null);
   const [profile, setProfile] = useState<LeaderboardPlayer | null>(null);
 
   return (
     <GameScreen title={t('rank.title')} onBack={onBack} subtitle={t('rank.subtitle')} width="default">
+      {season && (
+        <p className="mb-3 text-center text-xs text-muted-foreground">
+          {season.name} · {t(`rank.season.${season.status}`)}
+        </p>
+      )}
+
       <motion.div variants={screenItem} className="menu-panel overflow-hidden rounded-2xl">
         <div className={`${GRID} border-b border-border/60 py-3 text-[0.7rem] font-semibold uppercase tracking-wide text-muted-foreground`}>
           <span>#</span>
@@ -36,10 +66,13 @@ export default function Ranking({ player, onBack }: Props) {
         </div>
 
         <div className="max-h-[58vh] overflow-y-auto">
-          {leaderboard.length === 0 && (
+          {loading && (
+            <p className="px-4 py-10 text-center text-sm text-muted-foreground">{t('rank.loading')}</p>
+          )}
+          {!loading && leaderboard?.length === 0 && (
             <p className="px-4 py-10 text-center text-sm text-muted-foreground">{t('rank.empty')}</p>
           )}
-          {leaderboard.map((p, i) => (
+          {leaderboard?.map((p, i) => (
             <button
               key={p.rank}
               onClick={() => setSelected(p)}

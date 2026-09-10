@@ -47,4 +47,6 @@ export type AuthRepository = {
     nextExpiresAt: Date;
   }): Promise<RefreshRotation>;
   revokeSession(sessionId: string): Promise<void>;
+  /** In-memory only — backs the leaderboard's dev/test listing. */
+  listUsers?(): Promise<AuthUser[]>;
 };

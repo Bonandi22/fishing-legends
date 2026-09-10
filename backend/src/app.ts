@@ -105,16 +105,16 @@ export async function createApp({ config }: AppDependencies): Promise<FastifyIns
   };
   app.decorateRequest('userId', '');
   app.decorate('requireAuth', createRequireAuth(authService));
+  const memoryGameStateStore = database ? undefined : createMemoryGameStateStore();
   const playerRepository = database
     ? createPgPlayerRepository(database)
-    : createMemoryPlayerRepository(authRepository);
+    : createMemoryPlayerRepository(authRepository, memoryGameStateStore!);
   const migrationService = database ? createPgMigrationService(database) : createMemoryMigrationService();
   const leaderboardService = database
     ? createPgLeaderboardService(database)
-    : createMemoryLeaderboardService(playerRepository);
+    : createMemoryLeaderboardService(authRepository, memoryGameStateStore!);
   const rewardsService = database ? createPgRewardsService(database) : createMemoryRewardsService();
   const seasonsService = database ? createPgSeasonsService(database) : createMemorySeasonsService();
-  const memoryGameStateStore = database ? undefined : createMemoryGameStateStore();
   const gameStateService = database
     ? createPgGameStateService(database)
     : createMemoryGameStateService(memoryGameStateStore);

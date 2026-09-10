@@ -1,8 +1,8 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
-import { eq } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
+import { SAVE_SCHEMA_VERSION } from '../../../src/game/persistence.js';
 import { createTestDatabase, type TestDatabase } from '../testing/pgHarness.js';
-import { playerProgress } from '../db/schema.js';
+import { playerGameState } from '../db/schema.js';
 import { createPgAuthRepository } from '../auth/pgRepository.js';
 import { createPgLeaderboardService } from './pgRepository.js';
 
@@ -26,9 +26,20 @@ async function seedPlayer(level: number, fish: number) {
     username: `lb_${randomUUID().slice(0, 8)}`,
     country: 'BR',
   });
-  await harness.db.update(playerProgress)
-    .set({ level, totalFishCaught: fish })
-    .where(eq(playerProgress.userId, user.id));
+  await harness.db.insert(playerGameState).values({
+    userId: user.id,
+    state: {
+      schemaVersion: SAVE_SCHEMA_VERSION,
+      player: {
+        level, xp: 0, xpToNextLevel: 500, totalFishCaught: fish,
+        collection: [], unlockedLocations: ['atlantic'], heaviestFish: null, warehouse: [],
+        coins: 0, activeSkin: 'default', ownedSkins: ['default'], activeBoatSkin: 'classic', ownedBoatSkins: ['classic'],
+        luckMultiplierEnd: null, strengthMultiplierEnd: null, lastRouletteDate: null,
+        aquariumWarehouse: [], aquariumSectors: { 1: [], 2: [], 3: [], 4: [], 5: [] },
+        dailyGiftsLastClaim: null, dailyGiftsDay: 1, dailyGiftsWeek: 1, nets: 10,
+      },
+    },
+  });
   return user.id;
 }
 

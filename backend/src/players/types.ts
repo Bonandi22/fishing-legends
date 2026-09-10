@@ -12,10 +12,4 @@ export type PlayerProfile = {
 
 export type PlayerRepository = {
   getProfile(userId: string): Promise<PlayerProfile | null>;
-  /**
-   * Apply a completed catch to the player's progress. Implemented by the
-   * in-memory repository; the PostgreSQL fishing path updates player_progress
-   * inside its own transaction and does not use this.
-   */
-  recordCatch?(userId: string, xpGained: number): Promise<void>;
 };

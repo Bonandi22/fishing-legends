@@ -59,6 +59,10 @@ const translations = {
   'rank.fishCaught': { pt: 'Peixes pescados', en: 'Fish caught', es: 'Peces pescados', fr: 'Poissons pêchés', de: 'Gefangene Fische', ja: '釣った魚' },
   'rank.skinsOwned': { pt: 'Skins possuídas', en: 'Skins owned', es: 'Skins poseídas', fr: 'Skins possédés', de: 'Besessene Skins', ja: '所有スキン' },
   'rank.multipliersUsed': { pt: 'Multiplicadores usados', en: 'Multipliers used', es: 'Multiplicadores usados', fr: 'Multiplicateurs utilisés', de: 'Verwendete Multiplikatoren', ja: '使用したマルチプライヤー' },
+  'rank.loading': { pt: 'Carregando ranking…', en: 'Loading ranking…', es: 'Cargando clasificación…', fr: 'Chargement du classement…', de: 'Rangliste wird geladen…', ja: 'ランキングを読み込み中…' },
+  'rank.season.active': { pt: 'Temporada ativa', en: 'Active season', es: 'Temporada activa', fr: 'Saison active', de: 'Aktive Saison', ja: 'アクティブシーズン' },
+  'rank.season.scheduled': { pt: 'Próxima temporada', en: 'Upcoming season', es: 'Próxima temporada', fr: 'Prochaine saison', de: 'Kommende Saison', ja: '次のシーズン' },
+  'rank.season.closed': { pt: 'Temporada encerrada', en: 'Season closed', es: 'Temporada cerrada', fr: 'Saison terminée', de: 'Saison beendet', ja: 'シーズン終了' },
 
   // Roulette extras
   'roulette.duplicate': { pt: 'Skin duplicada! Convertida em moedas.', en: 'Duplicate skin! Converted to coins.', es: '¡Skin duplicada! Convertida en monedas.', fr: 'Skin en double ! Converti en pièces.', de: 'Doppelter Skin! In Münzen umgewandelt.', ja: 'スキン重複！コインに変換しました。' },

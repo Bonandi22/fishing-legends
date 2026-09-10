@@ -1,5 +1,5 @@
 import { apiFetch } from './client';
-import type { ApiUser, PlayerProfile, GameStateEnvelope } from './types';
+import type { ApiUser, PlayerProfile, GameStateEnvelope, LeaderboardPage, Season } from './types';
 import type { RewardGrant } from '@/game/rewards';
 
 export interface RegisterInput { email: string; password: string; username: string; country: string; }
@@ -75,4 +75,11 @@ export function castLine(idempotencyKey: string, locationId: string, mode: FishM
 }
 export function landCatch(idempotencyKey: string, sessionId: string, catchId?: string): Promise<LandResult> {
   return apiFetch('/me/fishing/land', { method: 'POST', body: { sessionId, ...(catchId ? { catchId } : {}) }, idempotencyKey });
+}
+
+export function getLeaderboard(limit = 100, offset = 0): Promise<LeaderboardPage> {
+  return apiFetch(`/leaderboard?limit=${limit}&offset=${offset}`);
+}
+export function getCurrentSeason(): Promise<{ season: Season | null }> {
+  return apiFetch('/seasons/current');
 }
