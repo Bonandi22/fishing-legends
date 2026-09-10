@@ -51,3 +51,6 @@ blob-report
 Thumbs.db
 Desktop.ini
 .playwright-mcp/
+
+# Superpowers subagent-driven-development scratch workspaces
+.superpowers/
