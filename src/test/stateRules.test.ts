@@ -8,6 +8,7 @@ import {
   buyNet,
   buyOwnedItem,
   consumeNet,
+  equipSkin,
   getUnlockedLocationIds,
   grantOwnedItem,
   placeAquariumFish,
@@ -74,6 +75,16 @@ describe('state rules', () => {
     expect(buyMultiplier(player, 'luck', 4, 1000).coins).toBe(0);
     expect(buyOwnedItem(player, 'rod', 'shark', 1000).ownedSkins).toContain('shark');
     expect(grantOwnedItem(player, 'rod', 'default', 500).coins).toBe(6500);
+  });
+
+  it('equips an owned skin and no-ops on one it does not own', () => {
+    const withShark = { ...player, ownedSkins: ['default', 'shark'] };
+    expect(equipSkin(withShark, 'rod', 'shark').activeSkin).toBe('shark');
+    expect(equipSkin(player, 'rod', 'shark')).toBe(player); // not owned: no-op, same reference
+
+    const withYacht = { ...player, ownedBoatSkins: ['classic', 'yacht'] };
+    expect(equipSkin(withYacht, 'boat', 'yacht').activeBoatSkin).toBe('yacht');
+    expect(equipSkin(player, 'boat', 'yacht')).toBe(player);
   });
 
   it('sells warehouse fish and applies XP, coins and unlocked locations atomically', () => {
