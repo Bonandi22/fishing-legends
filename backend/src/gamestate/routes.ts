@@ -9,9 +9,8 @@ type GameStateService =
   | ReturnType<typeof createMemoryGameStateService>
   | ReturnType<typeof createPgGameStateService>;
 
-const putBody = z.object({
+const bootstrapBody = z.object({
   state: saveSchema,
-  baseVersion: z.number().int().nonnegative().nullable(),
 });
 const STATE_BODY_LIMIT = 2 * 1024 * 1024;
 
@@ -26,11 +25,15 @@ export function registerGameStateRoutes(app: FastifyInstance, service: GameState
     return { state: entry?.state ?? null, updatedAt: entry?.updatedAt ?? null, version: entry?.version ?? null };
   });
 
-  r.put('/api/v1/me/state', {
-    schema: { tags: ['gamestate'], summary: 'Replace the account game state (optimistic concurrency on baseVersion)', body: putBody },
+  r.post('/api/v1/me/state/bootstrap', {
+    schema: {
+      tags: ['gamestate'],
+      summary: 'Create the account\'s initial game state (once only; adopts anonymous local progress)',
+      body: bootstrapBody,
+    },
     bodyLimit: STATE_BODY_LIMIT,
     preHandler: app.requireAuth,
   }, async request => {
-    return service.put(request.userId, request.body.state, request.body.baseVersion);
+    return service.bootstrap(request.userId, request.body.state);
   });
 }

@@ -56,7 +56,7 @@ const netBlob = (over: Record<string, unknown> = {}) => ({
 describe('pg game-state economy service (integration)', () => {
   it('sells transactionally: warehouse cleared, coins up, version +1, one operation row', async () => {
     const userId = await seedUser();
-    await gameState.put(userId, blob(oneFish), null);
+    await gameState.bootstrap(userId, blob(oneFish));
 
     const res = await economy.sellWarehouse(userId, 'idem-key-int-aaaaaaaa');
     expect(res.version).toBe(2);
@@ -73,7 +73,7 @@ describe('pg game-state economy service (integration)', () => {
 
   it('replays the same key: identical result, still one row, blob untouched by the replay', async () => {
     const userId = await seedUser();
-    await gameState.put(userId, blob(oneFish), null);
+    await gameState.bootstrap(userId, blob(oneFish));
 
     const first = await economy.sellWarehouse(userId, 'idem-key-int-bbbbbbbb');
     const replay = await economy.sellWarehouse(userId, 'idem-key-int-bbbbbbbb');
@@ -86,7 +86,7 @@ describe('pg game-state economy service (integration)', () => {
 
   it('empty warehouse -> WAREHOUSE_EMPTY, nothing written', async () => {
     const userId = await seedUser();
-    await gameState.put(userId, blob([]), null);
+    await gameState.bootstrap(userId, blob([]));
 
     await expect(economy.sellWarehouse(userId, 'idem-key-int-cccccccc')).rejects.toThrow('WAREHOUSE_EMPTY');
 
@@ -97,7 +97,7 @@ describe('pg game-state economy service (integration)', () => {
 
   it('concurrent same-key: both resolve identically, exactly one op row, version 2 not 3', async () => {
     const userId = await seedUser();
-    await gameState.put(userId, blob(oneFish), null);
+    await gameState.bootstrap(userId, blob(oneFish));
 
     const key = 'idem-key-int-race-same';
     const [a, b] = await Promise.all([
@@ -116,7 +116,7 @@ describe('pg game-state economy service (integration)', () => {
 
   it('concurrent different keys: exactly one sells (v2), the other loses the lock race with WAREHOUSE_EMPTY', async () => {
     const userId = await seedUser();
-    await gameState.put(userId, blob(oneFish), null);
+    await gameState.bootstrap(userId, blob(oneFish));
 
     const settled = await Promise.allSettled([
       economy.sellWarehouse(userId, 'idem-key-int-race-diff-a'),
@@ -137,7 +137,7 @@ describe('pg game-state economy service (integration)', () => {
 
   it('buys a net transactionally: -5000 coins, +1 net, version +1, one op row', async () => {
     const userId = await seedUser();
-    await gameState.put(userId, netBlob({ coins: 8_000, nets: 1 }), null);
+    await gameState.bootstrap(userId, netBlob({ coins: 8_000, nets: 1 }));
 
     const res = await economy.purchaseNet(userId, 'net-key-int-aaaaaaaa');
     expect(res.version).toBe(2);
@@ -153,7 +153,7 @@ describe('pg game-state economy service (integration)', () => {
 
   it('net purchase replays the same key: identical result, still one row, not charged twice', async () => {
     const userId = await seedUser();
-    await gameState.put(userId, netBlob({ coins: 8_000 }), null);
+    await gameState.bootstrap(userId, netBlob({ coins: 8_000 }));
 
     const first = await economy.purchaseNet(userId, 'net-key-int-bbbbbbbb');
     const replay = await economy.purchaseNet(userId, 'net-key-int-bbbbbbbb');
@@ -167,7 +167,7 @@ describe('pg game-state economy service (integration)', () => {
 
   it('net purchase: concurrent same-key resolves identically, exactly one op row, version 2', async () => {
     const userId = await seedUser();
-    await gameState.put(userId, netBlob({ coins: 20_000 }), null);
+    await gameState.bootstrap(userId, netBlob({ coins: 20_000 }));
 
     const key = 'net-key-int-race-same';
     const [a, b] = await Promise.all([
@@ -186,7 +186,7 @@ describe('pg game-state economy service (integration)', () => {
 
   it('F2: a net purchase does not replay a warehouse sell recorded under the same key', async () => {
     const userId = await seedUser();
-    await gameState.put(userId, netBlob({ coins: 8_000, warehouse: oneFish }), null);
+    await gameState.bootstrap(userId, netBlob({ coins: 8_000, warehouse: oneFish }));
 
     const key = 'shared-key-int-cross-op';
     await economy.sellWarehouse(userId, key); // version 2, op 'warehouse_sell'
@@ -201,7 +201,7 @@ describe('pg game-state economy service (integration)', () => {
 
   it('buys a multiplier transactionally: -3000 coins, luck power/end set, version +1, one op row', async () => {
     const userId = await seedUser();
-    await gameState.put(userId, netBlob({ coins: 8_000 }), null);
+    await gameState.bootstrap(userId, netBlob({ coins: 8_000 }));
 
     const res = await economy.purchaseMultiplier(userId, 'mult-key-int-aaaaaaaa', 'luck', 2);
     expect(res.version).toBe(2);
@@ -216,7 +216,7 @@ describe('pg game-state economy service (integration)', () => {
 
   it('multiplier purchase replays the same key: identical result, one row, not charged twice', async () => {
     const userId = await seedUser();
-    await gameState.put(userId, netBlob({ coins: 8_000 }), null);
+    await gameState.bootstrap(userId, netBlob({ coins: 8_000 }));
 
     const first = await economy.purchaseMultiplier(userId, 'mult-key-int-bbbbbbbb', 'strength', 4);
     const replay = await economy.purchaseMultiplier(userId, 'mult-key-int-bbbbbbbb', 'strength', 4);
@@ -229,7 +229,7 @@ describe('pg game-state economy service (integration)', () => {
 
   it('multiplier purchase: concurrent same-key resolves identically, one op row, version 2', async () => {
     const userId = await seedUser();
-    await gameState.put(userId, netBlob({ coins: 20_000 }), null);
+    await gameState.bootstrap(userId, netBlob({ coins: 20_000 }));
 
     const key = 'mult-key-int-race-same';
     const [a, b] = await Promise.all([
@@ -248,7 +248,7 @@ describe('pg game-state economy service (integration)', () => {
 
   it('buys a rod skin transactionally: -1000 coins, id owned, version +1, one op row', async () => {
     const userId = await seedUser();
-    await gameState.put(userId, netBlob({ coins: 8_000 }), null);
+    await gameState.bootstrap(userId, netBlob({ coins: 8_000 }));
 
     const res = await economy.purchaseSkin(userId, 'skin-key-int-aaaaaaaa', 'rod', 'shark');
     expect(res.version).toBe(2);
@@ -262,7 +262,7 @@ describe('pg game-state economy service (integration)', () => {
 
   it('skin purchase replays the same key: identical result, one row, not charged twice', async () => {
     const userId = await seedUser();
-    await gameState.put(userId, netBlob({ coins: 8_000 }), null);
+    await gameState.bootstrap(userId, netBlob({ coins: 8_000 }));
 
     const first = await economy.purchaseSkin(userId, 'skin-key-int-bbbbbbbb', 'boat', 'yacht');
     const replay = await economy.purchaseSkin(userId, 'skin-key-int-bbbbbbbb', 'boat', 'yacht');
@@ -276,7 +276,7 @@ describe('pg game-state economy service (integration)', () => {
 
   it('skin purchase: concurrent same-key resolves identically, one op row, version 2', async () => {
     const userId = await seedUser();
-    await gameState.put(userId, netBlob({ coins: 20_000 }), null);
+    await gameState.bootstrap(userId, netBlob({ coins: 20_000 }));
 
     const key = 'skin-key-int-race-same';
     const [a, b] = await Promise.all([
@@ -295,7 +295,7 @@ describe('pg game-state economy service (integration)', () => {
 
   it('already-owned skin -> SKIN_ALREADY_OWNED, nothing written', async () => {
     const userId = await seedUser();
-    await gameState.put(userId, netBlob({ coins: 8_000, ownedSkins: ['default', 'shark'] }), null);
+    await gameState.bootstrap(userId, netBlob({ coins: 8_000, ownedSkins: ['default', 'shark'] }));
 
     await expect(economy.purchaseSkin(userId, 'skin-key-int-cccccccc', 'rod', 'shark')).rejects.toThrow('SKIN_ALREADY_OWNED');
 
@@ -306,7 +306,7 @@ describe('pg game-state economy service (integration)', () => {
 
   it('claimDailyGift transactionally: +150 coins, version +1, one op row with the reward', async () => {
     const userId = await seedUser();
-    await gameState.put(userId, netBlob({ coins: 0 }), null);
+    await gameState.bootstrap(userId, netBlob({ coins: 0 }));
 
     const res = await economy.claimDailyGift(userId, 'gift-key-int-aaaaaaaa');
     expect(res.version).toBe(2);
@@ -321,7 +321,7 @@ describe('pg game-state economy service (integration)', () => {
 
   it('claimDailyGift replay: identical result incl. reward, one row', async () => {
     const userId = await seedUser();
-    await gameState.put(userId, netBlob({ coins: 0 }), null);
+    await gameState.bootstrap(userId, netBlob({ coins: 0 }));
     const first = await economy.claimDailyGift(userId, 'gift-key-int-bbbbbbbb');
     const replay = await economy.claimDailyGift(userId, 'gift-key-int-bbbbbbbb');
     expect(replay).toEqual(first);
@@ -331,7 +331,7 @@ describe('pg game-state economy service (integration)', () => {
 
   it('second distinct daily claim same day -> DAILY_GIFT_ALREADY_CLAIMED, nothing written', async () => {
     const userId = await seedUser();
-    await gameState.put(userId, netBlob({ coins: 0 }), null);
+    await gameState.bootstrap(userId, netBlob({ coins: 0 }));
     await economy.claimDailyGift(userId, 'gift-key-int-cccccccc');
     await expect(economy.claimDailyGift(userId, 'gift-key-int-dddddddd')).rejects.toThrow('DAILY_GIFT_ALREADY_CLAIMED');
     expect((await gameState.get(userId))!.version).toBe(2);
@@ -341,7 +341,7 @@ describe('pg game-state economy service (integration)', () => {
 
   it('spinRoulette: concurrent same-key resolves identically, one op row, version 2', async () => {
     const userId = await seedUser();
-    await gameState.put(userId, netBlob({ coins: 0 }), null);
+    await gameState.bootstrap(userId, netBlob({ coins: 0 }));
     const key = 'roul-key-int-race-same';
     const [a, b] = await Promise.all([
       economy.spinRoulette(userId, key),
@@ -356,7 +356,7 @@ describe('pg game-state economy service (integration)', () => {
 
   it('spinSkinRoulette: -1500 (+/- dup refund) coins, one op row', async () => {
     const userId = await seedUser();
-    await gameState.put(userId, netBlob({ coins: 5_000 }), null);
+    await gameState.bootstrap(userId, netBlob({ coins: 5_000 }));
     const res = await economy.spinSkinRoulette(userId, 'skinroul-key-int-aa');
     expect(res.state.player.coins).toBeGreaterThanOrEqual(5_000 - 1_500);
     expect(res.state.player.coins).toBeLessThanOrEqual(5_000 - 1_500 + 500);
@@ -368,10 +368,10 @@ describe('pg game-state economy service (integration)', () => {
   it('placeAquariumFish transactionally: fish moved to sector, coins+xp up, version +1, one op row', async () => {
     const userId = await seedUser();
     const aq = { fish: FISH[0], weight: 1.5, location: 'atlantic', timestamp: 77 };
-    await gameState.put(userId, {
+    await gameState.bootstrap(userId, {
       schemaVersion: SAVE_SCHEMA_VERSION,
       player: { ...blob([]).player, xpToNextLevel: 999999, aquariumWarehouse: [aq] },
-    }, null);
+    });
 
     const res = await economy.placeAquariumFish(userId, 'aqua-key-int-aaaa', 77, 4);
     expect(res.version).toBe(2);
@@ -390,10 +390,10 @@ describe('pg game-state economy service (integration)', () => {
   it('placeAquariumFish replays the same key: identical result, one op row', async () => {
     const userId = await seedUser();
     const aq = { fish: FISH[0], weight: 1.5, location: 'atlantic', timestamp: 88 };
-    await gameState.put(userId, {
+    await gameState.bootstrap(userId, {
       schemaVersion: SAVE_SCHEMA_VERSION,
       player: { ...blob([]).player, xpToNextLevel: 999999, aquariumWarehouse: [aq] },
-    }, null);
+    });
     const first = await economy.placeAquariumFish(userId, 'aqua-key-int-bbbb', 88, 2);
     const replay = await economy.placeAquariumFish(userId, 'aqua-key-int-bbbb', 88, 2);
     expect(replay).toEqual(first);
@@ -404,10 +404,10 @@ describe('pg game-state economy service (integration)', () => {
   it('placeAquariumFish concurrent same-key: both resolve identically, one op row', async () => {
     const userId = await seedUser();
     const aq = { fish: FISH[0], weight: 1.5, location: 'atlantic', timestamp: 99 };
-    await gameState.put(userId, {
+    await gameState.bootstrap(userId, {
       schemaVersion: SAVE_SCHEMA_VERSION,
       player: { ...blob([]).player, xpToNextLevel: 999999, aquariumWarehouse: [aq] },
-    }, null);
+    });
     const [a, b] = await Promise.all([
       economy.placeAquariumFish(userId, 'aqua-key-int-cccc', 99, 1),
       economy.placeAquariumFish(userId, 'aqua-key-int-cccc', 99, 1),
@@ -420,7 +420,7 @@ describe('pg game-state economy service (integration)', () => {
 
   it('deleting the user cascades game_state_operations', async () => {
     const userId = await seedUser();
-    await gameState.put(userId, blob(oneFish), null);
+    await gameState.bootstrap(userId, blob(oneFish));
     await economy.sellWarehouse(userId, 'idem-key-int-dddddddd');
 
     await harness.db.delete(users).where(eq(users.id, userId));

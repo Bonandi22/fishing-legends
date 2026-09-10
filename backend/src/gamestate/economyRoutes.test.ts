@@ -30,7 +30,7 @@ const blob = (warehouse: unknown[]) => ({
 const oneFish = [{ fish: FISH[0], weight: 2, location: 'atlantic', timestamp: 1 }];
 
 async function seed(client: Awaited<ReturnType<typeof registerAndAuth>>, warehouse: unknown[]) {
-  const put = await client.request({ method: 'PUT', url: '/api/v1/me/state', payload: { state: blob(warehouse), baseVersion: null } });
+  const put = await client.request({ method: 'POST', url: '/api/v1/me/state/bootstrap', payload: { state: blob(warehouse) } });
   expect(put.statusCode).toBe(200);
 }
 
@@ -39,7 +39,7 @@ const netBlob = (over: Record<string, unknown> = {}) => ({
   player: { ...blob([]).player, coins: 10_000, nets: 0, ...over },
 });
 async function seedBlob(client: Awaited<ReturnType<typeof registerAndAuth>>, state: unknown) {
-  const put = await client.request({ method: 'PUT', url: '/api/v1/me/state', payload: { state, baseVersion: null } });
+  const put = await client.request({ method: 'POST', url: '/api/v1/me/state/bootstrap', payload: { state } });
   expect(put.statusCode).toBe(200);
 }
 

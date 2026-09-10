@@ -28,7 +28,7 @@ const blob = (over: Record<string, unknown> = {}) => ({
   },
 });
 async function seed(client: Awaited<ReturnType<typeof registerAndAuth>>, state: unknown) {
-  const put = await client.request({ method: 'PUT', url: '/api/v1/me/state', payload: { state, baseVersion: null } });
+  const put = await client.request({ method: 'POST', url: '/api/v1/me/state/bootstrap', payload: { state } });
   expect(put.statusCode).toBe(200);
 }
 

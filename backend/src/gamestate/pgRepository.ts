@@ -1,14 +1,13 @@
-import { and, eq } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import type { Database } from '../db/client.js';
 import { playerGameState } from '../db/schema.js';
 
 /**
- * Transactional game-state store with optimistic concurrency. Each write carries
- * the `baseVersion` it was based on:
- * - `baseVersion === null` → first write; succeeds only if no row exists (creates version 1).
- * - `baseVersion === N`    → succeeds only if the stored version is still N (bumps to N + 1).
- * A mismatch throws `STATE_VERSION_CONFLICT` and writes nothing. Both branches are
- * a single statement, so concurrent writers cannot both win.
+ * `bootstrap` is create-only: it succeeds exactly once per account (the row
+ * that turns anonymous local progress into the account's starting state) and
+ * throws `STATE_VERSION_CONFLICT` if a row already exists. There is no
+ * update path any more — every subsequent mutation goes through a dedicated,
+ * validated op instead of a free-form overwrite.
  */
 export function createPgGameStateService(db: Database) {
   return {
@@ -17,25 +16,15 @@ export function createPgGameStateService(db: Database) {
       const row = rows[0];
       return row ? { state: row.state, updatedAt: row.updatedAt.toISOString(), version: row.version } : null;
     },
-    async put(userId: string, state: unknown, baseVersion: number | null): Promise<{ version: number }> {
+    async bootstrap(userId: string, state: unknown): Promise<{ version: number }> {
       const now = new Date();
-
-      if (baseVersion === null) {
-        const value = { userId, state, updatedAt: now, version: 1 } as typeof playerGameState.$inferInsert;
-        const inserted = await db.insert(playerGameState)
-          .values(value)
-          .onConflictDoNothing({ target: playerGameState.userId })
-          .returning({ version: playerGameState.version });
-        if (inserted.length === 0) throw new Error('STATE_VERSION_CONFLICT');
-        return { version: inserted[0].version };
-      }
-
-      const updated = await db.update(playerGameState)
-        .set({ state: state as typeof playerGameState.$inferInsert.state, updatedAt: now, version: baseVersion + 1 })
-        .where(and(eq(playerGameState.userId, userId), eq(playerGameState.version, baseVersion)))
+      const value = { userId, state, updatedAt: now, version: 1 } as typeof playerGameState.$inferInsert;
+      const inserted = await db.insert(playerGameState)
+        .values(value)
+        .onConflictDoNothing({ target: playerGameState.userId })
         .returning({ version: playerGameState.version });
-      if (updated.length === 0) throw new Error('STATE_VERSION_CONFLICT');
-      return { version: updated[0].version };
+      if (inserted.length === 0) throw new Error('STATE_VERSION_CONFLICT');
+      return { version: inserted[0].version };
     },
   };
 }
