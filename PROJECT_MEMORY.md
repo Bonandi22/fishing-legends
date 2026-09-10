@@ -2123,6 +2123,52 @@ do servidor quando autenticado (`useAuth()`), mantendo `src/game/leaderboard.ts`
   para autenticados (auditoria de segurança #8) — isto fecha a Task 10.3.
 - **Dependabot**: PRs #29–#35 continuam abertos — tarefa própria do utilizador.
 
+### Task 10.3 fatia 8 — limpeza de endpoints/tabelas dormentes — 2026-09-10
+
+Branch `feature/task-10-3-cleanup-dormant`. Apaga os módulos `economy/`,
+`inventory/`, `rewards/` (17 ficheiros) e as suas rotas (`/api/v1/wallet`,
+`/api/v1/economy/nets|multipliers/purchase`, `/api/v1/inventory/*`,
+`/api/v1/rewards/daily/claim`) — sem nenhuma chamada do frontend (confirmado
+por grep antes de apagar). Apaga `wallets`/`wallet_transactions`/
+`daily_reward_claims` via migração nova `0022_drop_dormant_economy_tables.sql`
+(sem nenhum outro leitor no código) e espelha em `db/schema.ts`.
+
+- **Decisão explícita do utilizador**: `player_progress`/`warehouse_fish`/
+  `aquarium_fish` e o módulo `migration` (import do save local) **ficam
+  intocados** — `migration.import()` continua a escrever só nessas tabelas
+  legadas, nunca no blob, por isso o import continua sem efeito real hoje
+  (mesma classe de bug da fatia 7, mas numa funcionalidade inalcançável pelo
+  frontend). Registado como follow-up próprio, fora desta fatia.
+- Testes ajustados: 4 blocos removidos de `app.test.ts` (batiam nas rotas
+  dormentes), caminhos dormentes removidos da lista esperada em
+  `openapi.test.ts`, `wallets` removida da lista de tabelas esperadas em
+  `migrate.integration.test.ts`. `CLAUDE.md` atualizado (lista de módulos).
+- Verificação: `tsc app` ✅ · `backend:typecheck` ✅ · `lint` ✅ 0 erros ·
+  `npm test` ✅ **443** (era 457) · `build` ✅ · `test:integration` ✅ **59**
+  (era 79) · migração `0022` aplicada limpa no Postgres do Docker.
+- Smoke browser (Playwright, stack Docker): conta nova → ecrã de Multiplicador
+  carrega com preços reais do servidor (`/me/economy/multipliers/purchase`,
+  distinta da rota dormente apagada) → Ranking continua a funcionar → traço de
+  rede sem nenhuma chamada a um caminho apagado → sem erros novos na consola.
+- **Integrado na `main`**: PR `Bonandi22/deep-blue-lure#39` merged em `85c6023`.
+  CI 7/7 verde, sem comentários de review.
+
+### Ponto de parada — 2026-09-10 (fatia 8 integrada)
+
+- `main` em `85c6023`, sincronizada, worktree limpo.
+- **Toda a Task 10.3 até 8** integrada. Só falta um item para fechar a task.
+- **Retomar por**: **retirar o write livre do `PUT /me/state`** para
+  utilizadores autenticados (auditoria de segurança #8) — isto fecha a
+  Task 10.3. Hoje qualquer autenticado pode substituir o blob inteiro via
+  `PUT /me/state` sem passar por nenhuma regra de servidor; a ideia é o
+  cliente autenticado deixar de ter esse caminho de escrita livre (as
+  operações já todas passam pelos ops `/me/economy/*` e `/me/fishing/*`).
+  Precisa de bounded brainstorm: o que acontece a `useGameStateSync`/
+  `hydrate.ts` (que hoje fazem `PUT` periódico e no logout), migração do
+  save local ainda pendente de decisão (fatia anterior), e se a rota fica só
+  leitura (`GET`) para autenticados ou é removida de vez.
+- **Dependabot**: PRs #29–#35 continuam abertos — tarefa própria do utilizador.
+
 ### Task 10.3 fatia 6b-2 — captura no submarino server-autoritativa — 2026-09-08
 
 Terceira sub-fatia da captura (fecha o 6b). Branch `feature/task-10-3-fishing-catch-6b2`.
