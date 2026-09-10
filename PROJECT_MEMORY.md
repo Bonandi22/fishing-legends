@@ -2075,6 +2075,54 @@ server-autoritativo. Branch `feature/task-10-3-economy-aquarium-place`. Bounded
   `PUT /me/state`** para autenticados (auditoria de segurança #8).
 - **Dependabot**: PRs #29–#35 continuam abertos — tarefa própria do utilizador.
 
+### Task 10.3 fatia 7 — ranking + temporada (leitura) — 2026-09-10
+
+`Ranking.tsx` passa a ler `GET /api/v1/leaderboard` + `GET /api/v1/seasons/current`
+do servidor quando autenticado (`useAuth()`), mantendo `src/game/leaderboard.ts`
+(local) para o caminho anónimo. Branch `feature/task-10-3-leaderboard-read`.
+
+- **Bug encontrado e corrigido durante a investigação inicial**: desde as fatias
+  1–6c o progresso vive só no blob `player_game_state`, mas o leaderboard e o
+  `/me` continuavam a ler `player_progress` — tabela morta desde a fatia 1.
+  Qualquer jogador real apareceria sempre como nível 1 / 0 peixes. Corrigido em
+  `backend/src/gamestate/playerStats.ts` (`extractPlayerStats`, novo): lê o blob
+  (ou `null`) e degrada para defaults em vez de rebentar em `.parse()` — uma linha
+  corrompida não pode partir a listagem inteira. `players/pgRepository.ts`,
+  `players/memoryRepository.ts`, `leaderboard/pgRepository.ts`, `leaderboard/service.ts`
+  todos reescritos para usar isto.
+- **`backend/src/leaderboard/rank.ts`** (`buildLeaderboard`, novo): função pura de
+  ranking/paginação partilhada por memória e PG — busca todos os jogadores e
+  ordena/pagina em JS, mantendo a regra de nunca mexer no blob com SQL jsonb cru.
+- Modo memória do leaderboard passa a listar **todos** os utilizadores registados
+  (antes: só o jogador atual) via `AuthRepository.listUsers()` novo (opcional,
+  só memória).
+- Apagados `backend/src/players/progress.ts` + teste — código morto desde que o
+  `recordCatch` (nunca chamado) foi removido.
+- `src/game/leaderboard.ts` ganhou `fromApiEntry` (adapta uma entrada do servidor,
+  incl. país ISO→bandeira via `iso2ToFlag`, para o `LeaderboardPlayer` que a UI e o
+  `ProfileModal` já renderizavam — sem rework de UI).
+- Verificação: `tsc app` ✅ · `backend:typecheck` ✅ · `lint` ✅ 0 erros ·
+  `npm test` ✅ **457** · `build` ✅ · `test:integration` ✅ **79** (incl.
+  `leaderboard/pgRepository.integration.test.ts` reescrito para semear via o blob).
+- Smoke browser (Playwright, stack Docker): conta nova → Ranking mostra nível/
+  peixes/coins/skins reais (não presos em defaults) → perfil abre com os mesmos
+  valores do blob → badge de temporada corretamente ausente (BD nova sem season
+  semeada) → sem erros novos na consola/rede.
+- **Integrado na `main`**: PR `Bonandi22/deep-blue-lure#38` merged em `7ff135b`.
+  CI 7/7 verde (quality, integration, claude-review, audit).
+
+### Ponto de parada — 2026-09-10 (fatia 7 integrada)
+
+- `main` em `7ff135b`, sincronizada, worktree limpo.
+- **Toda a Task 10.3 até 7** integrada: economia, captura (3 modos), aquário,
+  ranking + temporada — tudo server-autoritativo sobre o blob.
+- **Retomar por**: Task 10.3 **fatia 8** — apagar endpoints/tabelas dormentes
+  (`/api/v1/economy/*`, `/inventory/*`, `/rewards/daily/claim`, `player_progress`/
+  `wallet`/`warehouse_fish`/`aquarium_fish` — a fatia 7 confirmou que `player_progress`
+  já não tem nenhum leitor vivo). Depois: **retirar o write livre do `PUT /me/state`**
+  para autenticados (auditoria de segurança #8) — isto fecha a Task 10.3.
+- **Dependabot**: PRs #29–#35 continuam abertos — tarefa própria do utilizador.
+
 ### Task 10.3 fatia 6b-2 — captura no submarino server-autoritativa — 2026-09-08
 
 Terceira sub-fatia da captura (fecha o 6b). Branch `feature/task-10-3-fishing-catch-6b2`.
