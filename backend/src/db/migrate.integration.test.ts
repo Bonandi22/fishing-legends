@@ -35,7 +35,7 @@ describe('migration runner (integration)', () => {
     );
     const tables = new Set(rows.map(row => row.table_name));
 
-    for (const expected of ['users', 'user_profiles', 'sessions', 'player_progress', 'wallets', 'seasons']) {
+    for (const expected of ['users', 'user_profiles', 'sessions', 'player_progress', 'seasons']) {
       expect(tables.has(expected)).toBe(true);
     }
   });

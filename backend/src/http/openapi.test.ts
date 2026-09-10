@@ -46,11 +46,8 @@ describe('generated OpenAPI contract', () => {
       '/api/v1/me', '/api/v1/catalog',
       '/api/v1/me/fishing/cast', '/api/v1/me/fishing/land',
       '/api/v1/me/economy/aquarium/place',
-      '/api/v1/wallet', '/api/v1/economy/nets/purchase', '/api/v1/economy/multipliers/purchase',
-      '/api/v1/inventory/warehouse', '/api/v1/inventory/warehouse/sell',
-      '/api/v1/inventory/aquarium', '/api/v1/inventory/aquarium/{sector}',
       '/api/v1/migration/local/preview', '/api/v1/migration/local/import',
-      '/api/v1/leaderboard', '/api/v1/rewards/daily/claim', '/api/v1/seasons/current',
+      '/api/v1/leaderboard', '/api/v1/seasons/current',
     ];
     for (const path of expected) {
       expect(Object.keys(doc.paths), `${path} missing from /openapi.json`).toContain(path);

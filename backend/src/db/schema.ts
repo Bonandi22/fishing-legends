@@ -5,7 +5,6 @@ import {
   boolean,
   char,
   check,
-  date,
   index,
   integer,
   jsonb,
@@ -163,40 +162,6 @@ export const gameStateOperations = pgTable('game_state_operations', {
   pk: primaryKey({ name: 'game_state_operations_idempotency_pk', columns: [t.userId, t.idempotencyKey, t.operation] }),
 }));
 
-export const wallets = pgTable('wallets', {
-  userId: uuid('user_id').primaryKey().references(() => users.id, { onDelete: 'cascade' }),
-  balance: bigint('balance', { mode: 'number' }).notNull().default(0),
-  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
-}, table => ({
-  balanceCheck: check('wallets_balance_check', sql`${table.balance} >= 0`),
-}));
-
-export const walletTransactions = pgTable('wallet_transactions', {
-  id: uuid('id').primaryKey(),
-  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
-  amount: bigint('amount', { mode: 'number' }).notNull(),
-  balanceAfter: bigint('balance_after', { mode: 'number' }).notNull(),
-  reason: varchar('reason', { length: 64 }).notNull(),
-  idempotencyKey: varchar('idempotency_key', { length: 128 }),
-  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-}, table => ({
-  idempotencyUnique: uniqueIndex('wallet_transaction_idempotency_unique').on(table.userId, table.idempotencyKey),
-  balanceAfterCheck: check('wallet_transactions_balance_after_check', sql`${table.balanceAfter} >= 0`),
-}));
-
-export const dailyRewardClaims = pgTable('daily_reward_claims', {
-  id: uuid('id').primaryKey(),
-  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
-  claimDate: date('claim_date').notNull(),
-  rewardDay: integer('reward_day').notNull(),
-  amount: bigint('amount', { mode: 'number' }).notNull(),
-  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-}, table => ({
-  userDateUnique: uniqueIndex('daily_reward_claims_user_date_unique').on(table.userId, table.claimDate),
-  rewardDayCheck: check('daily_reward_claims_reward_day_check', sql`${table.rewardDay} BETWEEN 1 AND 7`),
-  amountCheck: check('daily_reward_claims_amount_check', sql`${table.amount} > 0`),
-}));
-
 export const warehouseFish = pgTable('warehouse_fish', {
   id: uuid('id').primaryKey(),
   userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
@@ -237,9 +202,6 @@ export const schema = {
   playerProgress,
   playerGameState,
   gameStateOperations,
-  wallets,
-  walletTransactions,
-  dailyRewardClaims,
   warehouseFish,
   aquariumFish,
 };

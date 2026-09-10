@@ -351,75 +351,6 @@ describe('backend foundation', () => {
     expect(me.state.player.xp).toBe(5);
   });
 
-  it('exposes a server-owned wallet balance', async () => {
-    const app = await createApp({ config: testConfig });
-    apps.add(app);
-    const client = await registerAndAuth(app);
-
-    const response = await client.request({ method: 'GET', url: '/api/v1/wallet' });
-    expect(response.statusCode).toBe(200);
-    expect(response.json()).toEqual({ balance: 0 });
-  });
-
-  it('exposes an authenticated warehouse and rejects an empty sale', async () => {
-    const app = await createApp({ config: testConfig });
-    apps.add(app);
-    const client = await registerAndAuth(app);
-
-    const list = await client.request({ method: 'GET', url: '/api/v1/inventory/warehouse' });
-    expect(list.statusCode).toBe(200);
-    expect(list.json()).toEqual({ items: [] });
-
-    const sale = await client.request({
-      method: 'POST',
-      url: '/api/v1/inventory/warehouse/sell',
-      idempotencyKey: 'warehouse-sale-123456',
-    });
-    expect(sale.statusCode).toBe(422);
-
-    const aquarium = await client.request({ method: 'GET', url: '/api/v1/inventory/aquarium/1' });
-    expect(aquarium.statusCode).toBe(200);
-    expect(aquarium.json()).toEqual({ items: [] });
-
-    const placement = await client.request({
-      method: 'POST',
-      url: '/api/v1/inventory/aquarium',
-      payload: { warehouseItemId: '00000000-0000-0000-0000-000000000000', sector: 1 },
-    });
-    expect(placement.statusCode).toBe(404);
-    expect(placement.json().error.code).toBe('WAREHOUSE_FISH_NOT_FOUND');
-  });
-
-  it('rejects a net purchase when the net limit is already reached', async () => {
-    const app = await createApp({ config: testConfig });
-    apps.add(app);
-    const client = await registerAndAuth(app);
-
-    const response = await client.request({
-      method: 'POST',
-      url: '/api/v1/economy/nets/purchase',
-      payload: { quantity: 1 },
-      idempotencyKey: 'nets-purchase-123456',
-    });
-    expect(response.statusCode).toBe(409);
-    expect(response.json().error.code).toBe('NET_LIMIT_REACHED');
-  });
-
-  it('rejects a multiplier purchase without wallet funds', async () => {
-    const app = await createApp({ config: testConfig });
-    apps.add(app);
-    const client = await registerAndAuth(app);
-
-    const response = await client.request({
-      method: 'POST',
-      url: '/api/v1/economy/multipliers/purchase',
-      payload: { type: 'luck', power: 2 },
-      idempotencyKey: 'multiplier-purchase-123',
-    });
-    expect(response.statusCode).toBe(409);
-    expect(response.json().error.code).toBe('INSUFFICIENT_FUNDS');
-  });
-
   it('returns an authenticated paginated leaderboard', async () => {
     const app = await createApp({ config: testConfig });
     apps.add(app);
@@ -429,20 +360,6 @@ describe('backend foundation', () => {
     expect(response.statusCode).toBe(200);
     expect(response.json().season).toBe('all-time');
     expect(response.json().entries[0].username).toBe('ranking_user');
-  });
-
-  it('claims a daily reward only once', async () => {
-    const app = await createApp({ config: testConfig });
-    apps.add(app);
-    const client = await registerAndAuth(app);
-
-    const first = await client.request({ method: 'POST', url: '/api/v1/rewards/daily/claim' });
-    const second = await client.request({ method: 'POST', url: '/api/v1/rewards/daily/claim' });
-    expect(first.statusCode).toBe(200);
-    expect(first.json().claimed).toBe(true);
-    expect(first.json().day).toBe(1);
-    expect(second.json().claimed).toBe(false);
-    expect(second.json().balance).toBe(first.json().balance);
   });
 
   it('returns the active authenticated season', async () => {

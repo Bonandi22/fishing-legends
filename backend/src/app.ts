@@ -19,21 +19,12 @@ import { registerCatalogRoutes } from './catalog/routes.js';
 import { createMemoryFishingService } from './fishing/service.js';
 import { createPgFishingService } from './fishing/pgRepository.js';
 import { registerFishingRoutes } from './fishing/routes.js';
-import { createMemoryEconomyService } from './economy/service.js';
-import { registerEconomyRoutes } from './economy/routes.js';
-import { createPgEconomyService } from './economy/pgRepository.js';
-import { createMemoryInventoryService } from './inventory/service.js';
-import { registerInventoryRoutes } from './inventory/routes.js';
-import { createPgInventoryService } from './inventory/pgRepository.js';
 import { registerMigrationRoutes } from './migration/routes.js';
 import { createMemoryMigrationService } from './migration/memoryRepository.js';
 import { createPgMigrationService } from './migration/pgRepository.js';
 import { registerLeaderboardRoutes } from './leaderboard/routes.js';
 import { createMemoryLeaderboardService } from './leaderboard/service.js';
 import { createPgLeaderboardService } from './leaderboard/pgRepository.js';
-import { registerRewardsRoutes } from './rewards/routes.js';
-import { createMemoryRewardsService } from './rewards/memoryRepository.js';
-import { createPgRewardsService } from './rewards/pgRepository.js';
 import { registerGameStateRoutes } from './gamestate/routes.js';
 import { createMemoryGameStateService, createMemoryGameStateStore } from './gamestate/memoryService.js';
 import { createPgGameStateService } from './gamestate/pgRepository.js';
@@ -70,8 +61,7 @@ export async function createApp({ config }: AppDependencies): Promise<FastifyIns
       info: { title: 'Deep Blue Lure API', version: '0.1.0' },
       tags: [
         { name: 'system' }, { name: 'auth' }, { name: 'players' }, { name: 'catalog' },
-        { name: 'fishing' }, { name: 'economy' }, { name: 'inventory' },
-        { name: 'migration' }, { name: 'leaderboard' }, { name: 'rewards' }, { name: 'seasons' },
+        { name: 'fishing' }, { name: 'migration' }, { name: 'leaderboard' }, { name: 'seasons' },
         { name: 'gamestate' },
       ],
     },
@@ -113,7 +103,6 @@ export async function createApp({ config }: AppDependencies): Promise<FastifyIns
   const leaderboardService = database
     ? createPgLeaderboardService(database)
     : createMemoryLeaderboardService(authRepository, memoryGameStateStore!);
-  const rewardsService = database ? createPgRewardsService(database) : createMemoryRewardsService();
   const seasonsService = database ? createPgSeasonsService(database) : createMemorySeasonsService();
   const gameStateService = database
     ? createPgGameStateService(database)
@@ -125,18 +114,11 @@ export async function createApp({ config }: AppDependencies): Promise<FastifyIns
   registerPlayerRoutes(app, playerRepository);
   registerMigrationRoutes(app, migrationService);
   registerLeaderboardRoutes(app, leaderboardService);
-  registerRewardsRoutes(app, rewardsService);
   registerSeasonsRoutes(app, seasonsService);
   registerGameStateRoutes(app, gameStateService);
   registerGameStateEconomyRoutes(app, gameStateEconomyService);
   const catalogService = createCatalogService();
   registerCatalogRoutes(app, catalogService);
-  const economyService = database ? createPgEconomyService(database) : createMemoryEconomyService();
-  registerEconomyRoutes(app, economyService);
-  const inventoryService = database
-    ? createPgInventoryService(database, catalogService, economyService)
-    : createMemoryInventoryService(catalogService, economyService);
-  registerInventoryRoutes(app, inventoryService);
   const fishingService = database
     ? createPgFishingService(database)
     : createMemoryFishingService(memoryGameStateStore!);
