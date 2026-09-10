@@ -8,6 +8,7 @@ import {
   buyMultiplier as applyMultiplierPurchase,
   buyNet as applyNetPurchase,
   buyOwnedItem as applySkinPurchase,
+  equipSkin as applySkinEquip,
   placeAquariumFish as applyAquariumPlace,
   resolveDailyGift,
   sellWarehouse as applyWarehouseSale,
@@ -47,6 +48,7 @@ const OPS = {
   netPurchase: 'net_purchase',
   multiplierPurchase: 'multiplier_purchase',
   skinPurchase: 'skin_purchase',
+  skinEquip: 'skin_equip',
   rouletteSpin: 'roulette_spin',
   skinRouletteSpin: 'skin_roulette_spin',
   dailyGiftClaim: 'daily_gift_claim',
@@ -97,6 +99,17 @@ function computeSkinPurchase(envelope: SaveEnvelope, kind: SkinKind, skinId: str
 }
 
 /**
+ * The validating check the pure rule intentionally skips (it no-ops instead
+ * of throwing) — same split as every other op: `compute` validates, then
+ * delegates.
+ */
+function computeSkinEquip(envelope: SaveEnvelope, kind: SkinKind, skinId: string): { player: Player } {
+  const owned = kind === 'rod' ? envelope.player.ownedSkins : envelope.player.ownedBoatSkins;
+  if (!owned.includes(skinId)) throw new Error('SKIN_NOT_OWNED');
+  return { player: applySkinEquip(envelope.player, kind, skinId) };
+}
+
+/**
  * Move a fish already in `aquariumWarehouse` into a display sector. The pure rule
  * grants `AQUARIUM_REWARDS` (coins + xp) folded straight into the blob — there is
  * no `reward` descriptor. The `timestamp` must match a stored fish (checked here,
@@ -118,6 +131,12 @@ export interface GameStateEconomyService {
     power: MultiplierPower,
   ): Promise<Result>;
   purchaseSkin(
+    userId: string,
+    idempotencyKey: string,
+    kind: SkinKind,
+    skinId: string,
+  ): Promise<Result>;
+  equipSkin(
     userId: string,
     idempotencyKey: string,
     kind: SkinKind,
@@ -236,6 +255,10 @@ export function createMemoryGameStateEconomyService(store: MemoryGameStateStore)
       return runMemoryOp(store, ops, userId, OPS.skinPurchase, idempotencyKey,
         env => computeSkinPurchase(env, kind, skinId));
     },
+    async equipSkin(userId, idempotencyKey, kind, skinId) {
+      return runMemoryOp(store, ops, userId, OPS.skinEquip, idempotencyKey,
+        env => computeSkinEquip(env, kind, skinId));
+    },
     async spinRoulette(userId, idempotencyKey) {
       const today = todayUtc();
       const now = Date.now();
@@ -281,6 +304,10 @@ export function createPgGameStateEconomyService(db: Database): GameStateEconomyS
     async purchaseSkin(userId, idempotencyKey, kind, skinId) {
       return runPgOp(db, userId, OPS.skinPurchase, idempotencyKey,
         env => computeSkinPurchase(env, kind, skinId));
+    },
+    async equipSkin(userId, idempotencyKey, kind, skinId) {
+      return runPgOp(db, userId, OPS.skinEquip, idempotencyKey,
+        env => computeSkinEquip(env, kind, skinId));
     },
     async spinRoulette(userId, idempotencyKey) {
       const today = todayUtc();
