@@ -1,36 +1,19 @@
-export type LeaderboardEntry = {
-  rank: number;
-  userId: string;
-  username: string;
-  country: string;
-  score: number;
-  level: number;
-  totalFishCaught: number;
-};
+import type { AuthRepository } from '../auth/types.js';
+import type { MemoryGameStateStore } from '../gamestate/memoryService.js';
+import { extractPlayerStats } from '../gamestate/playerStats.js';
+import { buildLeaderboard, type LeaderboardSource } from './rank.js';
 
-export function createMemoryLeaderboardService(
-  players: { getProfile(userId: string): Promise<{
-    userId: string;
-    username: string;
-    country: string;
-    level: number;
-    xp: number;
-    totalFishCaught: number;
-  } | null> },
-) {
+export function createMemoryLeaderboardService(authRepository: AuthRepository, gameStateStore: MemoryGameStateStore) {
   return {
-    async list(userId: string, limit: number, offset: number) {
-      const profile = await players.getProfile(userId);
-      const entries: LeaderboardEntry[] = profile ? [{
-        rank: 1,
-        userId: profile.userId,
-        username: profile.username,
-        country: profile.country,
-        score: profile.level * 1000 + profile.totalFishCaught * 100 + profile.xp,
-        level: profile.level,
-        totalFishCaught: profile.totalFishCaught,
-      }] : [];
-      return { season: 'all-time', entries: entries.slice(offset, offset + limit), total: entries.length };
+    async list(_userId: string, limit: number, offset: number) {
+      const users = await authRepository.listUsers?.() ?? [];
+      const sources: LeaderboardSource[] = users.map(user => ({
+        userId: user.id,
+        username: user.username,
+        country: user.country,
+        stats: extractPlayerStats(gameStateStore.get(user.id)?.state ?? null),
+      }));
+      return buildLeaderboard(sources, limit, offset);
     },
   };
 }

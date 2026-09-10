@@ -1,4 +1,6 @@
 import { PlayerState, ROD_SKINS, BOAT_SKINS } from './types';
+import type { ApiLeaderboardEntry } from '@/api/types';
+import { iso2ToFlag } from './auth/countries';
 
 export interface LeaderboardPlayer {
   rank: number;
@@ -124,4 +126,20 @@ export function listSavedUsernames(): string[] {
 export function isRegistered(): boolean {
   const acc = getAccount();
   return !!(acc && acc.email && acc.username);
+}
+
+/** Adapt a server leaderboard entry (GET /api/v1/leaderboard) into the shape the ranking UI renders. */
+export function fromApiEntry(entry: ApiLeaderboardEntry, currentUserId: string | null): LeaderboardPlayer {
+  return {
+    rank: entry.rank,
+    name: entry.username,
+    level: entry.level,
+    totalFishCaught: entry.totalFishCaught,
+    coins: entry.coins,
+    skins: entry.skins.filter(id => ROD_SKINS.find(s => s.id === id)),
+    boatSkins: entry.boatSkins.filter(id => BOAT_SKINS.find(s => s.id === id)),
+    multipliers: entry.multipliers,
+    country: iso2ToFlag(entry.country),
+    isCurrentPlayer: !!currentUserId && currentUserId === entry.userId,
+  };
 }
