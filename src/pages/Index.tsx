@@ -292,9 +292,9 @@ const IndexInner = () => {
   } else if (screen === 'multiplier') {
     content = <MultiplierShop player={player} onBuy={handleBuyMultiplier} buying={busyOp === 'multiplier'} onBack={() => setScreen('menu')} />;
   } else if (screen === 'skins') {
-    content = <SkinsShop player={player} onBuy={handleBuySkin} buying={busyOp === 'skin'} onEquip={handleEquipSkin} onBack={() => setScreen('menu')} onOpenBoatVisuals={() => setScreen('boatSkins')} />;
+    content = <SkinsShop player={player} onBuy={handleBuySkin} buying={busyOp === 'skin' || busyOp === 'equipSkin'} onEquip={handleEquipSkin} onBack={() => setScreen('menu')} onOpenBoatVisuals={() => setScreen('boatSkins')} />;
   } else if (screen === 'boatSkins') {
-    content = <BoatSkinsShop player={player} onBuy={handleBuyBoatSkin} buying={busyOp === 'skin'} onEquip={handleEquipBoatSkin} onBack={() => setScreen('skins')} />;
+    content = <BoatSkinsShop player={player} onBuy={handleBuyBoatSkin} buying={busyOp === 'skin' || busyOp === 'equipSkin'} onEquip={handleEquipBoatSkin} onBack={() => setScreen('skins')} />;
   } else if (screen === 'roulette') {
     content = <Roulette player={player} onSpin={handleSpinRoulette} busy={busyOp === 'roulette'} onBack={() => setScreen('menu')} />;
   } else if (screen === 'skinRoulette') {
