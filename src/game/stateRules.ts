@@ -224,6 +224,12 @@ export function buyOwnedItem(
   return { ...state, coins: state.coins - cost, ownedBoatSkins: [...state.ownedBoatSkins, id] };
 }
 
+export function equipSkin(state: PlayerState, kind: 'rod' | 'boat', id: string): PlayerState {
+  const owned = kind === 'rod' ? state.ownedSkins : state.ownedBoatSkins;
+  if (!owned.includes(id)) return state;
+  return kind === 'rod' ? { ...state, activeSkin: id } : { ...state, activeBoatSkin: id };
+}
+
 export function grantOwnedItem(state: PlayerState, kind: 'rod' | 'boat', id: string, duplicateReward: number): PlayerState {
   if (!id) return state;
   const owned = kind === 'rod' ? state.ownedSkins : state.ownedBoatSkins;

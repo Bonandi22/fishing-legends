@@ -13,7 +13,7 @@ interface Props {
   preview: ReactNode;
   onBuy: () => void;
   onEquip: () => void;
-  /** A purchase is in flight — hold the buy button. */
+  /** A buy or equip request is in flight — hold whichever button is shown. */
   busy?: boolean;
 }
 
@@ -48,7 +48,7 @@ export default function CosmeticCard({
             {t('skins.equipped')}
           </span>
         ) : owned ? (
-          <Button size="sm" variant="outline" onClick={onEquip} className="w-full border-biolume/40 text-xs">
+          <Button size="sm" variant="outline" onClick={onEquip} disabled={busy} className="w-full border-biolume/40 text-xs">
             {t('skins.equip')}
           </Button>
         ) : (

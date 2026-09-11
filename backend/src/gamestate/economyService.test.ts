@@ -316,6 +316,55 @@ describe('memory game-state economy service — purchaseSkin', () => {
   });
 });
 
+describe('memory game-state economy service — equipSkin', () => {
+  it('equips an owned rod skin', async () => {
+    const store = createMemoryGameStateStore();
+    store.set('u1', { state: withCoins({ ownedSkins: ['default', 'shark'] }), updatedAt: 'now', version: 1 });
+    const svc = createMemoryGameStateEconomyService(store);
+
+    const res = await svc.equipSkin('u1', 'equip-key-aaaaaaaaaaa1', 'rod', 'shark');
+
+    expect(res.version).toBe(2);
+    expect(res.state.player.activeSkin).toBe('shark');
+    expect(store.get('u1')!.version).toBe(2);
+  });
+
+  it('equips an owned boat skin', async () => {
+    const store = createMemoryGameStateStore();
+    store.set('u1', { state: withCoins({ ownedBoatSkins: ['classic', 'yacht'] }), updatedAt: 'now', version: 1 });
+    const svc = createMemoryGameStateEconomyService(store);
+
+    const res = await svc.equipSkin('u1', 'equip-key-bbbbbbbbbbb1', 'boat', 'yacht');
+
+    expect(res.state.player.activeBoatSkin).toBe('yacht');
+  });
+
+  it('replays the same key without re-applying', async () => {
+    const store = createMemoryGameStateStore();
+    store.set('u1', { state: withCoins({ ownedSkins: ['default', 'shark'] }), updatedAt: 'now', version: 1 });
+    const svc = createMemoryGameStateEconomyService(store);
+
+    const first = await svc.equipSkin('u1', 'equip-key-ccccccccccc1', 'rod', 'shark');
+    const replay = await svc.equipSkin('u1', 'equip-key-ccccccccccc1', 'rod', 'shark');
+
+    expect(replay).toEqual(first);
+    expect(store.get('u1')!.version).toBe(2); // not 3
+  });
+
+  it('rejects SKIN_NOT_OWNED', async () => {
+    const store = createMemoryGameStateStore();
+    store.set('u1', { state: withCoins(), updatedAt: 'now', version: 1 });
+    const svc = createMemoryGameStateEconomyService(store);
+    await expect(svc.equipSkin('u1', 'equip-key-ddddddddddd1', 'rod', 'shark')).rejects.toThrow('SKIN_NOT_OWNED');
+    expect(store.get('u1')!.version).toBe(1);
+  });
+
+  it('rejects a user with no blob with GAME_STATE_NOT_FOUND', async () => {
+    const svc = createMemoryGameStateEconomyService(createMemoryGameStateStore());
+    await expect(svc.equipSkin('ghost', 'equip-key-eeeeeeeeeee1', 'rod', 'shark')).rejects.toThrow('GAME_STATE_NOT_FOUND');
+  });
+});
+
 describe('memory game-state economy service — reward ops', () => {
   it('claimDailyGift: grants day 1 (150 coins), version bump, reward in the result', async () => {
     const store = createMemoryGameStateStore();

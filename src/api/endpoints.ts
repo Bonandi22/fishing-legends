@@ -19,8 +19,8 @@ export function getMe(): Promise<{ user: PlayerProfile }> {
 export function getGameState(): Promise<GameStateEnvelope> {
   return apiFetch('/me/state');
 }
-export function putGameState(state: unknown, baseVersion: number | null): Promise<{ version: number }> {
-  return apiFetch('/me/state', { method: 'PUT', body: { state, baseVersion } });
+export function bootstrapGameState(state: unknown): Promise<{ version: number }> {
+  return apiFetch('/me/state/bootstrap', { method: 'POST', body: { state } });
 }
 export function sellWarehouse(idempotencyKey: string): Promise<GameStateEnvelope> {
   return apiFetch('/me/economy/warehouse/sell', { method: 'POST', idempotencyKey });
@@ -41,6 +41,9 @@ export function purchaseSkin(
   skinId: string,
 ): Promise<GameStateEnvelope> {
   return apiFetch('/me/economy/skins/purchase', { method: 'POST', body: { kind, skinId }, idempotencyKey });
+}
+export function equipSkin(idempotencyKey: string, kind: 'rod' | 'boat', skinId: string): Promise<GameStateEnvelope> {
+  return apiFetch('/me/economy/skins/equip', { method: 'POST', body: { kind, skinId }, idempotencyKey });
 }
 
 export type RewardEnvelope = GameStateEnvelope & { reward: RewardGrant };

@@ -8,6 +8,7 @@ import {
   buyNet as applyNetPurchase,
   buyOwnedItem,
   consumeNet as applyNetConsumption,
+  equipSkin as applyEquipSkin,
   placeAquariumFish,
   resolveDailyGift,
   sellWarehouse as applyWarehouseSale,
@@ -88,10 +89,7 @@ export function useGameState() {
   }, []);
 
   const equipSkin = useCallback((skinId: string) => {
-    setPlayer(prev => {
-      if (!prev.ownedSkins.includes(skinId)) return prev;
-      return { ...prev, activeSkin: skinId };
-    });
+    setPlayer(prev => applyEquipSkin(prev, 'rod', skinId));
   }, []);
 
   const buyBoatSkin = useCallback((skinId: string, price: number) => {
@@ -99,10 +97,7 @@ export function useGameState() {
   }, []);
 
   const equipBoatSkin = useCallback((skinId: string) => {
-    setPlayer(prev => {
-      if (!prev.ownedBoatSkins.includes(skinId)) return prev;
-      return { ...prev, activeBoatSkin: skinId };
-    });
+    setPlayer(prev => applyEquipSkin(prev, 'boat', skinId));
   }, []);
 
   const moveAquariumFishToSector = useCallback((timestamp: number, sector: number) => {

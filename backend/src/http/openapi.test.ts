@@ -45,7 +45,8 @@ describe('generated OpenAPI contract', () => {
       '/api/v1/auth/register', '/api/v1/auth/login', '/api/v1/auth/refresh', '/api/v1/auth/logout',
       '/api/v1/me', '/api/v1/catalog',
       '/api/v1/me/fishing/cast', '/api/v1/me/fishing/land',
-      '/api/v1/me/economy/aquarium/place',
+      '/api/v1/me/economy/aquarium/place', '/api/v1/me/economy/skins/equip',
+      '/api/v1/me/state/bootstrap',
       '/api/v1/migration/local/preview', '/api/v1/migration/local/import',
       '/api/v1/leaderboard', '/api/v1/seasons/current',
     ];

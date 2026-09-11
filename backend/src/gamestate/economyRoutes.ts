@@ -60,6 +60,18 @@ export function registerGameStateEconomyRoutes(app: FastifyInstance, service: Ga
     return service.purchaseSkin(request.userId, idempotencyKey(request.headers['idempotency-key']), kind, skinId);
   });
 
+  r.post('/api/v1/me/economy/skins/equip', {
+    schema: {
+      tags: ['gamestate'],
+      summary: 'Equip an owned rod or boat skin (needs Idempotency-Key)',
+      body: skinBody,
+    },
+    preHandler: app.requireAuth,
+  }, async (request) => {
+    const { kind, skinId } = request.body;
+    return service.equipSkin(request.userId, idempotencyKey(request.headers['idempotency-key']), kind, skinId);
+  });
+
   r.post('/api/v1/me/economy/roulette/spin', {
     schema: { tags: ['gamestate'], summary: 'Spin the daily roulette (needs Idempotency-Key)' },
     preHandler: app.requireAuth,

@@ -55,6 +55,14 @@ describe('CosmeticCard', () => {
     expect(onEquip).toHaveBeenCalledTimes(1);
   });
 
+  it('disables the equip control while an equip is busy', () => {
+    const { onEquip } = renderCard({ owned: true, busy: true });
+    const button = screen.getByRole('button', { name: /equipar/i });
+    expect(button).toBeDisabled();
+    fireEvent.click(button);
+    expect(onEquip).not.toHaveBeenCalled();
+  });
+
   it('shows an equipped item as equipped with no action button', () => {
     renderCard({ owned: true, equipped: true });
     expect(screen.getByText(/equipado/i)).toBeInTheDocument();

@@ -8,10 +8,15 @@ import { getXpForLevel, PlayerState } from '@/game/types';
 // MainMenu only needs useAuth() to not throw and to report a status. Stub the
 // module so these nav/world/chip tests stay fully synchronous — no getMe() on
 // mount, no async status transition mid-assertion. AuthProvider has its own suite.
+// `authState` is mutable so individual tests can switch to 'authenticated'.
+const authState = vi.hoisted(() => ({
+  status: 'anonymous' as 'anonymous' | 'authenticated' | 'loading',
+}));
+
 vi.mock('@/game/auth/AuthProvider', () => ({
   AuthProvider: ({ children }: { children: ReactNode }) => children,
   useAuth: () => ({
-    status: 'anonymous' as const,
+    status: authState.status,
     user: null,
     login: vi.fn(),
     register: vi.fn(),
@@ -55,6 +60,7 @@ function renderMenu(overrides: Partial<PlayerState> = {}) {
 beforeEach(() => {
   localStorage.clear();
   cleanup();
+  authState.status = 'anonymous';
 });
 
 describe('MainMenu navigation', () => {
@@ -144,6 +150,13 @@ describe('MainMenu progress reset', () => {
     fireEvent.click(screen.getByRole('button', { name: /resetar/i }));
 
     expect(onReset).toHaveBeenCalledTimes(1);
+  });
+
+  it('hides the reset control while authenticated, even past level 1', () => {
+    authState.status = 'authenticated';
+    renderMenu({ level: 3 });
+
+    expect(screen.queryByRole('button', { name: /resetar/i })).not.toBeInTheDocument();
   });
 });
 

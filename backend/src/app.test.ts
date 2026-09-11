@@ -271,7 +271,7 @@ describe('backend foundation', () => {
         dailyGiftsLastClaim: null, dailyGiftsDay: 1, dailyGiftsWeek: 1, nets: 0,
       },
     };
-    expect((await client.request({ method: 'PUT', url: '/api/v1/me/state', payload: { state: seedState, baseVersion: null } })).statusCode).toBe(200);
+    expect((await client.request({ method: 'POST', url: '/api/v1/me/state/bootstrap', payload: { state: seedState } })).statusCode).toBe(200);
 
     const first = await client.request({ method: 'POST', url: '/api/v1/me/fishing/cast', payload: { locationId: 'atlantic' }, idempotencyKey: 'fishing-key-123456' });
     const second = await client.request({ method: 'POST', url: '/api/v1/me/fishing/cast', payload: { locationId: 'atlantic' }, idempotencyKey: 'fishing-key-123456' });
@@ -301,7 +301,7 @@ describe('backend foundation', () => {
         dailyGiftsLastClaim: null, dailyGiftsDay: 1, dailyGiftsWeek: 1, nets: 0,
       },
     };
-    expect((await client.request({ method: 'PUT', url: '/api/v1/me/state', payload: { state: seedState, baseVersion: null } })).statusCode).toBe(200);
+    expect((await client.request({ method: 'POST', url: '/api/v1/me/state/bootstrap', payload: { state: seedState } })).statusCode).toBe(200);
 
     const cast = (await client.request({ method: 'POST', url: '/api/v1/me/fishing/cast',
       payload: { locationId: 'submarine', mode: 'submarine' } })).json();
@@ -337,7 +337,7 @@ describe('backend foundation', () => {
         dailyGiftsLastClaim: null, dailyGiftsDay: 1, dailyGiftsWeek: 1, nets: 0,
       },
     };
-    expect((await client.request({ method: 'PUT', url: '/api/v1/me/state', payload: { state: seedState, baseVersion: null } })).statusCode).toBe(200);
+    expect((await client.request({ method: 'POST', url: '/api/v1/me/state/bootstrap', payload: { state: seedState } })).statusCode).toBe(200);
 
     const placed = await client.request({ method: 'POST', url: '/api/v1/me/economy/aquarium/place',
       payload: { timestamp: 123, sector: 2 }, idempotencyKey: 'aqua-app-aaaaaaaaaaaa' });

@@ -1,60 +1,34 @@
 import { useCallback, useEffect, useRef } from 'react';
 import type { PlayerState } from '@/game/types';
 import { SAVE_SCHEMA_VERSION, saveSchema } from '@/game/persistence';
+import { getGameState, bootstrapGameState } from '@/api/endpoints';
 import { ApiError } from '@/api/client';
-import { getGameState, putGameState } from '@/api/endpoints';
 import { hydrateFromServer, type HydrateResult } from './hydrate';
 
-const DEBOUNCE_MS = 4000;
 const POLL_MS = 45_000;
-
-/** Read the `dbl_csrf` cookie the same way `src/api/client.ts` `csrfToken()` does. */
-function csrfToken(): string | null {
-  const m = document.cookie.match(/(?:^|;\s*)dbl_csrf=([^;]+)/);
-  return m ? decodeURIComponent(m[1]) : null;
-}
 
 interface GameStateEnvelope {
   schemaVersion: typeof SAVE_SCHEMA_VERSION;
   player: PlayerState;
 }
 
-function isVersionConflict(err: unknown): boolean {
-  return err instanceof ApiError && err.code === 'STATE_VERSION_CONFLICT';
-}
-
 /**
- * JSON with object keys sorted, so the dirty-check compares content, not key order.
- * `replaceFromServer` merges (`{ ...prev, ...server }`), which reorders keys relative
- * to a fresh server blob — a plain `JSON.stringify` would see those as different and
- * push the server state straight back (version ping-pong between two idle tabs).
- * Arrays keep their order (it is meaningful in `PlayerState`).
- */
-function stableStringify(value: unknown): string {
-  if (value === null || typeof value !== 'object') return JSON.stringify(value) ?? 'null';
-  if (Array.isArray(value)) return `[${value.map(stableStringify).join(',')}]`;
-  const obj = value as Record<string, unknown>;
-  return `{${Object.keys(obj).sort().map(k => `${JSON.stringify(k)}:${stableStringify(obj[k])}`).join(',')}}`;
-}
-
-/**
- * Pushes the player's game state to the server while they play, with optimistic
- * concurrency:
- * - `start()` (called by `afterAuth`) loads the server blob, replaces local state,
- *   and seeds the base version; on an empty server it adopts the local save.
- * - a debounced `PUT /me/state` ~4s after the last `player` change, carrying the
- *   base version; a successful PUT advances it. A `STATE_VERSION_CONFLICT` means
- *   another device wrote — the hook re-runs `hydrateFromServer` (pull + replace +
- *   reseed) and the next change pushes again.
- * - a background `GET /me/state` every 45s (only while the tab is visible, and not
- *   while a PUT is in flight): if the server version is ahead of ours, another
- *   device saved — pull + replace. Still last-write-wins by blob; no field merge.
- * - an immediate keepalive `fetch` on `pagehide` / tab hide (survives unload;
- *   `navigator.sendBeacon` can't set the CSRF header, so we use `fetch`).
- * - `flushNow()` for logout: clears the timer and awaits a PUT now.
+ * Keeps the client's optimistic-concurrency version in sync with the server
+ * and adopts cross-device changes:
+ * - `start()` (called by `afterAuth`) loads the server blob, replaces local
+ *   state, and seeds the base version; on an empty server it bootstraps the
+ *   account with the local save (a one-time, create-only write — see
+ *   `POST /me/state/bootstrap`).
+ * - a background `GET /me/state` every 45s (only while the tab is visible):
+ *   if the server version is ahead of ours, another device saved — pull and
+ *   replace. Still last-write-wins by blob; no field merge.
  *
- * A `player` that serializes identically to the last sent envelope is skipped.
- * `enabled === false` makes the hook inert.
+ * There is no generic push any more: every mutation for an authenticated
+ * user goes through its own validated server op (see `Index.tsx`'s
+ * `runEconomyOp`/`runRewardOp`), which already returns the fresh
+ * `{ state, version }` for `applyServerResult` to adopt. Nothing is ever
+ * "local-only and unpushed," so there is nothing left to debounce, flush on
+ * logout, or flush on tab hide.
  */
 export function useGameStateSync({
   player,
@@ -65,7 +39,6 @@ export function useGameStateSync({
   enabled: boolean;
   replace: (updater: (prev: PlayerState) => Partial<PlayerState>) => void;
 }): {
-  flushNow: () => Promise<void>;
   start: () => Promise<HydrateResult['kind']>;
   applyServerResult: (result: { state: unknown; version: number | null }) => void;
 } {
@@ -76,9 +49,7 @@ export function useGameStateSync({
   const replaceRef = useRef(replace);
   replaceRef.current = replace;
 
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const baseVersion = useRef<number | null>(null);
-  const lastSent = useRef<string | null>(null);
   const busy = useRef(false);
 
   const envelope = useCallback(
@@ -86,33 +57,25 @@ export function useGameStateSync({
     [],
   );
 
-  const clearTimer = useCallback(() => {
-    if (timer.current) {
-      clearTimeout(timer.current);
-      timer.current = null;
-    }
-  }, []);
-
   /**
-   * Adopt a full server player blob as the new local truth: replace local state,
-   * seed the optimistic-concurrency base version, and mark the blob as already sent
-   * so the debounce that fires after the re-render does not push it straight back.
+   * Adopt a full server player blob as the new local truth: replace local
+   * state and seed the optimistic-concurrency base version.
    */
   const adoptServerState = useCallback((player: PlayerState, version: number | null) => {
     replaceRef.current(() => player);
     baseVersion.current = version;
-    lastSent.current = stableStringify({ schemaVersion: SAVE_SCHEMA_VERSION, player });
   }, []);
 
   const resync = useCallback(async () => {
-    const res = await hydrateFromServer(replaceRef.current);
-    if (res.kind === 'loaded' && res.player) {
-      // `hydrateFromServer` already called `replace`; re-applying the identical full
-      // player through `adoptServerState` is a no-op for `replaceFromServer`'s merge.
-      adoptServerState(res.player, res.version);
-    } else if (res.kind === 'loaded') {
-      baseVersion.current = res.version;
-      lastSent.current = null;
+    const res = await hydrateFromServer();
+    if (res.kind === 'loaded') {
+      // A slower fetch can land behind a concurrent op's applyServerResult
+      // (which already advanced baseVersion) — never let it roll state back.
+      const stale = res.version != null && baseVersion.current != null && res.version <= baseVersion.current;
+      if (!stale) {
+        if (res.player) adoptServerState(res.player, res.version);
+        else baseVersion.current = res.version;
+      }
     }
     return res;
   }, [adoptServerState]);
@@ -128,27 +91,6 @@ export function useGameStateSync({
     },
     [adoptServerState],
   );
-
-  /** Send the current envelope once. Best-effort: resolves on any failure. */
-  const push = useCallback(async () => {
-    if (!enabledRef.current) return;
-    const body = stableStringify(envelope());
-    if (body === lastSent.current) return;
-    busy.current = true;
-    try {
-      const { version } = await putGameState(envelope(), baseVersion.current);
-      baseVersion.current = version;
-      lastSent.current = body;
-    } catch (err) {
-      if (isVersionConflict(err)) {
-        console.warn('game state version conflict; pulling the server state');
-        await resync();
-      }
-      // other failures: retried on the next change
-    } finally {
-      busy.current = false;
-    }
-  }, [envelope, resync]);
 
   /** Background check: if the server version is ahead of ours, another device saved. */
   const poll = useCallback(async () => {
@@ -172,34 +114,18 @@ export function useGameStateSync({
     const res = await resync();
     if (res.kind === 'empty') {
       try {
-        const { version } = await putGameState(envelope(), null);
+        const { version } = await bootstrapGameState(envelope());
         baseVersion.current = version;
-        lastSent.current = stableStringify(envelope());
-      } catch {
-        /* best-effort adopt */
+      } catch (err) {
+        if (err instanceof ApiError && err.code === 'STATE_VERSION_CONFLICT') {
+          // Another device bootstrapped first; adopt what it wrote instead of
+          // leaving baseVersion unset for the rest of the session.
+          await resync();
+        }
       }
     }
     return res.kind;
   }, [envelope, resync]);
-
-  const flushNow = useCallback(async () => {
-    clearTimer();
-    await push();
-  }, [clearTimer, push]);
-
-  // Debounce on player change.
-  useEffect(() => {
-    if (!enabled) {
-      clearTimer();
-      return;
-    }
-    clearTimer();
-    timer.current = setTimeout(() => {
-      timer.current = null;
-      void push();
-    }, DEBOUNCE_MS);
-    return clearTimer;
-  }, [player, enabled, clearTimer, push]);
 
   // Background pull: every 45s while enabled and visible, plus one on becoming visible.
   useEffect(() => {
@@ -215,37 +141,5 @@ export function useGameStateSync({
     };
   }, [enabled, poll]);
 
-  // Flush on tab close / hide. keepalive lets the request outlive the document.
-  useEffect(() => {
-    const send = () => {
-      if (!enabledRef.current) return;
-      const body = JSON.stringify({ state: envelope(), baseVersion: baseVersion.current });
-      const t = csrfToken();
-      try {
-        void fetch('/api/v1/me/state', {
-          method: 'PUT',
-          credentials: 'same-origin',
-          keepalive: true,
-          headers: {
-            'Content-Type': 'application/json',
-            ...(t ? { 'X-CSRF-Token': t } : {}),
-          },
-          body,
-        });
-      } catch {
-        /* best-effort */
-      }
-    };
-    const onVisibility = () => {
-      if (document.visibilityState === 'hidden') send();
-    };
-    window.addEventListener('pagehide', send);
-    document.addEventListener('visibilitychange', onVisibility);
-    return () => {
-      window.removeEventListener('pagehide', send);
-      document.removeEventListener('visibilitychange', onVisibility);
-    };
-  }, [envelope]);
-
-  return { flushNow, start, applyServerResult };
+  return { start, applyServerResult };
 }

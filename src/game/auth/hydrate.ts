@@ -5,22 +5,20 @@ import { getGameState } from '@/api/endpoints';
 export type HydrateResult = {
   kind: 'loaded' | 'empty' | 'error';
   version: number | null;
-  /** The player state that was applied — only on `loaded`. Lets callers avoid re-pushing it. */
+  /** The fetched player state — only on `loaded`. The caller decides whether to apply it. */
   player?: PlayerState;
 };
 
 /**
- * Loads the account's saved game state from the server and REPLACES local state.
- * The server blob is authoritative (this pulls Task 10.2 forward). `onAuthenticated`
- * calls this on every authenticated app start; `useGameStateSync` calls it again to
- * recover from a version conflict.
+ * Loads the account's saved game state from the server. Does NOT apply it —
+ * the caller decides whether the fetched snapshot is still current before
+ * replacing local state (a slow fetch can land behind a concurrent write).
  *
- * On `loaded`, `version` is the server's current version — the caller seeds its
- * optimistic-concurrency base with it. `empty` / `error` carry `version: null`.
+ * On `loaded`, `version` is the server's current version as of the fetch —
+ * the caller seeds its optimistic-concurrency base with it. `empty` / `error`
+ * carry `version: null`.
  */
-export async function hydrateFromServer(
-  replace: (updater: (prev: PlayerState) => Partial<PlayerState>) => void,
-): Promise<HydrateResult> {
+export async function hydrateFromServer(): Promise<HydrateResult> {
   let envelope: unknown;
   let version: number | null;
   try {
@@ -34,6 +32,5 @@ export async function hydrateFromServer(
     console.warn('game state blob failed validation; treating as empty');
     return { kind: 'empty', version: null };
   }
-  replace(() => parsed.data.player);
   return { kind: 'loaded', version, player: parsed.data.player };
 }

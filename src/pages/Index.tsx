@@ -26,6 +26,7 @@ import {
   purchaseNet as purchaseNetApi,
   purchaseMultiplier as purchaseMultiplierApi,
   purchaseSkin as purchaseSkinApi,
+  equipSkin as equipSkinApi,
   spinRoulette as spinRouletteApi,
   spinSkinRoulette as spinSkinRouletteApi,
   claimDailyGift as claimDailyGiftApi,
@@ -56,8 +57,8 @@ const IndexInner = () => {
   } = useGameState();
   const { isPlaying: musicPlaying, toggle: toggleMusic, trackId: musicTrack, setTrack: setMusicTrack } = useBackgroundMusic();
   const [syncEnabled, setSyncEnabled] = useState(false);
-  const [busyOp, setBusyOp] = useState<null | 'sell' | 'net' | 'multiplier' | 'skin' | 'roulette' | 'skinRoulette' | 'dailyGift' | 'aquariumPlace' | 'cast' | 'land'>(null);
-  const { flushNow, start: startSync, applyServerResult } = useGameStateSync({ player, enabled: syncEnabled, replace: replaceFromServer });
+  const [busyOp, setBusyOp] = useState<null | 'sell' | 'net' | 'multiplier' | 'skin' | 'equipSkin' | 'roulette' | 'skinRoulette' | 'dailyGift' | 'aquariumPlace' | 'cast' | 'land'>(null);
+  const { start: startSync, applyServerResult } = useGameStateSync({ player, enabled: syncEnabled, replace: replaceFromServer });
   const [screen, setScreen] = useState<Screen>('menu');
   const [selectedLocation, setSelectedLocation] = useState<FishingLocation | null>(null);
   const [world, setWorld] = useState<1 | 2 | 3>(() => {
@@ -82,26 +83,25 @@ const IndexInner = () => {
   }, []);
 
   // A value-granting economy op: anonymous / degraded → the local pure rule;
-  // authenticated → flush any pending local mutation FIRST (else the server runs
-  // the op on a stale blob and `applyServerResult` overwrites the un-pushed
-  // change), then the server op, then adopt its authoritative result. Failure is
-  // silent (no toast surface) and leaves local state untouched.
+  // authenticated → the server op, then adopt its authoritative result. Every
+  // authenticated mutation (including cosmetic equip) is its own op, so there
+  // is never a pending local-only change to flush first. Failure is silent
+  // (no toast surface) and leaves local state untouched.
   const runEconomyOp = useCallback(async (
-    op: 'sell' | 'net' | 'multiplier' | 'skin' | 'aquariumPlace',
+    op: 'sell' | 'net' | 'multiplier' | 'skin' | 'equipSkin' | 'aquariumPlace',
     local: () => void,
     api: (idempotencyKey: string) => Promise<GameStateEnvelope>,
   ) => {
     if (!syncEnabled) { local(); return; }
     setBusyOp(op);
     try {
-      await flushNow();
       applyServerResult(await api(crypto.randomUUID()));
     } catch {
       console.warn(`economy op "${op}" failed; state unchanged`);
     } finally {
       setBusyOp(null);
     }
-  }, [syncEnabled, flushNow, applyServerResult]);
+  }, [syncEnabled, applyServerResult]);
 
   const handleSellWarehouse = useCallback(
     () => runEconomyOp('sell', sellWarehouse, sellWarehouseApi),
@@ -128,6 +128,14 @@ const IndexInner = () => {
       runEconomyOp('skin', () => buyBoatSkin(skinId, price), key => purchaseSkinApi(key, 'boat', skinId)),
     [runEconomyOp, buyBoatSkin],
   );
+  const handleEquipSkin = useCallback(
+    (skinId: string) => runEconomyOp('equipSkin', () => equipSkin(skinId), key => equipSkinApi(key, 'rod', skinId)),
+    [runEconomyOp, equipSkin],
+  );
+  const handleEquipBoatSkin = useCallback(
+    (skinId: string) => runEconomyOp('equipSkin', () => equipBoatSkin(skinId), key => equipSkinApi(key, 'boat', skinId)),
+    [runEconomyOp, equipBoatSkin],
+  );
   const handleMoveAquarium = useCallback(
     (timestamp: number, sector: number) =>
       runEconomyOp('aquariumPlace', () => moveAquariumFishToSector(timestamp, sector),
@@ -148,7 +156,6 @@ const IndexInner = () => {
     }
     setBusyOp(op);
     try {
-      await flushNow();
       const res = await api(crypto.randomUUID());
       applyServerResult(res);
       return res.reward;
@@ -158,7 +165,7 @@ const IndexInner = () => {
     } finally {
       setBusyOp(null);
     }
-  }, [syncEnabled, flushNow, applyServerResult]);
+  }, [syncEnabled, applyServerResult]);
 
   const handleSpinRoulette = useCallback(
     () => runRewardOp('roulette', spinDailyRouletteLocal, spinRouletteApi),
@@ -180,7 +187,6 @@ const IndexInner = () => {
     if (syncEnabled) {
       setBusyOp('cast');
       try {
-        await flushNow();
         const r = await castLineApi(crypto.randomUUID(), locationId, mode);
         applyServerResult(r);
         if (r.mode === 'submarine') {
@@ -236,7 +242,7 @@ const IndexInner = () => {
     } catch {
       return null;
     }
-  }, [syncEnabled, flushNow, applyServerResult, player, replaceFromServer]);
+  }, [syncEnabled, applyServerResult, player, replaceFromServer]);
 
   const handleLand = useCallback(async (
     hooked: Hooked, locationId: string, catchId?: string,
@@ -286,9 +292,9 @@ const IndexInner = () => {
   } else if (screen === 'multiplier') {
     content = <MultiplierShop player={player} onBuy={handleBuyMultiplier} buying={busyOp === 'multiplier'} onBack={() => setScreen('menu')} />;
   } else if (screen === 'skins') {
-    content = <SkinsShop player={player} onBuy={handleBuySkin} buying={busyOp === 'skin'} onEquip={equipSkin} onBack={() => setScreen('menu')} onOpenBoatVisuals={() => setScreen('boatSkins')} />;
+    content = <SkinsShop player={player} onBuy={handleBuySkin} buying={busyOp === 'skin' || busyOp === 'equipSkin'} onEquip={handleEquipSkin} onBack={() => setScreen('menu')} onOpenBoatVisuals={() => setScreen('boatSkins')} />;
   } else if (screen === 'boatSkins') {
-    content = <BoatSkinsShop player={player} onBuy={handleBuyBoatSkin} buying={busyOp === 'skin'} onEquip={equipBoatSkin} onBack={() => setScreen('skins')} />;
+    content = <BoatSkinsShop player={player} onBuy={handleBuyBoatSkin} buying={busyOp === 'skin' || busyOp === 'equipSkin'} onEquip={handleEquipBoatSkin} onBack={() => setScreen('skins')} />;
   } else if (screen === 'roulette') {
     content = <Roulette player={player} onSpin={handleSpinRoulette} busy={busyOp === 'roulette'} onBack={() => setScreen('menu')} />;
   } else if (screen === 'skinRoulette') {
@@ -339,7 +345,7 @@ const IndexInner = () => {
   };
 
   return (
-    <AuthProvider onAuthenticated={afterAuth} onBeforeLogout={flushNow} onLoggedOut={handleLoggedOut}>
+    <AuthProvider onAuthenticated={afterAuth} onLoggedOut={handleLoggedOut}>
       {content}
     </AuthProvider>
   );

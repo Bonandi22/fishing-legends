@@ -182,7 +182,7 @@ export default function MainMenu({
             >
               {status === 'authenticated' && user ? `${iso2ToFlag(user.country)} ${user.username}` : t('menu.register')}
             </Button>
-            {player.level > 1 && (
+            {player.level > 1 && status !== 'authenticated' && (
               <Button onClick={onReset} variant="ghost" size="sm" className="text-muted-foreground">
                 {t('menu.reset')}
               </Button>

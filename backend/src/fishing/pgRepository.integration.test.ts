@@ -48,7 +48,7 @@ const blob = (over: Record<string, unknown> = {}) => ({
 describe('pg fishing service (integration)', () => {
   it('cast + land transactionally: one session, one fishing_land op row, blob updated, version +2', async () => {
     const userId = await seedUser();
-    await gameState.put(userId, blob(), null);
+    await gameState.bootstrap(userId, blob());
 
     const cast = await fishing.cast(userId, 'cast-int-aaaaaaaa', 'atlantic');
     if (cast.mode !== 'rod') throw new Error('expected a rod cast');
@@ -68,7 +68,7 @@ describe('pg fishing service (integration)', () => {
 
   it('cast dedupes on the idempotency key: one session, version +1', async () => {
     const userId = await seedUser();
-    await gameState.put(userId, blob(), null);
+    await gameState.bootstrap(userId, blob());
     const a = await fishing.cast(userId, 'cast-int-bbbbbbbb', 'atlantic');
     const b = await fishing.cast(userId, 'cast-int-bbbbbbbb', 'atlantic');
     expect(b.sessionId).toBe(a.sessionId);
@@ -79,7 +79,7 @@ describe('pg fishing service (integration)', () => {
 
   it('land replays the same key: identical result, one op row, warehouse still +1', async () => {
     const userId = await seedUser();
-    await gameState.put(userId, blob(), null);
+    await gameState.bootstrap(userId, blob());
     const cast = await fishing.cast(userId, 'cast-int-cccccccc', 'atlantic');
     const first = await fishing.land(userId, 'land-int-cccccccc', cast.sessionId);
     const replay = await fishing.land(userId, 'land-int-cccccccc', cast.sessionId);
@@ -91,7 +91,7 @@ describe('pg fishing service (integration)', () => {
 
   it('concurrent same-key land: both resolve identically, one op row', async () => {
     const userId = await seedUser();
-    await gameState.put(userId, blob(), null);
+    await gameState.bootstrap(userId, blob());
     const cast = await fishing.cast(userId, 'cast-int-dddddddd', 'atlantic');
     const [a, b] = await Promise.all([
       fishing.land(userId, 'land-int-dddddddd', cast.sessionId),
@@ -105,7 +105,7 @@ describe('pg fishing service (integration)', () => {
 
   it('land on an expired session -> FISHING_SESSION_EXPIRED', async () => {
     const userId = await seedUser();
-    await gameState.put(userId, blob(), null);
+    await gameState.bootstrap(userId, blob());
     const cast = await fishing.cast(userId, 'cast-int-eeeeeeee', 'atlantic');
     // backdate the session past the 5-min TTL
     await harness.db.update(fishingSessions)
@@ -117,7 +117,7 @@ describe('pg fishing service (integration)', () => {
 
   it('net cast + land transactionally: nets decremented, warehouse += batch, one op row', async () => {
     const userId = await seedUser();
-    await gameState.put(userId, blob({ nets: 3, level: 8, unlockedLocations: ['titicaca'], xp: 0, xpToNextLevel: 999999 }), null);
+    await gameState.bootstrap(userId, blob({ nets: 3, level: 8, unlockedLocations: ['titicaca'], xp: 0, xpToNextLevel: 999999 }));
     const cast = await fishing.cast(userId, 'cast-net-int-aa', 'titicaca', 'net');
     if (cast.mode !== 'net') throw new Error('expected a net cast');
     expect(cast.version).toBe(2);
@@ -137,7 +137,7 @@ describe('pg fishing service (integration)', () => {
 
   it('net land replays the same key: one op row, batch not doubled', async () => {
     const userId = await seedUser();
-    await gameState.put(userId, blob({ nets: 3, level: 8, unlockedLocations: ['titicaca'] }), null);
+    await gameState.bootstrap(userId, blob({ nets: 3, level: 8, unlockedLocations: ['titicaca'] }));
     const cast = await fishing.cast(userId, 'cast-net-int-bb', 'titicaca', 'net');
     const first = await fishing.land(userId, 'land-net-int-bb', cast.sessionId);
     const replay = await fishing.land(userId, 'land-net-int-bb', cast.sessionId);
@@ -148,7 +148,7 @@ describe('pg fishing service (integration)', () => {
 
   it('submarine: cast writes no blob/op, harvests bump version and shrink the roster, drain completes', async () => {
     const userId = await seedUser();
-    await gameState.put(userId, blob({ level: 6, xp: 0, xpToNextLevel: 999999 }), null);
+    await gameState.bootstrap(userId, blob({ level: 6, xp: 0, xpToNextLevel: 999999 }));
 
     const cast = await fishing.cast(userId, 'cast-sub-int-aa', 'submarine', 'submarine');
     if (cast.mode !== 'submarine') throw new Error('expected a submarine cast');
@@ -181,14 +181,14 @@ describe('pg fishing service (integration)', () => {
 
   it('submarine land without catchId -> INVALID_FISHING_SESSION', async () => {
     const userId = await seedUser();
-    await gameState.put(userId, blob({ level: 6 }), null);
+    await gameState.bootstrap(userId, blob({ level: 6 }));
     const cast = await fishing.cast(userId, 'cast-sub-int-bb', 'submarine', 'submarine');
     await expect(fishing.land(userId, 'land-sub-int-bb', cast.sessionId)).rejects.toThrow('INVALID_FISHING_SESSION');
   });
 
   it('deleting the user cascades fishing_sessions', async () => {
     const userId = await seedUser();
-    await gameState.put(userId, blob(), null);
+    await gameState.bootstrap(userId, blob());
     await fishing.cast(userId, 'cast-int-ffffffff', 'atlantic');
     await harness.db.delete(users).where(eq(users.id, userId));
     const sessions = await harness.db.select().from(fishingSessions).where(eq(fishingSessions.userId, userId));

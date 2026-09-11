@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import * as client from './client';
-import { register, login, logout, getMe, getGameState, putGameState, sellWarehouse, purchaseNet, purchaseMultiplier, purchaseSkin, spinRoulette, spinSkinRoulette, claimDailyGift, placeAquariumFish, castLine, landCatch, getLeaderboard, getCurrentSeason } from './endpoints';
+import { register, login, logout, getMe, getGameState, bootstrapGameState, sellWarehouse, purchaseNet, purchaseMultiplier, purchaseSkin, equipSkin, spinRoulette, spinSkinRoulette, claimDailyGift, placeAquariumFish, castLine, landCatch, getLeaderboard, getCurrentSeason } from './endpoints';
 
 describe('endpoints', () => {
   it('register POSTs /auth/register with the body', async () => {
@@ -31,18 +31,11 @@ describe('endpoints', () => {
     spy.mockRestore();
   });
 
-  it('putGameState PUTs /me/state with { state, baseVersion } and returns the new version', async () => {
-    const spy = vi.spyOn(client, 'apiFetch').mockResolvedValue({ version: 4 } as never);
-    const out = await putGameState({ schemaVersion: 1, player: { level: 3 } }, 3);
-    expect(spy).toHaveBeenCalledWith('/me/state', { method: 'PUT', body: { state: { schemaVersion: 1, player: { level: 3 } }, baseVersion: 3 } });
-    expect(out).toEqual({ version: 4 });
-    spy.mockRestore();
-  });
-
-  it('putGameState sends baseVersion null for a first write', async () => {
+  it('bootstrapGameState POSTs /me/state/bootstrap with { state } and returns the version', async () => {
     const spy = vi.spyOn(client, 'apiFetch').mockResolvedValue({ version: 1 } as never);
-    await putGameState({ schemaVersion: 1, player: { level: 1 } }, null);
-    expect(spy).toHaveBeenCalledWith('/me/state', { method: 'PUT', body: { state: { schemaVersion: 1, player: { level: 1 } }, baseVersion: null } });
+    const out = await bootstrapGameState({ schemaVersion: 1, player: { level: 1 } });
+    expect(spy).toHaveBeenCalledWith('/me/state/bootstrap', { method: 'POST', body: { state: { schemaVersion: 1, player: { level: 1 } } } });
+    expect(out).toEqual({ version: 1 });
     spy.mockRestore();
   });
 
@@ -100,6 +93,12 @@ describe('endpoints', () => {
     const spy = vi.spyOn(client, 'apiFetch').mockResolvedValue({} as never);
     await purchaseSkin('idem-key-skinskinski', 'boat', 'yacht');
     expect(spy).toHaveBeenCalledWith('/me/economy/skins/purchase', { method: 'POST', body: { kind: 'boat', skinId: 'yacht' }, idempotencyKey: 'idem-key-skinskinski' });
+  });
+
+  it('equipSkin POSTs /me/economy/skins/equip with the kind, skinId and idempotency key', async () => {
+    const spy = vi.spyOn(client, 'apiFetch').mockResolvedValue({} as never);
+    await equipSkin('idem-key-equipequipe', 'rod', 'shark');
+    expect(spy).toHaveBeenCalledWith('/me/economy/skins/equip', { method: 'POST', body: { kind: 'rod', skinId: 'shark' }, idempotencyKey: 'idem-key-equipequipe' });
   });
 
   it('placeAquariumFish POSTs /me/economy/aquarium/place with { timestamp, sector } + key', async () => {

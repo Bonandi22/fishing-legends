@@ -2,7 +2,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { eq } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
 import { createTestDatabase, type TestDatabase } from '../testing/pgHarness.js';
-import { playerGameState, users } from '../db/schema.js';
+import { users } from '../db/schema.js';
 import { createPgAuthRepository } from '../auth/pgRepository.js';
 import { createPgGameStateService } from './pgRepository.js';
 
@@ -47,11 +47,11 @@ describe('pg game-state service (integration)', () => {
     expect(await svc.get(randomUUID())).toBeNull();
   });
 
-  it('first put (baseVersion null) creates version 1 and round-trips the envelope', async () => {
+  it('bootstrap creates version 1 and round-trips the envelope', async () => {
     const userId = await seedUser();
     const blob = envelope();
 
-    const put = await svc.put(userId, blob, null);
+    const put = await svc.bootstrap(userId, blob);
     expect(put).toEqual({ version: 1 });
     const got = await svc.get(userId);
 
@@ -61,52 +61,16 @@ describe('pg game-state service (integration)', () => {
     expect(Number.isNaN(Date.parse(got!.updatedAt))).toBe(false);
   });
 
-  it('upserts on a matching baseVersion: new state, bumped version, later updatedAt, no duplicate row', async () => {
+  it('rejects bootstrap when a row already exists', async () => {
     const userId = await seedUser();
+    await svc.bootstrap(userId, envelope());
 
-    await svc.put(userId, envelope(), null);
-    const first = await svc.get(userId);
-    expect(first!.version).toBe(1);
-
-    await new Promise(r => setTimeout(r, 5));
-    const changed = envelope({ level: 9, coins: 1234 });
-    const put = await svc.put(userId, changed, 1);
-    expect(put).toEqual({ version: 2 });
-    const second = await svc.get(userId);
-
-    expect(second!.state).toEqual(changed);
-    expect(second!.version).toBe(2);
-    expect(Date.parse(second!.updatedAt)).toBeGreaterThan(Date.parse(first!.updatedAt));
-
-    const rows = await harness.db
-      .select()
-      .from(playerGameState)
-      .where(eq(playerGameState.userId, userId));
-    expect(rows).toHaveLength(1);
-  });
-
-  it('rejects a stale baseVersion and leaves the stored state untouched', async () => {
-    const userId = await seedUser();
-    await svc.put(userId, envelope({ coins: 1 }), null);
-    await svc.put(userId, envelope({ coins: 2 }), 1);
-
-    await expect(svc.put(userId, envelope({ coins: 3 }), 1)).rejects.toThrow('STATE_VERSION_CONFLICT');
-
-    const got = await svc.get(userId);
-    expect((got!.state as { player: { coins: number } }).player.coins).toBe(2);
-    expect(got!.version).toBe(2);
-  });
-
-  it('rejects baseVersion null when a row already exists', async () => {
-    const userId = await seedUser();
-    await svc.put(userId, envelope(), null);
-
-    await expect(svc.put(userId, envelope({ coins: 7 }), null)).rejects.toThrow('STATE_VERSION_CONFLICT');
+    await expect(svc.bootstrap(userId, envelope({ coins: 7 }))).rejects.toThrow('STATE_VERSION_CONFLICT');
   });
 
   it('cascades on user deletion: get returns null with no error', async () => {
     const userId = await seedUser();
-    await svc.put(userId, envelope(), null);
+    await svc.bootstrap(userId, envelope());
 
     await harness.db.delete(users).where(eq(users.id, userId));
 
