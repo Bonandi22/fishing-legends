@@ -20,16 +20,19 @@ json_escape() {
 }
 
 write_manifest() {
-  local db="$1" manifest_path="$2" first=1 name count
+  local db="$1" manifest_path="$2" first=1 name count tmp
+  tmp="$(mktemp)"
+  psql -X -q -A -t -F'|' -d "$db" -v ON_ERROR_STOP=1 -f "$SCRIPT_DIR/manifest_query.sql" > "$tmp"
   {
     printf '{'
     while IFS='|' read -r name count; do
       [ -z "$name" ] && continue
       if [ "$first" -eq 1 ]; then first=0; else printf ','; fi
       printf '"%s":%s' "$(json_escape "$name")" "$count"
-    done < <(psql -X -q -A -t -F'|' -d "$db" -v ON_ERROR_STOP=1 -f "$SCRIPT_DIR/manifest_query.sql")
+    done < "$tmp"
     printf '}\n'
   } > "$manifest_path"
+  rm -f "$tmp"
 }
 
 cleanup_stray_verify_dbs() {
