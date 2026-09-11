@@ -4,22 +4,22 @@ Este arquivo mantém o contexto técnico e o roadmap versionados no repositório
 
 ## Estado atual
 
-- Data de referência: 2026-09-05.
+- Data de referência: 2026-09-11.
 - Projeto: jogo de pesca React/TypeScript com Vite, Vitest, Playwright e sistemas 3D.
-- Arquitetura online: backend Fastify + PostgreSQL em construção na branch
-  `feature/task-06-backend-foundation` (não integrado em `main`, não validado contra
-  PostgreSQL real, sem runner de migração funcional, fora do CI). O frontend ainda
-  **não** consome o backend. Ver `docs/analysis/` e a secção "Análise completa do
-  backend — 2026-09-05".
-- Persistência do frontend: `localStorage`, com saves versionados e validação Zod.
-- Branch principal integrada: `main`.
-- Último merge da revitalização de interfaces: `08a26b8`.
-- Branch de trabalho pausada: `fix/menu-symmetry`.
-- Último commit local: `94fa6c0` — `Record project pause point`.
+- Backend Fastify + PostgreSQL integrado em `main` e consumido pelo frontend
+  (Task 10 concluída — auth, economia, pesca, aquário, ranking e temporadas
+  server-authoritative). Ver `docs/analysis/` para o histórico da auditoria.
+- **Task 11 (endurecimento de produção) concluída** — backups automáticos do
+  Postgres e HTTPS forçado/HSTS estão implementados e commitados
+  (`docker-compose.prod.yaml`, `scripts/backup/*`, `scripts/deploy/init-letsencrypt.sh`,
+  `docs/deploy/production.md`), mas **não exercitados contra uma VPS/domínio
+  reais** — único passo que falta antes de um primeiro deploy real.
+- Persistência do frontend: `localStorage` só como cache/fallback para modo
+  anónimo; a fonte de verdade para utilizadores autenticados é o backend.
+- Branch principal integrada: `main`, em `1eeb05f`.
 - PRs das Tasks 2, 3 e 4: `Bonandi22/deep-blue-lure#1`, `#2` e `#3`, todos integrados.
 - PR da revitalização de interfaces: `Bonandi22/deep-blue-lure#4`, integrado na `main`.
-- Correção de CI publicada em `f16299d` — lockfile sincronizado com `package.json`.
-- Permissão `actions: read` adicionada ao workflow em `472365a`.
+- PR da Task 11: `Bonandi22/deep-blue-lure#41`, integrado na `main`.
 - CodeQL removido temporariamente do workflow em razão da indisponibilidade de GitHub Advanced Security para o repositório privado no plano atual.
 - `main` continua sendo a base de integração.
 
@@ -2377,3 +2377,41 @@ merged em `3d88662`.
   `/api/v1/rewards/daily/claim`.
 - Stack Docker fica de pé; a BD de dev partilha instância com os testes de integração
   (as contas de smoke são truncadas entre corridas — criar conta nova a cada smoke).
+
+### Task 11 — Endurecimento de produção (backups + HTTPS forçado) — concluída, 2026-09-11
+
+PR `Bonandi22/deep-blue-lure#41` → `main` `1eeb05f`. Branch `feature/task-11-production-hardening`
+apagada (local e remoto). Plano em 8 tarefas:
+`docs/superpowers/plans/2026-09-11-production-hardening.md` (spec em
+`docs/superpowers/specs/2026-09-11-production-hardening-design.md`).
+
+- Novo `docker-compose.prod.yaml`, standalone, ao lado do `compose.yaml` de dev
+  (nunca modificado): serviços `postgres`, `backend`, `frontend` (porta 80/443,
+  única exposta ao host), `certbot`, `backup`. Volumes nomeados fixos
+  `deep_blue_lure_prod_*`.
+- **Backups automáticos** (#3): `scripts/backup/backup.sh` — `pg_dump` em loop,
+  restauro imediato numa BD scratch no mesmo servidor para provar validade,
+  manifesto JSON de contagem de linhas por tabela, poda por
+  `BACKUP_RETENTION_DAYS` (mantém sempre o mais recente).
+  `scripts/backup/restore-test.sh` — restauro independente num Postgres
+  descartável, compara contra o manifesto.
+- **HTTPS forçado + HSTS** (#4/#18): `docker/nginx.prod.conf.template`
+  (redirect 80→443, TLS, HSTS, mesmos headers/CSP do nginx de dev) + serviço
+  `certbot` (renovação automática a cada 12h) + `scripts/deploy/init-letsencrypt.sh`
+  (bootstrap de certificado novo: cert dummy → nginx arranca → certbot emite o
+  real → reload).
+- `.env.production.example` (git-ignored `.env.production` real) +
+  `docs/deploy/production.md` (runbook: setup inicial, renovação, verificação
+  de backup, disaster recovery).
+- `docs/analysis/security-checklist-20.md` corrigido (#3, #4, #18) e `CLAUDE.md`
+  ganhou as duas novas entradas de comando.
+- Verificação: `tsc` app ✅ · `backend:typecheck` ✅ · `lint` ✅ 0 erros ·
+  `npm test` ✅ **444** · `build` ✅ · `test:integration` ✅ **61** (contra
+  PostgreSQL local real). CI da PR: 7/7 checks verdes (incl. `claude-review`).
+- **Não validado** (impossível sem infraestrutura real): o `certbot certonly`
+  ao vivo contra um domínio DNS real — documentado no runbook como o teste de
+  aceitação do primeiro deploy.
+- **Estado**: os dois bloqueadores de produção que restavam
+  ((a) backups automáticos, (b) HTTPS forçado) estão agora **implementados no
+  repositório**, mas **não exercitados contra uma VPS/domínio reais** — esse é
+  o único passo que falta antes de um primeiro deploy real.
