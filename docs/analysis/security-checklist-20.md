@@ -9,7 +9,7 @@ Legenda: ✅ cumprido · ⚠️ parcial / com ressalva · ❌ em falta
 |---|---|---|
 | 1 | Proteger API keys privadas | ⚠️ |
 | 2 | Separar dev e produção | ⚠️ |
-| 3 | Configurar backups automáticos | ❌ |
+| 3 | Configurar backups automáticos | ⚠️ |
 | 4 | Forçar HTTPS | ⚠️ |
 | 5 | Encriptar dados sensíveis | ⚠️ |
 | 6 | Usar server-side auth | ✅ |
@@ -24,7 +24,7 @@ Legenda: ✅ cumprido · ⚠️ parcial / com ressalva · ❌ em falta
 | 15 | Não expor dados sensíveis | ✅ |
 | 16 | Restringir uploads | ✅ (n/a) |
 | 17 | Limitar respostas da API | ⚠️ |
-| 18 | Security headers | ⚠️ |
+| 18 | Security headers | ✅ |
 | 19 | Dependency scan | ❌ |
 | 20 | Não confiar apenas no RLS | ✅ |
 
@@ -65,7 +65,7 @@ Legenda: ✅ cumprido · ⚠️ parcial / com ressalva · ❌ em falta
   para local, mas a configuração de produção equivalente não está documentada num
   `.env.production.example`.
 
-## 3. Configurar backups automáticos — ❌
+## 3. Configurar backups automáticos — ⚠️
 
 - Nenhuma automação de backup do Postgres no repositório: sem `pg_dump`
   agendado, sem `wal-g`/`pgbackrest`, sem configuração de managed DB.
@@ -76,6 +76,13 @@ Legenda: ✅ cumprido · ⚠️ parcial / com ressalva · ❌ em falta
 
 **Ação**: definir política de backup (frequência, retenção, teste de restauro)
 quando o Postgres de produção existir. Ponto de bloqueio para ir a produção.
+
+**Implementado, não exercitado em produção real (2026-09-11)**: serviço
+`backup` em `docker-compose.prod.yaml` + `scripts/backup/backup.sh` (dump,
+restore-verify local, manifesto de contagem por tabela, poda por retenção) +
+`scripts/backup/restore-test.sh` (restauro independente + verificação). Ver
+`docs/deploy/production.md`. Falta correr contra uma VPS/domínio reais e
+decidir armazenamento off-site.
 
 ## 4. Forçar HTTPS — ⚠️
 
@@ -91,6 +98,13 @@ quando o Postgres de produção existir. Ponto de bloqueio para ir a produção.
 
 **Ação**: no edge (load balancer ou nginx), redirect 301 para HTTPS + 
 `Strict-Transport-Security: max-age=63072000; includeSubDomains; preload`.
+
+**Implementado, não exercitado em produção real (2026-09-11)**:
+`docker/nginx.prod.conf.template` (redirect 80→443 + `listen 443 ssl`) +
+serviço `certbot` em `docker-compose.prod.yaml` +
+`scripts/deploy/init-letsencrypt.sh` para o bootstrap num domínio novo. Ver
+`docs/deploy/production.md`. Falta correr o bootstrap contra um domínio real
+(único passo que não pôde ser validado sem produção).
 
 ## 5. Encriptar dados sensíveis — ⚠️
 
@@ -258,22 +272,18 @@ subir a versão. Ver ponto 19.
   mas também não há endpoint que devolva coleção não paginada. Risco baixo hoje;
   manter a regra "toda listagem nova nasce paginada".
 
-## 18. Security headers — ⚠️
+## 18. Security headers — ✅
 
 **API (bom)** — `security/http.ts:32` em todas as respostas:
 `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`,
 `Referrer-Policy: no-referrer`, `Content-Security-Policy: default-src 'none'; frame-ancestors 'none'`.
 
-**Frontend estático (em falta)** — `docker/nginx.conf` **não adiciona headers**
-ao HTML da SPA:
-- sem CSP para a aplicação (a da API não protege a página servida pelo nginx),
-- sem `Strict-Transport-Security`,
-- sem `X-Frame-Options` / `frame-ancestors` no HTML,
-- sem `Permissions-Policy`.
-
-**Ação**: bloco `add_header` no nginx para o `location /` com CSP adequada à
-SPA (scripts próprios + Vite/asset origin), HSTS, `X-Frame-Options: DENY`,
-`X-Content-Type-Options: nosniff`, `Referrer-Policy`, `Permissions-Policy`.
+**Frontend estático — ✅ corrigido em `d9dd839` (2026-09-08), antes deste
+documento.** `docker/nginx.conf`'s `location /` already sets
+`X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`,
+`Permissions-Policy`, `Strict-Transport-Security`, and a CSP scoped to the
+SPA. The `Strict-Transport-Security` header only takes effect once served
+over HTTPS — see #4, which was the remaining gap.
 
 ## 19. Dependency scan — ❌
 
@@ -309,10 +319,12 @@ advisories de runtime numa tarefa dedicada de bump.
 ## Prioridades
 
 **Bloqueiam produção**
-1. Backups automáticos do Postgres + teste de restauro (#3).
-2. HTTPS forçado + HSTS no edge (#4, #18).
-3. Retirar o write livre do blob `PUT /me/state` para utilizadores autenticados
-   — concluir a Task 10.3 (#8).
+1. Backups automáticos do Postgres + teste de restauro (#3) — implementado
+   2026-09-11, falta exercitar contra uma VPS/domínio reais.
+2. HTTPS forçado + HSTS no edge (#4, #18) — implementado 2026-09-11, falta
+   exercitar o bootstrap do certbot contra um domínio real.
+3. ~~Retirar o write livre do blob `PUT /me/state`~~ — feito, PR #40
+   (`cf55a08`).
 
 **Alto valor, baixo custo**
 4. Step `npm audit --audit-level=high` (não-bloqueante) + `dependabot.yml` (#19).
