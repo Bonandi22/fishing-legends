@@ -355,12 +355,12 @@ describe('POST /api/v1/me/economy/skins/equip', () => {
     expect(replay.json()).toEqual(first.json());
   });
 
-  it('unowned skin -> 404 SKIN_NOT_OWNED', async () => {
+  it('unowned skin -> 403 SKIN_NOT_OWNED', async () => {
     const a = await app();
     const client = await registerAndAuth(a);
     await seedBlob(client, netBlob({}));
     const res = await client.request({ method: 'POST', url: '/api/v1/me/economy/skins/equip', payload: { kind: 'rod', skinId: 'shark' } });
-    expect(res.statusCode).toBe(404);
+    expect(res.statusCode).toBe(403);
     expect(res.json().error.code).toBe('SKIN_NOT_OWNED');
   });
 
