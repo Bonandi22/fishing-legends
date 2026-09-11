@@ -81,6 +81,8 @@ docker/nginx.conf         Config nginx do frontend em produção
 | `npm run backend:db:migrate` | Aplica `backend/migrations/*.sql` pendentes via `backend/src/db/migrate.ts` (precisa de `DATABASE_URL`) |
 | `npm run backend:db:generate` | `drizzle-kit generate` — só para **detetar drift** entre `db/schema.ts` e as migrações à mão (saída em `backend/migrations/generated/`, git-ignored) |
 | `docker compose up` | Sobe postgres + backend + frontend (precisa de `.env.docker` — copiar de `.env.docker.example`) |
+| `docker compose -f docker-compose.prod.yaml --env-file .env.production up -d` | Sobe o stack de produção (TLS + backups) — precisa de `scripts/deploy/init-letsencrypt.sh` já ter corrido uma vez para o domínio |
+| `./scripts/backup/restore-test.sh` | Restaura o backup mais recente num Postgres descartável e confere as contagens de linhas contra o manifesto |
 
 ### Antes de abrir um PR
 
