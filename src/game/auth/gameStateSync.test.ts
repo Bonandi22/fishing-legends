@@ -3,11 +3,25 @@ import { renderHook } from '@testing-library/react';
 import * as endpoints from '@/api/endpoints';
 import { ApiError } from '@/api/client';
 import { SAVE_SCHEMA_VERSION } from '@/game/persistence';
+import type { PlayerState } from '@/game/types';
 import * as hydrateModule from './hydrate';
 import { useGameStateSync } from './gameStateSync';
 
 const mkPlayer = (over: Record<string, unknown> = {}) =>
   ({ level: 1, coins: 0, ...over }) as never;
+
+const validEnvelope = (over: Record<string, unknown> = {}) => ({
+  schemaVersion: SAVE_SCHEMA_VERSION,
+  player: {
+    level: 7, xp: 60, xpToNextLevel: 700, totalFishCaught: 20,
+    collection: [], unlockedLocations: ['atlantic'], heaviestFish: null, warehouse: [],
+    coins: 900, activeSkin: 'default', ownedSkins: ['default'], activeBoatSkin: 'classic', ownedBoatSkins: ['classic'],
+    luckMultiplierEnd: null, strengthMultiplierEnd: null, lastRouletteDate: null,
+    aquariumWarehouse: [], aquariumSectors: { 1: [], 2: [], 3: [], 4: [], 5: [] },
+    dailyGiftsLastClaim: null, dailyGiftsDay: 1, dailyGiftsWeek: 1, nets: 10,
+    ...over,
+  },
+});
 
 const noopReplace = vi.fn();
 
@@ -57,6 +71,27 @@ describe('useGameStateSync — start', () => {
     expect(await result.current.start()).toBe('error');
     expect(endpoints.bootstrapGameState).not.toHaveBeenCalled();
   });
+
+  it('re-adopts the server state when bootstrap loses a STATE_VERSION_CONFLICT race', async () => {
+    const winnerPlayer = mkPlayer({ level: 9 });
+    vi.spyOn(hydrateModule, 'hydrateFromServer')
+      .mockResolvedValueOnce({ kind: 'empty', version: null })
+      .mockResolvedValueOnce({ kind: 'loaded', version: 5, player: winnerPlayer });
+    vi.mocked(endpoints.bootstrapGameState).mockRejectedValue(
+      new ApiError(409, 'STATE_VERSION_CONFLICT', 'conflict'),
+    );
+    const { result } = mount({ player: mkPlayer({ level: 4 }), enabled: true });
+    const kind = await result.current.start();
+    expect(kind).toBe('empty');
+    expect(hydrateModule.hydrateFromServer).toHaveBeenCalledTimes(2);
+
+    // Poll against the same version the loser adopted: no further resync fires,
+    // proving baseVersion was seeded from the recovery resync (not left null).
+    vi.mocked(hydrateModule.hydrateFromServer).mockClear();
+    vi.mocked(endpoints.getGameState).mockResolvedValue({ state: {}, updatedAt: 'x', version: 5 });
+    await vi.advanceTimersByTimeAsync(45_000);
+    expect(hydrateModule.hydrateFromServer).not.toHaveBeenCalled();
+  });
 });
 
 describe('useGameStateSync — periodic pull', () => {
@@ -89,7 +124,7 @@ describe('useGameStateSync — periodic pull', () => {
     await seedVersion(3);
     vi.mocked(endpoints.getGameState).mockResolvedValue({ state: {}, updatedAt: 'x', version: 5 });
     await vi.advanceTimersByTimeAsync(45_000);
-    expect(hydrateModule.hydrateFromServer).toHaveBeenCalledWith(noopReplace);
+    expect(hydrateModule.hydrateFromServer).toHaveBeenCalled();
   });
 
   it('does not replace when the poll sees the same version', async () => {
@@ -97,6 +132,40 @@ describe('useGameStateSync — periodic pull', () => {
     vi.mocked(endpoints.getGameState).mockResolvedValue({ state: {}, updatedAt: 'x', version: 3 });
     await vi.advanceTimersByTimeAsync(45_000);
     expect(hydrateModule.hydrateFromServer).not.toHaveBeenCalled();
+  });
+
+  it('ignores a stale resync that lands behind a concurrent applyServerResult', async () => {
+    let stored = mkPlayer({ level: 1 }) as PlayerState;
+    const replace = vi.fn((updater: (prev: PlayerState) => Partial<PlayerState>) => {
+      stored = { ...stored, ...updater(stored) };
+    });
+    vi.spyOn(hydrateModule, 'hydrateFromServer').mockResolvedValueOnce({
+      kind: 'loaded', version: 5, player: mkPlayer({ level: 5 }),
+    });
+    const { result, rerender } = renderHook(
+      ({ player, enabled }) => useGameStateSync({ player, enabled, replace }),
+      { initialProps: { player: stored as never, enabled: true } },
+    );
+    await result.current.start();
+    rerender({ player: stored as never, enabled: true });
+
+    // A concurrent economy op resolves and adopts version 6 in-tab.
+    result.current.applyServerResult({ state: validEnvelope({ coins: 6 }), version: 6 });
+    rerender({ player: stored as never, enabled: true });
+    expect(stored).toMatchObject({ coins: 6 });
+
+    // The poll observes a version ahead of what it saw last (7) and starts a
+    // resync, but that resync's own GET lands with a snapshot (version 4)
+    // older than what the concurrent op already applied (6). It must not win.
+    vi.mocked(endpoints.getGameState).mockResolvedValue({ state: {}, updatedAt: 'x', version: 7 });
+    vi.mocked(hydrateModule.hydrateFromServer).mockResolvedValueOnce({
+      kind: 'loaded', version: 4, player: mkPlayer({ level: 999 }),
+    });
+    await vi.advanceTimersByTimeAsync(45_000);
+    rerender({ player: stored as never, enabled: true });
+
+    expect(stored).toMatchObject({ coins: 6 });
+    expect(stored).not.toMatchObject({ level: 999 });
   });
 
   it('skips the poll tick while the tab is hidden', async () => {
@@ -116,19 +185,6 @@ describe('useGameStateSync — periodic pull', () => {
 });
 
 describe('useGameStateSync — applyServerResult', () => {
-  const validEnvelope = (over: Record<string, unknown> = {}) => ({
-    schemaVersion: SAVE_SCHEMA_VERSION,
-    player: {
-      level: 7, xp: 60, xpToNextLevel: 700, totalFishCaught: 20,
-      collection: [], unlockedLocations: ['atlantic'], heaviestFish: null, warehouse: [],
-      coins: 900, activeSkin: 'default', ownedSkins: ['default'], activeBoatSkin: 'classic', ownedBoatSkins: ['classic'],
-      luckMultiplierEnd: null, strengthMultiplierEnd: null, lastRouletteDate: null,
-      aquariumWarehouse: [], aquariumSectors: { 1: [], 2: [], 3: [], 4: [], 5: [] },
-      dailyGiftsLastClaim: null, dailyGiftsDay: 1, dailyGiftsWeek: 1, nets: 10,
-      ...over,
-    },
-  });
-
   it('replaces local state, seeds the base version, and does not trigger a PUT', async () => {
     const replace = vi.fn();
     const { result, rerender } = renderHook(

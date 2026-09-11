@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef } from 'react';
 import type { PlayerState } from '@/game/types';
 import { SAVE_SCHEMA_VERSION, saveSchema } from '@/game/persistence';
 import { getGameState, bootstrapGameState } from '@/api/endpoints';
+import { ApiError } from '@/api/client';
 import { hydrateFromServer, type HydrateResult } from './hydrate';
 
 const POLL_MS = 45_000;
@@ -66,11 +67,15 @@ export function useGameStateSync({
   }, []);
 
   const resync = useCallback(async () => {
-    const res = await hydrateFromServer(replaceRef.current);
-    if (res.kind === 'loaded' && res.player) {
-      adoptServerState(res.player, res.version);
-    } else if (res.kind === 'loaded') {
-      baseVersion.current = res.version;
+    const res = await hydrateFromServer();
+    if (res.kind === 'loaded') {
+      // A slower fetch can land behind a concurrent op's applyServerResult
+      // (which already advanced baseVersion) — never let it roll state back.
+      const stale = res.version != null && baseVersion.current != null && res.version <= baseVersion.current;
+      if (!stale) {
+        if (res.player) adoptServerState(res.player, res.version);
+        else baseVersion.current = res.version;
+      }
     }
     return res;
   }, [adoptServerState]);
@@ -111,8 +116,12 @@ export function useGameStateSync({
       try {
         const { version } = await bootstrapGameState(envelope());
         baseVersion.current = version;
-      } catch {
-        /* best-effort adopt */
+      } catch (err) {
+        if (err instanceof ApiError && err.code === 'STATE_VERSION_CONFLICT') {
+          // Another device bootstrapped first; adopt what it wrote instead of
+          // leaving baseVersion unset for the rest of the session.
+          await resync();
+        }
       }
     }
     return res.kind;

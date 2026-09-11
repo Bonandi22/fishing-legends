@@ -15,36 +15,27 @@ const validPlayer = {
 };
 
 describe('hydrateFromServer', () => {
-  it('loads a valid blob, replaces local state, and returns the server version', async () => {
+  it('loads a valid blob and returns the server version and player, without applying it', async () => {
     vi.spyOn(endpoints, 'getGameState').mockResolvedValue({
       state: { schemaVersion: SAVE_SCHEMA_VERSION, player: validPlayer }, updatedAt: '2026-09-07T00:00:00Z', version: 5,
     });
-    const replace = vi.fn();
-    const res = await hydrateFromServer(replace);
+    const res = await hydrateFromServer();
     expect(res).toMatchObject({ kind: 'loaded', version: 5 });
     expect(res.player).toMatchObject({ level: 7, coins: 900, totalFishCaught: 20 });
-    const applied = replace.mock.calls[0][0]({ level: 1, coins: 0 });
-    expect(applied).toMatchObject({ level: 7, coins: 900, totalFishCaught: 20 });
   });
 
   it('returns empty with a null version when the server has no state', async () => {
     vi.spyOn(endpoints, 'getGameState').mockResolvedValue({ state: null, updatedAt: null, version: null });
-    const replace = vi.fn();
-    expect(await hydrateFromServer(replace)).toEqual({ kind: 'empty', version: null });
-    expect(replace).not.toHaveBeenCalled();
+    expect(await hydrateFromServer()).toEqual({ kind: 'empty', version: null });
   });
 
   it('returns empty when the blob fails validation', async () => {
     vi.spyOn(endpoints, 'getGameState').mockResolvedValue({ state: { schemaVersion: 1, player: { level: 0 } }, updatedAt: 'x', version: 2 });
-    const replace = vi.fn();
-    expect(await hydrateFromServer(replace)).toEqual({ kind: 'empty', version: null });
-    expect(replace).not.toHaveBeenCalled();
+    expect(await hydrateFromServer()).toEqual({ kind: 'empty', version: null });
   });
 
   it('returns error with a null version when the GET fails', async () => {
     vi.spyOn(endpoints, 'getGameState').mockRejectedValue(new Error('network'));
-    const replace = vi.fn();
-    expect(await hydrateFromServer(replace)).toEqual({ kind: 'error', version: null });
-    expect(replace).not.toHaveBeenCalled();
+    expect(await hydrateFromServer()).toEqual({ kind: 'error', version: null });
   });
 });
