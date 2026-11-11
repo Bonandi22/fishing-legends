@@ -15,6 +15,7 @@ async function main() {
     process.exit(1);
   }
 
+  let shuttingDown = false;
   const db = createDatabase(databaseUrl);
   const sender = createSmtpSender(config.email);
   const worker = createEmailWorker({
@@ -28,11 +29,15 @@ async function main() {
     url: rabbitmqUrl,
     worker,
     prefetch: 10,
+    onClosed: () => {
+      if (shuttingDown) return;
+      console.error('email-worker: broker connection lost, exiting so the supervisor restarts the worker');
+      process.exit(1);
+    },
     onError: (err) => console.error('email-worker: consumer error:', err instanceof Error ? err.name : 'unknown'),
   });
   console.log('email-worker: consuming email.send');
 
-  let shuttingDown = false;
   const shutdown = async (signal: string) => {
     if (shuttingDown) return;
     shuttingDown = true;

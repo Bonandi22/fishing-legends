@@ -74,6 +74,7 @@ services:
       dockerfile: backend/Dockerfile
       target: dev
     command: npm run backend:email-worker
+    restart: unless-stopped
     env_file:
       - .env.docker
     environment:
