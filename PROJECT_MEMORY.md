@@ -2415,3 +2415,42 @@ apagada (local e remoto). Plano em 8 tarefas:
   ((a) backups automáticos, (b) HTTPS forçado) estão agora **implementados no
   repositório**, mas **não exercitados contra uma VPS/domínio reais** — esse é
   o único passo que falta antes de um primeiro deploy real.
+
+### Manutenção de dependências (Dependabot) — concluída, 2026-11-11
+
+Retoma após ~2 meses parado. Os 7 PRs do Dependabot pendentes foram todos tratados;
+nenhum PR fica aberto.
+
+- **#29 / #30** — `actions/checkout` e `actions/setup-node` 4 → 7. Merge direto.
+- **#48** (`chore/deps-2026-11`) consolida #47 (39 deps de produção: radix-ui,
+  fastify 5.12.7, drizzle-orm 0.45, **three 0.160 → 0.187**, react-query,
+  react-hook-form, next-themes 0.4…), #45 (10 dev-deps: typescript-eslint 8.71,
+  eslint-plugin-react-refresh 0.5…), #34 (`vaul` 1.1.2) e #35 (`@types/node` 26).
+  Os lockfiles conflituavam entre si, por isso foram juntados numa branch e o lock
+  regenerado. Correção necessária: `@types/node` 26 deixou de expor
+  `Array.prototype.at` ao programa do frontend → `tsconfig.app.json` declara
+  `lib: ES2022` (só tipos).
+- **#50** (substitui #33 e #49) — **Tailwind 3 → 4** com a ferramenta oficial
+  `@tailwindcss/upgrade`: `tailwind.config.ts` removido (tema em `src/index.css`
+  via `@theme`/`@plugin`), PostCSS → `@tailwindcss/postcss`, `autoprefixer`
+  removido, renames de utilities v4 em ~45 componentes. A ferramenta reescreveu
+  por engano a variante de botão `"outline"` → `"outline-solid"` em
+  `pagination.tsx` (revertido); `components.json` → `tailwind.config: ""`.
+  O #49 original fechou sozinho quando a sua base (`chore/deps-2026-11`) foi
+  apagada no merge do #48 — lição: re-apontar PRs empilhados para `main` **antes**
+  de fazer merge com `--delete-branch` na base.
+- Verificação: `tsc` app + backend ✅ · lint 0 erros ✅ · `npm test` ✅ **444** ·
+  `build` ✅ · `test:integration` ✅ **61** · CI verde nos dois PRs · smoke
+  Playwright no stack Docker (cena 3D a renderizar `three.js r187`, cast e roleta
+  com 200 no servidor, modais/sheet Radix, 0 erros de consola).
+- **Riscos em aberto**: diferenças visuais subtis do Tailwind 4 (cabeçalho da
+  seleção de locais ~7px mais compacto); ecrãs não exercitados no smoke: coleção,
+  armazém, skins, ranking, aquário, submarino. `three` 0.187 avisa `THREE.Clock`
+  deprecado (vem do `@react-three/fiber`) e `PCFSoftShadowMap` removido → cai para
+  `PCFShadowMap`. Um teste unitário falhou uma vez de forma intermitente.
+- **Docker dev**: o volume nomeado `frontend_node_modules` guarda as dependências
+  antigas mesmo com `--build`. Após mudar `package.json`:
+  `docker compose rm -sf frontend && docker volume rm deep-blue-lure_frontend_node_modules && docker compose up -d --build frontend`.
+- **Follow-ups opcionais**: subir `@react-three/fiber` / ajustar tipo de sombra;
+  trocar `tailwindcss-animate` por `tw-animate-css`; CI ainda em Node 20 (EOL
+  desde abril de 2026) — subir para 22/24.
