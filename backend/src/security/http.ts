@@ -17,6 +17,8 @@ const AUTH_RATE_LIMITED_URLS = new Set([
   '/api/v1/auth/verify-email',
   '/api/v1/auth/login/verify',
   '/api/v1/auth/challenges/resend',
+  '/api/v1/auth/password/forgot',
+  '/api/v1/auth/password/reset',
 ]);
 
 type Bucket = { count: number; resetAt: number };

@@ -34,6 +34,14 @@ export const verifyCodeSchema = z.object({
   code: z.string().min(1).max(32),
 });
 
-export const resendSchema = z.object({ challengeId: challengeIdSchema });
+export const forgotPasswordSchema = z.object({ email: emailSchema, locale: localeSchema.optional() });
+
+export const resetPasswordSchema = z.object({
+  challengeId: challengeIdSchema,
+  code: z.string().min(1).max(32),
+  newPassword: passwordSchema,
+});
+
+export const resendSchema= z.object({ challengeId: challengeIdSchema });
 
 export const challengeResponseSchema = z.object({ challengeId: z.string() });

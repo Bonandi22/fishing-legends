@@ -131,6 +131,38 @@ export function createAuthService(repository: AuthRepository, config: AuthServic
       return startSession(await markVerified(user));
     },
 
+    /**
+     * Always answers with a challenge id. An unknown email gets a stored decoy that
+     * goes through the same cap and cooldown, so the answer reveals nothing.
+     */
+    async forgotPassword(input: { email: string; locale?: Locale }) {
+      const email = input.email.trim().toLowerCase();
+      const user = await repository.findUserByEmail(email);
+      if (!user || user.status !== 'active') {
+        return { challengeId: await challenges.issueDecoy(email, 'password_reset') };
+      }
+      if (input.locale && input.locale !== user.locale) {
+        await repository.setLocale(user.id, input.locale);
+        user.locale = input.locale;
+      }
+      return { challengeId: await challenges.issue(user, 'password_reset') };
+    },
+
+    async resetPassword(input: { challengeId: string; code: string; newPassword: string }) {
+      // The code is checked first: a wrong code costs an attempt and nothing else leaks.
+      // A decoy challenge never verifies, so it can never reach the lines below.
+      const user = await challenges.verify(input.challengeId, input.code, ['password_reset']);
+      const issue = checkPassword(input.newPassword, { email: user.email, username: user.username });
+      if (issue) throw new WeakPasswordError(issue);
+      if (await verifyPassword(input.newPassword, user.passwordHash)) throw new WeakPasswordError('SAME_AS_CURRENT');
+
+      // Ordered so the worst partial failure is "password changed, sessions revoked".
+      await repository.updatePasswordHash(user.id, await hash(input.newPassword));
+      await repository.revokeAllSessions(user.id);
+      // The code proved possession of the mailbox.
+      await markVerified(user);
+    },
+
     async resendChallenge(challengeId: string) {
       return { challengeId: await challenges.resend(challengeId) };
     },

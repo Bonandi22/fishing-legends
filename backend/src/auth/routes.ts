@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import type { FastifyInstance } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
-import { challengeResponseSchema, loginSchema, registerSchema, resendSchema, verifyCodeSchema } from './schemas.js';
+import { challengeResponseSchema, forgotPasswordSchema, resetPasswordSchema, loginSchema, registerSchema, resendSchema, verifyCodeSchema } from './schemas.js';
 import type { createAuthService } from './service.js';
 import { setAuthCookies, clearAuthCookies, readAccessToken, readRefreshToken, type CookieConfig } from './cookies.js';
 
@@ -52,6 +52,20 @@ export async function registerAuthRoutes(app: FastifyInstance, service: AuthServ
     schema: { tags: ['auth'], summary: 'Send a new code for a pending challenge', body: resendSchema, response: { 202: challengeResponseSchema } },
   }, async (request, reply) => {
     return reply.status(202).send(await service.resendChallenge(request.body.challengeId));
+  });
+
+  r.post('/api/v1/auth/password/forgot', {
+    schema: { tags: ['auth'], summary: 'Email a password reset code (same answer for any address)', body: forgotPasswordSchema, response: { 202: challengeResponseSchema } },
+  }, async (request, reply) => {
+    return reply.status(202).send(await service.forgotPassword(request.body));
+  });
+
+  // Never authenticates: the user logs in afterwards, with the new password and a login code.
+  r.post('/api/v1/auth/password/reset', {
+    schema: { tags: ['auth'], summary: 'Set a new password with the emailed code and revoke all sessions', body: resetPasswordSchema },
+  }, async (request, reply) => {
+    await service.resetPassword(request.body);
+    return reply.status(204).send();
   });
 
   r.post('/api/v1/auth/refresh', {

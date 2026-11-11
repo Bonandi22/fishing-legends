@@ -16,6 +16,10 @@ export interface AuthContextValue {
   completeChallenge(kind: 'register' | 'login', challengeId: string, code: string): Promise<void>;
   /** Re-sends the code; returns the NEW challenge id to use from then on. */
   resendCode(challengeId: string): Promise<string>;
+  /** Emails a password-reset code. The answer is the same whether or not the address has an account. */
+  forgotPassword(email: string, locale?: string): Promise<{ challengeId: string }>;
+  /** Sets the new password with the emailed code. Does NOT authenticate: the user logs in afterwards. */
+  resetPassword(challengeId: string, code: string, newPassword: string): Promise<void>;
   logout(): Promise<void>;
 }
 
@@ -65,13 +69,23 @@ export function AuthProvider({ children, onAuthenticated, onLoggedOut, onBeforeL
     return next;
   }, []);
 
+  const forgotPassword = useCallback(
+    (email: string, locale?: string) => endpoints.forgotPassword({ email, locale }),
+    [],
+  );
+
+  const resetPassword = useCallback(
+    (challengeId: string, code: string, newPassword: string) => endpoints.resetPassword({ challengeId, code, newPassword }),
+    [],
+  );
+
   const logout = useCallback(async () => {
     try { await onBeforeLogoutRef.current?.(); } catch { /* best-effort flush */ }
     try { await endpoints.logout(); } finally { setUser(null); setStatus('anonymous'); }
     onLoggedOutRef.current?.();
   }, []);
 
-  return <AuthContext.Provider value={{ status, user, login, register, completeChallenge, resendCode, logout }}>{children}</AuthContext.Provider>;
+  return <AuthContext.Provider value={{ status, user, login, register, completeChallenge, resendCode, forgotPassword, resetPassword, logout }}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth(): AuthContextValue {

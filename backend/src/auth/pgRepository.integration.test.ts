@@ -204,6 +204,39 @@ describe('pg auth repository (integration)', () => {
       expect(stored?.emailVerifiedAt).toBeInstanceOf(Date);
       expect(stored?.locale).toBe('fr');
     });
+
+    it('password recovery: forgot -> reset changes the password, verifies the email and revokes sessions', async () => {
+      const svc = service();
+      const data = input();
+      await svc.register(data); // never verified
+      const login = await svc.login({ email: data.email, password: data.password });
+      const first = await svc.verifyLogin({ challengeId: login.challengeId, code: await codeFor(login.challengeId) });
+
+      const { challengeId } = await svc.forgotPassword({ email: data.email, locale: 'fr' });
+      expect((await repo.findChallenge(challengeId))?.purpose).toBe('password_reset');
+      await expect(svc.resetPassword({ challengeId, code: '000000', newPassword: 'a-brand-new-password-987' }))
+        .rejects.toThrow(/INVALID_CODE|TOO_MANY_ATTEMPTS/);
+      const code = await codeFor(challengeId);
+      await expect(svc.resetPassword({ challengeId, code, newPassword: data.password })).rejects.toMatchObject({ reason: 'SAME_AS_CURRENT' });
+
+      const second = await svc.forgotPassword({ email: data.email });
+      await svc.resetPassword({ challengeId: second.challengeId, code: await codeFor(second.challengeId), newPassword: 'a-brand-new-password-987' });
+
+      await expect(svc.login({ email: data.email, password: data.password })).rejects.toThrow('INVALID_CREDENTIALS');
+      await expect(svc.login({ email: data.email, password: 'a-brand-new-password-987' })).resolves.toHaveProperty('challengeId');
+      await expect(svc.refresh(first.refreshToken)).rejects.toThrow(/INVALID_REFRESH_TOKEN|REFRESH_TOKEN_REUSED/);
+      expect((await repo.findUserByEmail(data.email))?.emailVerifiedAt).toBeInstanceOf(Date);
+      expect((await repo.findUserByEmail(data.email))?.locale).toBe('fr');
+    });
+
+    it('password recovery for an unknown email stores a decoy that never resets anything', async () => {
+      const svc = service();
+      const email = `ghost-${crypto.randomUUID()}@example.com`;
+      const { challengeId } = await svc.forgotPassword({ email });
+      expect(await repo.findChallenge(challengeId)).toMatchObject({ userId: null, decoyEmail: email, purpose: 'password_reset' });
+      expect(await harness.db.select().from(emailOutbox).where(eq(emailOutbox.recipient, email))).toHaveLength(0);
+      await expect(svc.resetPassword({ challengeId, code: '123456', newPassword: 'a-brand-new-password-987' })).rejects.toThrow('INVALID_CODE');
+    });
   });
 
   it('createUser stores locale and marks verification as required', async () => {
