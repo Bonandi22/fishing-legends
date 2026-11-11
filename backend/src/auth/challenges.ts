@@ -1,4 +1,4 @@
-import { createHmac, randomInt, randomUUID, timingSafeEqual } from 'node:crypto';
+import { createHmac, randomInt, timingSafeEqual } from 'node:crypto';
 import type { AppConfig } from '../config/env.js';
 import type { EmailKind } from '../email/types.js';
 import type { AuthRepository, AuthUser, ChallengePurpose } from './types.js';
@@ -26,6 +26,9 @@ export function createChallengeService(
     return a.length === b.length && timingSafeEqual(a, b);
   }
 
+  const newCode = () => String(randomInt(0, 1_000_000)).padStart(6, '0');
+  const expiry = () => new Date(now().getTime() + cfg.ttlSeconds * 1000);
+
   async function assertUnderCaps(user: AuthUser): Promise<void> {
     const since = new Date(now().getTime() - HOUR_MS);
     if ((await repo.countChallengesSince(user.id, since)) >= MAX_CHALLENGES_PER_HOUR) {
@@ -38,12 +41,12 @@ export function createChallengeService(
 
   async function issue(user: AuthUser, purpose: ChallengePurpose): Promise<string> {
     await assertUnderCaps(user);
-    const code = String(randomInt(0, 1_000_000)).padStart(6, '0');
+    const code = newCode();
     return repo.createChallenge({
       userId: user.id,
       purpose,
       codeHash: hash(code),
-      expiresAt: new Date(now().getTime() + cfg.ttlSeconds * 1000),
+      expiresAt: expiry(),
       email: {
         kind: KIND_BY_PURPOSE[purpose],
         to: user.email,
@@ -53,8 +56,17 @@ export function createChallengeService(
     });
   }
 
-  function issueDecoy(): string {
-    return randomUUID();
+  /**
+   * Stores a challenge for an address with no eligible account. It is rate limited
+   * and verifiable exactly like a real one, but its code is random, never sent and
+   * never accepted.
+   */
+  async function issueDecoy(email: string, purpose: ChallengePurpose): Promise<string> {
+    const since = new Date(now().getTime() - HOUR_MS);
+    if ((await repo.countDecoyChallengesSince(email, since)) >= MAX_CHALLENGES_PER_HOUR) {
+      throw new Error('RESEND_TOO_SOON');
+    }
+    return repo.createDecoyChallenge({ email, purpose, codeHash: hash(newCode()), expiresAt: expiry() });
   }
 
   async function verify(challengeId: string, code: string, purposes: ChallengePurpose[]): Promise<AuthUser> {
@@ -63,12 +75,20 @@ export function createChallengeService(
       throw new Error('CHALLENGE_NOT_FOUND');
     }
     if (now().getTime() >= challenge.expiresAt.getTime()) throw new Error('CHALLENGE_EXPIRED');
-    if (challenge.attempts >= cfg.maxAttempts) throw new Error('TOO_MANY_ATTEMPTS');
+
+    // Reserve the guess atomically before comparing, so concurrent requests cannot
+    // exceed the attempt cap.
+    const reserved = await repo.reserveAttempt(challengeId, cfg.maxAttempts);
+    if (reserved === null) {
+      const current = await repo.findChallenge(challengeId);
+      if (!current || current.invalidatedAt || current.consumedAt) throw new Error('CHALLENGE_NOT_FOUND');
+      throw new Error('TOO_MANY_ATTEMPTS');
+    }
 
     const candidate = code.trim();
-    if (!/^\d{6}$/.test(candidate) || !matches(candidate, challenge.codeHash)) {
-      const attempts = await repo.recordFailedAttempt(challengeId);
-      throw new Error(attempts >= cfg.maxAttempts ? 'TOO_MANY_ATTEMPTS' : 'INVALID_CODE');
+    const codeOk = /^\d{6}$/.test(candidate) && matches(candidate, challenge.codeHash);
+    if (!codeOk || challenge.userId === null) {
+      throw new Error(reserved >= cfg.maxAttempts ? 'TOO_MANY_ATTEMPTS' : 'INVALID_CODE');
     }
 
     if (!(await repo.consumeChallenge(challengeId))) throw new Error('CHALLENGE_NOT_FOUND');
@@ -79,12 +99,16 @@ export function createChallengeService(
 
   async function resend(challengeId: string): Promise<string> {
     const old = await repo.findChallenge(challengeId);
-    if (!old) return issueDecoy();
-    const user = await repo.findUserById(old.userId);
-    if (!user) return issueDecoy();
+    if (!old || old.invalidatedAt || old.consumedAt) throw new Error('CHALLENGE_NOT_FOUND');
     if (now().getTime() - old.createdAt.getTime() < cfg.resendCooldownSeconds * 1000) {
       throw new Error('RESEND_TOO_SOON');
     }
+    if (old.userId === null) {
+      if (!old.decoyEmail) throw new Error('CHALLENGE_NOT_FOUND');
+      return issueDecoy(old.decoyEmail, old.purpose);
+    }
+    const user = await repo.findUserById(old.userId);
+    if (!user) throw new Error('CHALLENGE_NOT_FOUND');
     return issue(user, old.purpose);
   }
 

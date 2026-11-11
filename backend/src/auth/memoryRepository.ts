@@ -85,6 +85,7 @@ export function createMemoryAuthRepository(outbox: EmailOutbox = createMemoryOut
       challenges.set(id, {
         id,
         userId: input.userId,
+        decoyEmail: null,
         purpose: input.purpose,
         codeHash: input.codeHash,
         expiresAt: input.expiresAt,
@@ -100,12 +101,39 @@ export function createMemoryAuthRepository(outbox: EmailOutbox = createMemoryOut
       const c = challenges.get(id);
       return c ? { ...c } : null;
     },
-    async recordFailedAttempt(id) {
+    async reserveAttempt(id, max) {
       const c = challenges.get(id);
-      if (!c) return 0;
+      if (!c || c.consumedAt || c.invalidatedAt || c.attempts >= max) return null;
       const attempts = c.attempts + 1;
       challenges.set(id, { ...c, attempts });
       return attempts;
+    },
+    async createDecoyChallenge(input) {
+      const now = new Date();
+      const email = input.email.toLowerCase();
+      for (const [id, c] of challenges) {
+        if (c.decoyEmail === email && c.purpose === input.purpose && !c.consumedAt && !c.invalidatedAt) {
+          challenges.set(id, { ...c, invalidatedAt: now });
+        }
+      }
+      const id = randomUUID();
+      challenges.set(id, {
+        id,
+        userId: null,
+        decoyEmail: email,
+        purpose: input.purpose,
+        codeHash: input.codeHash,
+        expiresAt: input.expiresAt,
+        attempts: 0,
+        consumedAt: null,
+        invalidatedAt: null,
+        createdAt: now,
+      });
+      return id;
+    },
+    async countDecoyChallengesSince(email, since) {
+      const target = email.toLowerCase();
+      return [...challenges.values()].filter(c => c.decoyEmail === target && c.createdAt >= since).length;
     },
     async consumeChallenge(id) {
       const c = challenges.get(id);

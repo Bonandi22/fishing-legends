@@ -31,6 +31,7 @@ function toAuthChallenge(row: typeof authChallenges.$inferSelect): AuthChallenge
   return {
     id: row.id,
     userId: row.userId,
+    decoyEmail: row.decoyEmail,
     purpose: row.purpose as ChallengePurpose,
     codeHash: row.codeHash,
     expiresAt: row.expiresAt,
@@ -182,12 +183,45 @@ export function createPgAuthRepository(db: Database, outbox: EmailOutbox = creat
       const [row] = await db.select().from(authChallenges).where(eq(authChallenges.id, id)).limit(1);
       return row ? toAuthChallenge(row) : null;
     },
-    async recordFailedAttempt(id) {
+    async reserveAttempt(id, max) {
       const [row] = await db.update(authChallenges)
         .set({ attempts: sql`${authChallenges.attempts} + 1` })
-        .where(eq(authChallenges.id, id))
+        .where(and(
+          eq(authChallenges.id, id),
+          sql`${authChallenges.attempts} < ${max}`,
+          isNull(authChallenges.consumedAt),
+          isNull(authChallenges.invalidatedAt),
+        ))
         .returning({ attempts: authChallenges.attempts });
-      return row?.attempts ?? 0;
+      return row?.attempts ?? null;
+    },
+    async createDecoyChallenge(input) {
+      const id = randomUUID();
+      const email = input.email.toLowerCase();
+      await db.transaction(async tx => {
+        // Same per-key serialization as createChallenge, keyed on the address.
+        await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtextextended(${'decoy:' + email}, 0))`);
+        await tx.update(authChallenges).set({ invalidatedAt: sql`now()` })
+          .where(and(
+            eq(authChallenges.decoyEmail, email),
+            eq(authChallenges.purpose, input.purpose),
+            isNull(authChallenges.consumedAt),
+            isNull(authChallenges.invalidatedAt),
+          ));
+        await tx.insert(authChallenges).values({
+          id,
+          decoyEmail: email,
+          purpose: input.purpose,
+          codeHash: input.codeHash,
+          expiresAt: input.expiresAt,
+        });
+      });
+      return id;
+    },
+    async countDecoyChallengesSince(email, since) {
+      const [row] = await db.select({ n: sql<number>`count(*)::int` }).from(authChallenges)
+        .where(and(eq(authChallenges.decoyEmail, email.toLowerCase()), gte(authChallenges.createdAt, since)));
+      return row?.n ?? 0;
     },
     async consumeChallenge(id) {
       const rows = await db.update(authChallenges)

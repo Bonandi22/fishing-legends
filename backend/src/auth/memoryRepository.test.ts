@@ -41,11 +41,37 @@ describe('memory auth repository (verification + challenges)', () => {
     expect(await repo.countEmailsTo(u.email, new Date(Date.now() - 1000))).toBe(3);
   });
 
-  it('consumeChallenge is true only once; recordFailedAttempt counts', async () => {
+  it('reserveAttempt counts up to the max, then returns null', async () => {
     const u = await repo.createUser(newUser());
     const id = await repo.createChallenge(input(u.id, u.email));
-    expect(await repo.recordFailedAttempt(id)).toBe(1);
-    expect(await repo.recordFailedAttempt(id)).toBe(2);
+    expect(await repo.reserveAttempt(id, 2)).toBe(1);
+    expect(await repo.reserveAttempt(id, 2)).toBe(2);
+    expect(await repo.reserveAttempt(id, 2)).toBeNull();
+    expect(await repo.reserveAttempt(crypto.randomUUID(), 2)).toBeNull();
+  });
+
+  it('20 concurrent reserveAttempt calls grant exactly max', async () => {
+    const u = await repo.createUser(newUser());
+    const id = await repo.createChallenge(input(u.id, u.email));
+    const res = await Promise.all(Array.from({ length: 20 }, () => repo.reserveAttempt(id, 5)));
+    expect(res.filter(r => r !== null)).toHaveLength(5);
+    expect((await repo.findChallenge(id))?.attempts).toBe(5);
+  });
+
+  it('decoy challenges are stored per lowercased email, counted, and supersede each other', async () => {
+    const d = { email: 'Ghost@Example.com', purpose: 'login' as const, codeHash: 'x', expiresAt: later() };
+    const first = await repo.createDecoyChallenge(d);
+    const second = await repo.createDecoyChallenge(d);
+    expect((await repo.findChallenge(first))?.invalidatedAt).toBeInstanceOf(Date);
+    const live = await repo.findChallenge(second);
+    expect(live?.userId).toBeNull();
+    expect(live?.decoyEmail).toBe('ghost@example.com');
+    expect(await repo.countDecoyChallengesSince('GHOST@example.com', new Date(Date.now() - 1000))).toBe(2);
+  });
+
+  it('consumeChallenge is true only once', async () => {
+    const u = await repo.createUser(newUser());
+    const id = await repo.createChallenge(input(u.id, u.email));
     expect(await repo.consumeChallenge(id)).toBe(true);
     expect(await repo.consumeChallenge(id)).toBe(false);
   });

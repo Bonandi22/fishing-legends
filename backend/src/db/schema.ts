@@ -217,7 +217,8 @@ export const emailOutbox = pgTable('email_outbox', {
 
 export const authChallenges = pgTable('auth_challenges', {
   id: uuid('id').primaryKey(),
-  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }),
+  decoyEmail: varchar('decoy_email', { length: 320 }),
   purpose: varchar('purpose', { length: 20 }).notNull(),
   codeHash: text('code_hash').notNull(),
   expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
@@ -227,6 +228,8 @@ export const authChallenges = pgTable('auth_challenges', {
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 }, table => ({
   userPurposeCreatedAtIdx: index('auth_challenges_user_purpose_created_at_idx').on(table.userId, table.purpose, table.createdAt.desc()),
+  decoyEmailCreatedAtIdx: index('auth_challenges_decoy_email_created_at_idx').on(table.decoyEmail, table.createdAt),
+  ownerCheck: check('auth_challenges_owner_check', sql`(${table.userId} IS NULL) <> (${table.decoyEmail} IS NULL)`),
   purposeCheck: check('auth_challenges_purpose_check', sql`${table.purpose} IN ('verify_email', 'login', 'password_reset')`),
 }));
 

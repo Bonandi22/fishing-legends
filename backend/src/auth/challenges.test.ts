@@ -123,11 +123,63 @@ describe('challenge service', () => {
     await expect(svc.issue(user, 'verify_email')).rejects.toThrow('RESEND_TOO_SOON');
   });
 
-  it('decoys: verify is not found, resend returns a uuid, nothing is stored', async () => {
-    const decoy = svc.issueDecoy();
-    expect(decoy).toMatch(/^[0-9a-f-]{36}$/);
-    await expect(svc.verify(decoy, '123456', ['verify_email'])).rejects.toThrow('CHALLENGE_NOT_FOUND');
-    expect(await svc.resend(decoy)).toMatch(/^[0-9a-f-]{36}$/);
+  it('20 concurrent wrong verifies grant at most 5 INVALID_CODE and end at 5 attempts', async () => {
+    const id = await svc.issue(user, 'verify_email');
+    const code = await sentCode();
+    const results = await Promise.allSettled(Array.from({ length: 20 }, () => svc.verify(id, wrong(code), ['verify_email'])));
+    const msgs = results.map(r => (r.status === 'rejected' ? (r.reason as Error).message : 'OK'));
+    expect(msgs.filter(m => m === 'INVALID_CODE').length).toBeLessThanOrEqual(5);
+    expect(msgs.filter(m => m === 'OK')).toHaveLength(0);
+    expect((await repo.findChallenge(id))?.attempts).toBe(5);
+  });
+
+  it('unknown and superseded ids are CHALLENGE_NOT_FOUND for verify and resend', async () => {
+    const first = await svc.issue(user, 'login');
+    advance(61);
+    await svc.resend(first);
+    for (const id of [first, crypto.randomUUID()]) {
+      await expect(svc.verify(id, '123456', ['login'])).rejects.toThrow('CHALLENGE_NOT_FOUND');
+      await expect(svc.resend(id)).rejects.toThrow('CHALLENGE_NOT_FOUND');
+    }
+  });
+
+  it('a decoy never verifies and is never emailed', async () => {
+    const id = await svc.issueDecoy('nobody@example.com', 'login');
+    expect(await svc.isStillValid(id)).toBe(true);
+    await expect(svc.verify(id, '123456', ['login'])).rejects.toThrow('INVALID_CODE');
     expect(await outbox.claimPending(10)).toHaveLength(0);
+  });
+
+  // The same externally observable scenario must play out for a real challenge
+  // and a decoy, so responses cannot be used to enumerate accounts.
+  describe.each([
+    ['real challenge', () => svc.issue(user, 'login')],
+    ['decoy', () => svc.issueDecoy('ghost@example.com', 'login')],
+  ])('indistinguishable behaviour: %s', (_name, start) => {
+    const outcome = async (fn: () => Promise<unknown>) => {
+      try { await fn(); return 'ok'; } catch (e) { return (e as Error).message; }
+    };
+
+    it('wrong code x6 -> INVALID_CODE x4 then TOO_MANY_ATTEMPTS x2', async () => {
+      const id = await start();
+      const out: string[] = [];
+      for (let i = 0; i < 6; i++) out.push(await outcome(() => svc.verify(id, 'abcdef', ['login'])));
+      expect(out).toEqual(['INVALID_CODE', 'INVALID_CODE', 'INVALID_CODE', 'INVALID_CODE', 'TOO_MANY_ATTEMPTS', 'TOO_MANY_ATTEMPTS']);
+    });
+
+    it('resend: +30 s too soon, +61 s new id', async () => {
+      const id = await start();
+      advance(30);
+      expect(await outcome(() => svc.resend(id))).toBe('RESEND_TOO_SOON');
+      advance(31);
+      const next = await svc.resend(id);
+      expect(next).not.toBe(id);
+      await expect(svc.verify(id, '123456', ['login'])).rejects.toThrow('CHALLENGE_NOT_FOUND');
+    });
+
+    it('6th issue within an hour -> RESEND_TOO_SOON', async () => {
+      for (let i = 0; i < 5; i++) await start();
+      expect(await outcome(start)).toBe('RESEND_TOO_SOON');
+    });
   });
 });

@@ -15,7 +15,9 @@ export type ChallengePurpose = 'verify_email' | 'login' | 'password_reset';
 
 export type AuthChallenge = {
   id: string;
-  userId: string;
+  /** Null for a decoy challenge (anti-enumeration; never emailed). */
+  userId: string | null;
+  decoyEmail: string | null;
   purpose: ChallengePurpose;
   codeHash: string;
   expiresAt: Date;
@@ -78,8 +80,19 @@ export type AuthRepository = {
     email: Omit<EmailMessage, 'id' | 'createdAt' | 'challengeId'>;
   }): Promise<string>;
   findChallenge(id: string): Promise<AuthChallenge | null>;
-  /** Returns the new attempt count. */
-  recordFailedAttempt(id: string): Promise<number>;
+  /**
+   * Atomically reserves one guess on a live challenge. Returns the new attempt
+   * count, or null when the challenge is not live or already used `max` attempts.
+   */
+  reserveAttempt(id: string, max: number): Promise<number | null>;
+  /** Stores a decoy row (no user, never emailed); invalidates prior live decoys for the same email+purpose. */
+  createDecoyChallenge(input: {
+    email: string;
+    purpose: ChallengePurpose;
+    codeHash: string;
+    expiresAt: Date;
+  }): Promise<string>;
+  countDecoyChallengesSince(email: string, since: Date): Promise<number>;
   /** Atomic: true only for the single caller that consumed a live challenge. */
   consumeChallenge(id: string): Promise<boolean>;
   countChallengesSince(userId: string, since: Date): Promise<number>;

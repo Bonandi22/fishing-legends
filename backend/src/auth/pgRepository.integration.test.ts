@@ -7,9 +7,17 @@ import { authChallenges, emailOutbox, playerProgress, users } from '../db/schema
 import { createPgOutbox } from '../email/pgOutbox.js';
 import { createPgAuthRepository } from './pgRepository.js';
 import { createAuthService } from './service.js';
+import { createChallengeService } from './challenges.js';
 
 let harness: TestDatabase;
 let repo: ReturnType<typeof createPgAuthRepository>;
+
+const authCodes = {
+  secret: new Uint8Array(Buffer.from('test-auth-code-secret-at-least-32-chars!!')),
+  ttlSeconds: 1800,
+  maxAttempts: 5,
+  resendCooldownSeconds: 60,
+};
 
 const serviceConfig = {
   accessTokenSecret: new Uint8Array(Buffer.from('test-secret-that-is-at-least-32-bytes-long')),
@@ -197,12 +205,43 @@ describe('pg auth repository (integration)', () => {
     expect((await repo.findChallenge(id))?.consumedAt).toBeInstanceOf(Date);
   });
 
-  it('recordFailedAttempt increments and returns the new count', async () => {
+  it('reserveAttempt increments up to the max, then returns null', async () => {
     const user = await repo.createUser(newUser());
     const id = await repo.createChallenge(challengeInput(user.id, user.email));
-    expect(await repo.recordFailedAttempt(id)).toBe(1);
-    expect(await repo.recordFailedAttempt(id)).toBe(2);
+    expect(await repo.reserveAttempt(id, 2)).toBe(1);
+    expect(await repo.reserveAttempt(id, 2)).toBe(2);
+    expect(await repo.reserveAttempt(id, 2)).toBeNull();
     expect((await repo.findChallenge(id))?.attempts).toBe(2);
+  });
+
+  it('20 concurrent wrong verifies end at exactly 5 attempts', async () => {
+    const user = await repo.createUser(newUser());
+    const svc = createChallengeService(repo, authCodes);
+    const id = await svc.issue(user, 'verify_email');
+    const results = await Promise.allSettled(Array.from({ length: 20 }, () => svc.verify(id, 'abcdef', ['verify_email'])));
+    const messages = results.map(r => (r.status === 'rejected' ? (r.reason as Error).message : 'OK'));
+    expect(messages.filter(m => m === 'INVALID_CODE').length).toBeLessThanOrEqual(5);
+    expect(messages.filter(m => m === 'TOO_MANY_ATTEMPTS').length).toBeGreaterThanOrEqual(15);
+    expect((await repo.findChallenge(id))?.attempts).toBe(5);
+  });
+
+  it('decoy challenges are stored without a user, lowercased, counted and superseded', async () => {
+    const d = { email: 'Ghost@Example.com', purpose: 'login' as const, codeHash: 'x', expiresAt: new Date(Date.now() + 600_000) };
+    const first = await repo.createDecoyChallenge(d);
+    const second = await repo.createDecoyChallenge(d);
+    expect((await repo.findChallenge(first))?.invalidatedAt).toBeInstanceOf(Date);
+    const live = await repo.findChallenge(second);
+    expect(live?.userId).toBeNull();
+    expect(live?.decoyEmail).toBe('ghost@example.com');
+    expect(await repo.countDecoyChallengesSince('GHOST@example.com', new Date(Date.now() - 60_000))).toBe(2);
+    expect(await repo.countEmailsTo('ghost@example.com', new Date(Date.now() - 60_000))).toBe(0);
+  });
+
+  it('rejects a challenge row with both or neither owner', async () => {
+    const user = await repo.createUser(newUser());
+    const base = { id: crypto.randomUUID(), purpose: 'login', codeHash: 'x', expiresAt: new Date(Date.now() + 1000) };
+    await expect(harness.db.insert(authChallenges).values({ ...base, userId: user.id, decoyEmail: 'a@b.c' })).rejects.toThrow();
+    await expect(harness.db.insert(authChallenges).values({ ...base, id: crypto.randomUUID() })).rejects.toThrow();
   });
 
   it('markEmailVerified and setLocale update the user', async () => {
