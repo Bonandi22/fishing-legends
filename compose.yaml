@@ -22,6 +22,23 @@ services:
       timeout: 5s
       retries: 10
 
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+
+  mailpit:
+    image: axllent/mailpit:v1.21
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+
   backend:
     build:
       context: .
@@ -33,10 +50,15 @@ services:
       HOST: 0.0.0.0
       PORT: "8090"
       DATABASE_URL: postgres://deepbluelure:deepbluelure@postgres:5432/deepbluelure
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672
+      SMTP_HOST: mailpit
+      SMTP_PORT: "1025"
     ports:
       - "8090:8090"
     depends_on:
       postgres:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
     # Only source is bind-mounted; node_modules stays as baked into the image.
     volumes:
@@ -45,6 +67,32 @@ services:
       - ./tsconfig.json:/app/tsconfig.json
       - ./tsconfig.backend.json:/app/tsconfig.backend.json
       - ./drizzle.config.ts:/app/drizzle.config.ts
+
+  # enabled once backend/src/email/workerMain.ts exists (Task 5)
+  email-worker:
+    profiles: ["email"]
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+      target: dev
+    command: npm run backend:email-worker
+    env_file:
+      - .env.docker
+    environment:
+      DATABASE_URL: postgres://deepbluelure:deepbluelure@postgres:5432/deepbluelure
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672
+      SMTP_HOST: mailpit
+      SMTP_PORT: "1025"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app/backend
+      - ./src:/app/src
+      - ./tsconfig.json:/app/tsconfig.json
+      - ./tsconfig.backend.json:/app/tsconfig.backend.json
 
   frontend:
     build:

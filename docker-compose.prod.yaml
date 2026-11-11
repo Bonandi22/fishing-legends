@@ -22,6 +22,20 @@ services:
       retries: 10
     restart: unless-stopped
 
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+    restart: unless-stopped
+
   backend:
     build:
       context: .
@@ -34,6 +48,25 @@ services:
       PORT: "8090"
     depends_on:
       postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # enabled once backend/src/email/workerMain.ts exists (Task 5)
+  email-worker:
+    profiles: ["email"]
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+      target: runtime
+    command: ["npm", "run", "backend:email-worker"]
+    env_file:
+      - .env.production
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
     restart: unless-stopped
 
@@ -93,6 +126,8 @@ services:
     restart: unless-stopped
 
 volumes:
+  rabbitmq_data:
+    name: deep_blue_lure_prod_rabbitmq
   pg_data:
     name: deep_blue_lure_prod_pgdata
   pg_backups:

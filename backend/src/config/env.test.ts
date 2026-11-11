@@ -52,3 +52,35 @@ describe('loadConfig cookie settings', () => {
     expect(config.cookieDomain).toBe('example.test');
   });
 });
+
+describe('loadConfig auth codes and email', () => {
+  it('defaults auth code settings', () => {
+    const config = loadConfig({ ...base } as NodeJS.ProcessEnv);
+    expect(config.authCodes.ttlSeconds).toBe(1800);
+    expect(config.authCodes.maxAttempts).toBe(5);
+    expect(config.authCodes.resendCooldownSeconds).toBe(60);
+    expect(config.authCodes.secret.length).toBeGreaterThanOrEqual(32);
+  });
+
+  it('rejects AUTH_CODE_SECRET shorter than 32 chars', () => {
+    expect(() => loadConfig({ ...base, AUTH_CODE_SECRET: 'short' } as NodeJS.ProcessEnv)).toThrow();
+  });
+
+  it('requires AUTH_CODE_SECRET when DATABASE_URL is set', () => {
+    expect(() => loadConfig({ ...base, DATABASE_URL: 'postgres://u:p@h/db' } as NodeJS.ProcessEnv)).toThrow();
+  });
+
+  it('requires RABBITMQ_URL and SMTP_HOST in production', () => {
+    const prod = { ...base, NODE_ENV: 'production', AUTH_CODE_SECRET: 'y'.repeat(32) };
+    expect(() => loadConfig({ ...prod, SMTP_HOST: 'smtp.example.test' } as NodeJS.ProcessEnv)).toThrow();
+    expect(() => loadConfig({ ...prod, RABBITMQ_URL: 'amqp://h' } as NodeJS.ProcessEnv)).toThrow();
+    const ok = loadConfig({ ...prod, RABBITMQ_URL: 'amqp://h', SMTP_HOST: 'smtp.example.test' } as NodeJS.ProcessEnv);
+    expect(ok.email.rabbitmqUrl).toBe('amqp://h');
+  });
+
+  it('defaults smtp to local Mailpit', () => {
+    const config = loadConfig({ ...base } as NodeJS.ProcessEnv);
+    expect(config.email.smtp).toMatchObject({ host: 'localhost', port: 1025, secure: false });
+    expect(config.email.from).toBe('Deep Blue Lure <no-reply@localhost>');
+  });
+});
