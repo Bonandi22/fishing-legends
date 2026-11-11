@@ -118,3 +118,53 @@ describe('rate limiting', () => {
     expect(b1.statusCode).toBe(200);
   });
 });
+
+describe('auth rate-limit bucket matches the routed path, not the raw URL', () => {
+  const authApp = async () => {
+    const app = await createApp({ config: { ...baseConfig, rateLimitMax: 1000, authRateLimitMax: 2 } });
+    apps.add(app);
+    return app;
+  };
+
+  it('percent-encoded login (/api/v1/auth/l%6Fgin) is still in the auth bucket', async () => {
+    const app = await authApp();
+    const hit = () => app.inject({ method: 'POST', url: '/api/v1/auth/l%6Fgin', payload: { email: 'nobody@example.test', password: 'wrong-password' } });
+    expect((await hit()).statusCode).toBe(401); // reaches the login handler
+    expect((await hit()).statusCode).toBe(401);
+    const third = await hit();
+    expect(third.statusCode).toBe(429);
+    expect(third.json().error.code).toBe('RATE_LIMITED');
+  });
+
+  it('percent-encoded verify-email (/api/v1/auth/verify%2Demail) is still in the auth bucket', async () => {
+    const app = await authApp();
+    const hit = () => app.inject({ method: 'POST', url: '/api/v1/auth/verify%2Demail', payload: { challengeId: crypto.randomUUID(), code: '123456' } });
+    expect((await hit()).statusCode).toBe(404); // CHALLENGE_NOT_FOUND from the handler
+    expect((await hit()).statusCode).toBe(404);
+    expect((await hit()).statusCode).toBe(429);
+  });
+
+  it('a query-string variant stays covered, and variants share one bucket', async () => {
+    const app = await authApp();
+    const body = { email: 'nobody@example.test', password: 'wrong-password' };
+    expect((await app.inject({ method: 'POST', url: '/api/v1/auth/login?a=1', payload: body })).statusCode).toBe(401);
+    expect((await app.inject({ method: 'POST', url: '/api/v1/auth/l%6Fgin', payload: body })).statusCode).toBe(401);
+    expect((await app.inject({ method: 'POST', url: '/api/v1/auth/login', payload: body })).statusCode).toBe(429);
+  });
+
+  it('CSRF still applies to an encoded /api path when a dbl_csrf cookie is present', async () => {
+    const app = await authApp();
+    const res = await app.inject({ method: 'POST', url: '/%61pi/v1/auth/logout', cookies: { dbl_csrf: 'abc' } });
+    expect(res.statusCode).toBe(403);
+    expect(res.json().error.code).toBe('CSRF_FAILED');
+  });
+
+  it('an encoded login is not CSRF-exempt (exemption is never widened)', async () => {
+    const app = await authApp();
+    const res = await app.inject({
+      method: 'POST', url: '/api/v1/auth/l%6Fgin', cookies: { dbl_csrf: 'abc' },
+      payload: { email: 'nobody@example.test', password: 'wrong-password' },
+    });
+    expect(res.statusCode).toBe(403);
+  });
+});

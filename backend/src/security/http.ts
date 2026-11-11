@@ -64,12 +64,17 @@ export function registerSecurityHooks(app: FastifyInstance, options: SecurityOpt
       return reply.status(204).send();
     }
 
+    // The router decodes the path before matching, so `/api/v1/auth/l%6Fgin` runs the
+    // login handler. Decide on the matched route pattern, never on the raw URL; fall
+    // back to the raw URL only when nothing matched (a 404).
+    const route = request.routeOptions.url ?? request.url;
     const isMutation = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(request.method);
+    // Exact raw-URL match on purpose: encoded or query-string variants stay non-exempt.
     const csrfExempt = request.url === '/api/v1/auth/login' || request.url === '/api/v1/auth/register';
     const csrfCookie = readCsrfCookie(request);
     // Double-submit only defends real sessions: with no dbl_csrf cookie there is
     // nothing a browser attaches to forge, and the route's own auth returns 401.
-    if (isMutation && request.url.startsWith('/api/v1/') && !csrfExempt && csrfCookie) {
+    if (isMutation && route.startsWith('/api/v1/') && !csrfExempt && csrfCookie) {
       const header = request.headers['x-csrf-token'];
       if (typeof header !== 'string' || header !== csrfCookie) {
         return reply.status(403).send({ error: { code: 'CSRF_FAILED', message: 'CSRF token missing or invalid' } });
@@ -79,9 +84,7 @@ export function registerSecurityHooks(app: FastifyInstance, options: SecurityOpt
     const key = clientKey(request);
     const now = Date.now();
 
-    // Match on the path alone: a query string must not move a request out of the bucket.
-    const path = request.url.split('?', 1)[0];
-    if (request.method === 'POST' && AUTH_RATE_LIMITED_URLS.has(path)) {
+    if (request.method === 'POST' && AUTH_RATE_LIMITED_URLS.has(route)) {
       if (overLimit(authRequests, key, options.authRateLimitMax, options.authRateLimitWindowMs, now)) {
         reply.header('retry-after', Math.ceil((authRequests.get(key)!.resetAt - now) / 1000));
         return reply.status(429).send({ error: { code: 'RATE_LIMITED', message: 'Too many requests' } });
