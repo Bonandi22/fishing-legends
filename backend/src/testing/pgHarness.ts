@@ -17,7 +17,7 @@ export function testDatabaseUrl(): string {
 // Tables cleared between tests. `users` cascades to every user-owned table;
 // `seasons` and `schema_migrations` are handled explicitly.
 const CASCADING_ROOT = 'users';
-const STANDALONE_TABLES = ['seasons'];
+const STANDALONE_TABLES = ['seasons', 'email_outbox'];
 
 export type TestDatabase = {
   db: Database;

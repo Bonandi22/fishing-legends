@@ -190,6 +190,26 @@ export const aquariumFish = pgTable('aquarium_fish', {
   sectorCheck: check('aquarium_fish_sector_check', sql`${table.sector} BETWEEN 1 AND 5`),
 }));
 
+export const emailOutbox = pgTable('email_outbox', {
+  id: uuid('id').primaryKey(),
+  kind: varchar('kind', { length: 40 }).notNull(),
+  recipient: varchar('recipient', { length: 320 }).notNull(),
+  locale: char('locale', { length: 2 }).notNull(),
+  payload: jsonb('payload').$type<Record<string, string>>().notNull().default({}),
+  challengeId: uuid('challenge_id'),
+  status: varchar('status', { length: 16 }).notNull().default('pending'),
+  attempts: integer('attempts').notNull().default(0),
+  lastError: text('last_error'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  publishedAt: timestamp('published_at', { withTimezone: true }),
+  sentAt: timestamp('sent_at', { withTimezone: true }),
+}, table => ({
+  statusCreatedAtIdx: index('email_outbox_status_created_at_idx').on(table.status, table.createdAt),
+  recipientCreatedAtIdx: index('email_outbox_recipient_created_at_idx').on(table.recipient, table.createdAt),
+  kindCheck: check('email_outbox_kind_check', sql`${table.kind} IN ('verify_email_code', 'login_code', 'password_reset_code', 'register_attempt_notice', 'code_expired_notice')`),
+  statusCheck: check('email_outbox_status_check', sql`${table.status} IN ('pending', 'published', 'sent', 'failed')`),
+}));
+
 export const schema = {
   schemaMigrations,
   users,
@@ -204,4 +224,5 @@ export const schema = {
   gameStateOperations,
   warehouseFish,
   aquariumFish,
+  emailOutbox,
 };
