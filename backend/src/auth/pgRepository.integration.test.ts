@@ -162,6 +162,18 @@ describe('pg auth repository (integration)', () => {
     expect(rows).toHaveLength(1);
   });
 
+  it('concurrent createChallenge calls leave exactly one live challenge', async () => {
+    const user = await repo.createUser(newUser());
+    await Promise.all(Array.from({ length: 6 }, () => repo.createChallenge(challengeInput(user.id, user.email))));
+    const rows = await harness.db.select().from(authChallenges).where(eq(authChallenges.userId, user.id));
+    expect(rows).toHaveLength(6);
+    expect(rows.filter(r => !r.invalidatedAt && !r.consumedAt)).toHaveLength(1);
+  });
+
+  it('createChallenge throws for an unknown user', async () => {
+    await expect(repo.createChallenge(challengeInput(crypto.randomUUID(), 'x@example.com'))).rejects.toThrow();
+  });
+
   it('a failure inside createChallenge leaves neither challenge nor outbox row', async () => {
     const user = await repo.createUser(newUser());
     const real = createPgOutbox(harness.db);

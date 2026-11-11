@@ -74,6 +74,7 @@ export function createMemoryAuthRepository(outbox: EmailOutbox = createMemoryOut
       revokeFamily(sessionId);
     },
     async createChallenge(input) {
+      if (!users.has(input.userId)) throw new Error('USER_NOT_FOUND');
       const now = new Date();
       for (const [id, c] of challenges) {
         if (c.userId === input.userId && c.purpose === input.purpose && !c.consumedAt && !c.invalidatedAt) {

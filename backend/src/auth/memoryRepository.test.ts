@@ -81,3 +81,10 @@ describe('memory auth repository (verification + challenges)', () => {
     expect(await repo.findUserById(verified.id)).not.toBeNull();
   });
 });
+
+describe('memory auth repository (createChallenge guard)', () => {
+  it('throws for an unknown user', async () => {
+    const r = createMemoryAuthRepository(createMemoryOutbox());
+    await expect(r.createChallenge(input(crypto.randomUUID(), 'x@example.com'))).rejects.toThrow('USER_NOT_FOUND');
+  });
+});

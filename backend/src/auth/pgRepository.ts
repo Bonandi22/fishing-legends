@@ -157,6 +157,9 @@ export function createPgAuthRepository(db: Database, outbox: EmailOutbox = creat
     async createChallenge(input) {
       const id = randomUUID();
       await db.transaction(async tx => {
+        // Serialize concurrent issuance per user so only the newest challenge stays live.
+        const locked = await tx.execute(sql`SELECT id FROM users WHERE id = ${input.userId} FOR UPDATE`);
+        if (locked.rows.length === 0) throw new Error('USER_NOT_FOUND');
         await tx.update(authChallenges).set({ invalidatedAt: sql`now()` })
           .where(and(
             eq(authChallenges.userId, input.userId),
