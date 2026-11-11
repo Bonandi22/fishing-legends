@@ -26,7 +26,7 @@ export default function AccountModal({ open, onClose }: Props) {
   const [flag, setFlag] = useState('🌍');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [challenge, setChallenge] = useState<{ id: string; kind: 'register' | 'login' } | null>(null);
+  const [challenge, setChallenge] = useState<{ id: string; kind: 'register' | 'login'; resendAvailableAt: number } | null>(null);
   const [tutorialVisible, setTutorialVisible] = useState(() => localStorage.getItem(TUTORIAL_KEY) !== '1');
 
   const dismissTutorial = () => { localStorage.setItem(TUTORIAL_KEY, '1'); setTutorialVisible(false); };
@@ -61,10 +61,10 @@ export default function AccountModal({ open, onClose }: Props) {
     try {
       if (mode === 'login') {
         const { challengeId } = await login(email.trim(), password, lang);
-        setChallenge({ id: challengeId, kind: 'login' });
+        setChallenge({ id: challengeId, kind: 'login', resendAvailableAt: Date.now() + 60_000 });
       } else {
         const { challengeId } = await register({ email: email.trim(), password, username: username.trim(), country: flagToIso2(flag), locale: lang });
-        setChallenge({ id: challengeId, kind: 'register' });
+        setChallenge({ id: challengeId, kind: 'register', resendAvailableAt: Date.now() + 60_000 });
       }
     } catch (e) {
       setError(errText(e));
@@ -110,7 +110,8 @@ export default function AccountModal({ open, onClose }: Props) {
               </div>
             ) : challenge ? (
               <CodeStep
-                challengeId={challenge.id} kind={challenge.kind}
+                challengeId={challenge.id} kind={challenge.kind} resendAvailableAt={challenge.resendAvailableAt}
+                onResent={(id, at) => setChallenge(c => c && { ...c, id, resendAvailableAt: at })}
                 onDone={() => { setChallenge(null); setPassword(''); onClose(); }}
                 onBack={() => { setChallenge(null); setError(null); }}
               />

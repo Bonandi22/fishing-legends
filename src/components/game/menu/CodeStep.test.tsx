@@ -1,4 +1,5 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
+import { useState } from 'react';
 import { render, screen, cleanup, fireEvent, act } from '@testing-library/react';
 import { I18nProvider } from '@/game/i18n';
 import { ApiError } from '@/api/client';
@@ -10,11 +11,20 @@ vi.mock('@/game/auth/AuthProvider', () => ({
   useAuth: () => ({ completeChallenge, resendCode }),
 }));
 
+// Stateful owner, like AccountModal: keeps the current id and cooldown across remounts.
+function Owner({ kind, onDone, onBack, show }: { kind: 'register' | 'login'; onDone(): void; onBack(): void; show: boolean }) {
+  const [c, setC] = useState(() => ({ id: 'ch-1', at: Date.now() + 60_000 }));
+  return show ? (
+    <CodeStep challengeId={c.id} kind={kind} resendAvailableAt={c.at}
+      onResent={(id, at) => setC({ id, at })} onDone={onDone} onBack={onBack} />
+  ) : null;
+}
 function setup(kind: 'register' | 'login' = 'login') {
   const onDone = vi.fn();
   const onBack = vi.fn();
-  render(<I18nProvider><CodeStep challengeId="ch-1" kind={kind} onDone={onDone} onBack={onBack} /></I18nProvider>);
-  return { onDone, onBack };
+  const ui = (show: boolean) => <I18nProvider><Owner kind={kind} onDone={onDone} onBack={onBack} show={show} /></I18nProvider>;
+  const r = render(ui(true));
+  return { onDone, onBack, hide: () => r.rerender(ui(false)), reshow: () => r.rerender(ui(true)) };
 }
 const input = () => screen.getByLabelText(/código/i) as HTMLInputElement;
 const submitBtn = () => screen.getByRole('button', { name: /confirmar/i });
@@ -105,5 +115,26 @@ describe('CodeStep', () => {
     act(() => { vi.advanceTimersByTime(60_000); });
     await act(async () => { fireEvent.click(resendBtn()); });
     expect(onBack).toHaveBeenCalled();
+  });
+
+  it('resend then close/reopen: submitting uses the NEW challenge id', async () => {
+    resendCode.mockResolvedValue('ch-2');
+    completeChallenge.mockResolvedValue(undefined);
+    const { hide, reshow } = setup();
+    act(() => { vi.advanceTimersByTime(60_000); });
+    await act(async () => { fireEvent.click(resendBtn()); });
+    hide(); reshow();
+    fireEvent.change(input(), { target: { value: '123456' } });
+    await act(async () => { fireEvent.click(submitBtn()); });
+    expect(completeChallenge).toHaveBeenCalledWith('login', 'ch-2', '123456');
+  });
+
+  it('remount mid-countdown shows the remaining seconds, not 60', () => {
+    const { hide, reshow } = setup();
+    act(() => { vi.advanceTimersByTime(25_000); });
+    hide();
+    act(() => { vi.advanceTimersByTime(10_000); });
+    reshow();
+    expect(resendBtn().textContent).toMatch(/\(25s\)/);
   });
 });

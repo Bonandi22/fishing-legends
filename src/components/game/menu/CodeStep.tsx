@@ -10,27 +10,29 @@ const RESEND_SECONDS = 60;
 interface Props {
   challengeId: string;
   kind: 'register' | 'login';
+  /** Epoch ms when resend becomes available; owned by the parent so a remount resumes it. */
+  resendAvailableAt: number;
+  /** The parent owns the current challenge: called with the new id and the new cooldown deadline. */
+  onResent(challengeId: string, resendAvailableAt: number): void;
   onDone(): void;
   onBack(): void;
 }
 
-export default function CodeStep({ challengeId, kind, onDone, onBack }: Props) {
+export default function CodeStep({ challengeId, kind, resendAvailableAt, onResent, onDone, onBack }: Props) {
   const { t } = useI18n();
   const { completeChallenge, resendCode } = useAuth();
-  const [id, setId] = useState(challengeId);
   const [code, setCode] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [seconds, setSeconds] = useState(RESEND_SECONDS);
-
-  useEffect(() => { setId(challengeId); }, [challengeId]);
+  const [now, setNow] = useState(() => Date.now());
+  const seconds = Math.max(0, Math.ceil((resendAvailableAt - now) / 1000));
 
   // One interval for the whole countdown (keyed on running/stopped, not on every tick).
   const counting = seconds > 0;
   useEffect(() => {
     if (!counting) return;
-    const timer = setInterval(() => setSeconds(s => Math.max(0, s - 1)), 1000);
+    const timer = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(timer);
   }, [counting]);
 
@@ -47,7 +49,7 @@ export default function CodeStep({ challengeId, kind, onDone, onBack }: Props) {
     if (code.length !== 6 || busy) return;
     setError(null); setNotice(null); setBusy(true);
     try {
-      await completeChallenge(kind, id, code);
+      await completeChallenge(kind, challengeId, code);
       onDone();
     } catch (e) {
       setError(errText(e));
@@ -61,14 +63,18 @@ export default function CodeStep({ challengeId, kind, onDone, onBack }: Props) {
     if (seconds > 0 || busy) return;
     setError(null); setNotice(null); setBusy(true);
     try {
-      setId(await resendCode(id));
+      const nextId = await resendCode(challengeId);
       setCode('');
-      setSeconds(RESEND_SECONDS);
+      setNow(Date.now());
+      onResent(nextId, Date.now() + RESEND_SECONDS * 1000);
       setNotice(t('auth.code.sent'));
     } catch (e) {
       if (e instanceof ApiError && e.code === 'CHALLENGE_NOT_FOUND') { onBack(); return; }
       setError(errText(e));
-      if (e instanceof ApiError && e.code === 'RESEND_TOO_SOON') setSeconds(s => (s > 0 ? s : RESEND_SECONDS));
+      if (e instanceof ApiError && e.code === 'RESEND_TOO_SOON' && seconds === 0) {
+        setNow(Date.now());
+        onResent(challengeId, Date.now() + RESEND_SECONDS * 1000);
+      }
     } finally {
       setBusy(false);
     }
