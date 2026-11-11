@@ -92,7 +92,6 @@
     "@tailwindcss/typography": "^0.5.20",
     "@testing-library/jest-dom": "^6.6.0",
     "@testing-library/react": "^16.0.0",
-    "@types/amqplib": "^0.10.8",
     "@types/node": "^26.6.6",
     "@types/nodemailer": "^8.0.2",
     "@types/pg": "^8.15.5",

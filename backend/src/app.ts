@@ -34,6 +34,9 @@ import { registerSecurityHooks } from './security/http.js';
 import { registerSeasonsRoutes } from './seasons/routes.js';
 import { createMemorySeasonsService } from './seasons/service.js';
 import { createPgSeasonsService } from './seasons/pgRepository.js';
+import { createPgOutbox } from './email/pgOutbox.js';
+import { createAmqpPublisher } from './email/amqp.js';
+import { createOutboxRelay } from './email/relay.js';
 
 export type AppDependencies = {
   config: AppConfig;
@@ -123,6 +126,17 @@ export async function createApp({ config }: AppDependencies): Promise<FastifyIns
     ? createPgFishingService(database)
     : createMemoryFishingService(memoryGameStateStore!);
   registerFishingRoutes(app, fishingService);
+
+  if (database && config.email?.rabbitmqUrl) {
+    const rabbitmqUrl = config.email.rabbitmqUrl;
+    const relay = createOutboxRelay({
+      outbox: createPgOutbox(database),
+      connect: () => createAmqpPublisher(rabbitmqUrl),
+      log: app.log,
+    });
+    app.addHook('onReady', async () => relay.start());
+    app.addHook('onClose', async () => relay.stop());
+  }
 
   return app;
 }
