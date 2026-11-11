@@ -1,5 +1,7 @@
 import { randomUUID } from 'node:crypto';
-import type { AuthRepository, AuthSession, AuthUser, RefreshRotation } from './types.js';
+import { createMemoryOutbox } from '../email/outbox.js';
+import type { EmailOutbox } from '../email/types.js';
+import type { AuthChallenge, AuthRepository, AuthSession, AuthUser, RefreshRotation } from './types.js';
 
 type TokenRecord = {
   id: string;
@@ -8,8 +10,10 @@ type TokenRecord = {
   revokedAt?: Date;
 };
 
-export function createMemoryAuthRepository(): AuthRepository {
+export function createMemoryAuthRepository(outbox: EmailOutbox = createMemoryOutbox()): AuthRepository {
   const users = new Map<string, AuthUser>();
+  const challenges = new Map<string, AuthChallenge>();
+  const verificationRequiredSince = new Map<string, Date>();
   const sessions = new Map<string, AuthSession>();
   const tokensByHash = new Map<string, TokenRecord>();
 
@@ -34,8 +38,9 @@ export function createMemoryAuthRepository(): AuthRepository {
       if ([...users.values()].some(u => u.username.toLowerCase() === input.username.toLowerCase())) {
         throw new Error('USERNAME_TAKEN');
       }
-      const user: AuthUser = { id: randomUUID(), status: 'active', ...input };
+      const user: AuthUser = { id: randomUUID(), status: 'active', emailVerifiedAt: null, ...input };
       users.set(user.id, user);
+      verificationRequiredSince.set(user.id, new Date());
       return user;
     },
     async updatePasswordHash(userId, passwordHash) {
@@ -67,6 +72,82 @@ export function createMemoryAuthRepository(): AuthRepository {
     },
     async revokeSession(sessionId) {
       revokeFamily(sessionId);
+    },
+    async createChallenge(input) {
+      const now = new Date();
+      for (const [id, c] of challenges) {
+        if (c.userId === input.userId && c.purpose === input.purpose && !c.consumedAt && !c.invalidatedAt) {
+          challenges.set(id, { ...c, invalidatedAt: now });
+        }
+      }
+      const id = randomUUID();
+      challenges.set(id, {
+        id,
+        userId: input.userId,
+        purpose: input.purpose,
+        codeHash: input.codeHash,
+        expiresAt: input.expiresAt,
+        attempts: 0,
+        consumedAt: null,
+        invalidatedAt: null,
+        createdAt: now,
+      });
+      await outbox.enqueue({ ...input.email, challengeId: id });
+      return id;
+    },
+    async findChallenge(id) {
+      const c = challenges.get(id);
+      return c ? { ...c } : null;
+    },
+    async recordFailedAttempt(id) {
+      const c = challenges.get(id);
+      if (!c) return 0;
+      const attempts = c.attempts + 1;
+      challenges.set(id, { ...c, attempts });
+      return attempts;
+    },
+    async consumeChallenge(id) {
+      const c = challenges.get(id);
+      if (!c || c.consumedAt || c.invalidatedAt) return false;
+      challenges.set(id, { ...c, consumedAt: new Date() });
+      return true;
+    },
+    async countChallengesSince(userId, since) {
+      return [...challenges.values()].filter(c => c.userId === userId && c.createdAt >= since).length;
+    },
+    countEmailsTo: (address, since) => outbox.countRecipientSince(address, since),
+    async markEmailVerified(userId) {
+      const user = users.get(userId);
+      if (user) users.set(userId, { ...user, emailVerifiedAt: new Date() });
+    },
+    async setLocale(userId, locale) {
+      const user = users.get(userId);
+      if (user) users.set(userId, { ...user, locale });
+    },
+    async revokeAllSessions(userId) {
+      for (const session of [...sessions.values()]) {
+        if (session.userId === userId) revokeFamily(session.id);
+      }
+    },
+    async deleteStaleUnverified(olderThan) {
+      let deleted = 0;
+      for (const user of [...users.values()]) {
+        const since = verificationRequiredSince.get(user.id);
+        if (user.emailVerifiedAt || !since || since >= olderThan) continue;
+        users.delete(user.id);
+        verificationRequiredSince.delete(user.id);
+        for (const [id, c] of challenges) if (c.userId === user.id) challenges.delete(id);
+        for (const [id, s] of sessions) {
+          if (s.userId !== user.id) continue;
+          sessions.delete(id);
+          for (const [hash, t] of tokensByHash) if (t.sessionId === id) tokensByHash.delete(hash);
+        }
+        deleted += 1;
+      }
+      return deleted;
+    },
+    async enqueueEmail(msg) {
+      await outbox.enqueue(msg);
     },
     async listUsers() {
       return [...users.values()];

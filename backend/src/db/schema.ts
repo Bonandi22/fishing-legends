@@ -33,11 +33,15 @@ export const users = pgTable('users', {
   email: varchar('email', { length: 320 }).notNull(),
   passwordHash: text('password_hash').notNull(),
   status: varchar('status', { length: 32 }).notNull().default('active'),
+  emailVerifiedAt: timestamp('email_verified_at', { withTimezone: true }),
+  locale: char('locale', { length: 2 }).notNull().default('en'),
+  verificationRequiredSince: timestamp('verification_required_since', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 }, table => ({
   emailUnique: uniqueIndex('users_email_unique').on(table.email),
   statusCheck: check('users_status_check', sql`${table.status} IN ('active', 'suspended', 'deleted')`),
+  localeCheck: check('users_locale_check', sql`${table.locale} IN ('pt', 'en', 'es', 'fr', 'de', 'ja')`),
 }));
 
 export const userProfiles = pgTable('user_profiles', {
@@ -211,6 +215,21 @@ export const emailOutbox = pgTable('email_outbox', {
   statusCheck: check('email_outbox_status_check', sql`${table.status} IN ('pending', 'published', 'sent', 'failed')`),
 }));
 
+export const authChallenges = pgTable('auth_challenges', {
+  id: uuid('id').primaryKey(),
+  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  purpose: varchar('purpose', { length: 20 }).notNull(),
+  codeHash: text('code_hash').notNull(),
+  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+  attempts: integer('attempts').notNull().default(0),
+  consumedAt: timestamp('consumed_at', { withTimezone: true }),
+  invalidatedAt: timestamp('invalidated_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+}, table => ({
+  userPurposeCreatedAtIdx: index('auth_challenges_user_purpose_created_at_idx').on(table.userId, table.purpose, table.createdAt.desc()),
+  purposeCheck: check('auth_challenges_purpose_check', sql`${table.purpose} IN ('verify_email', 'login', 'password_reset')`),
+}));
+
 export const schema = {
   schemaMigrations,
   users,
@@ -226,4 +245,5 @@ export const schema = {
   warehouseFish,
   aquariumFish,
   emailOutbox,
+  authChallenges,
 };

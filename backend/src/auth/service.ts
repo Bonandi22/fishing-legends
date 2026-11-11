@@ -34,6 +34,7 @@ export function createAuthService(repository: AuthRepository, config: AuthServic
         passwordHash: await hashPassword(input.password),
         username: input.username.trim(),
         country: input.country,
+        locale: 'en',
       });
       const refreshToken = createOpaqueToken();
       const session = await repository.createSession({

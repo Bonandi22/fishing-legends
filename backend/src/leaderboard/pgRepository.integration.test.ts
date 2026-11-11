@@ -25,6 +25,7 @@ async function seedPlayer(level: number, fish: number) {
     passwordHash: 'scrypt$c2FsdA$a2V5',
     username: `lb_${randomUUID().slice(0, 8)}`,
     country: 'BR',
+    locale: 'en',
   });
   await harness.db.insert(playerGameState).values({
     userId: user.id,

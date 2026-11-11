@@ -24,6 +24,7 @@ async function seedUser() {
     passwordHash: 'scrypt$c2FsdA$a2V5',
     username: `mg_${crypto.randomUUID().slice(0, 8)}`,
     country: 'BR',
+    locale: 'en',
   });
   return user.id;
 }

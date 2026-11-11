@@ -20,6 +20,7 @@ beforeEach(async () => {
     passwordHash: await hashPassword('the-correct-password-123'),
     username: 'known_user',
     country: 'BR',
+    locale: 'en',
   });
   service = createAuthService(repo, config);
 });

@@ -1,9 +1,11 @@
 import { randomUUID } from 'node:crypto';
-import { and, eq, isNull } from 'drizzle-orm';
+import { and, eq, gte, isNull, lt, sql } from 'drizzle-orm';
 import type { Database } from '../db/client.js';
-import { playerProgress, refreshTokens, sessions, userProfiles, users } from '../db/schema.js';
+import { authChallenges, playerProgress, refreshTokens, sessions, userProfiles, users } from '../db/schema.js';
+import { createPgOutbox } from '../email/pgOutbox.js';
+import type { EmailOutbox, Locale } from '../email/types.js';
 import { isUniqueViolation } from '../db/pgErrors.js';
-import type { AuthRepository, AuthSession, AuthUser, RefreshRotation } from './types.js';
+import type { AuthChallenge, AuthRepository, AuthSession, AuthUser, ChallengePurpose, RefreshRotation } from './types.js';
 
 function toAuthUser(row: {
   user: typeof users.$inferSelect;
@@ -20,6 +22,22 @@ function toAuthUser(row: {
     username: row.profile.username,
     country: row.profile.country,
     status: row.user.status,
+    emailVerifiedAt: row.user.emailVerifiedAt,
+    locale: row.user.locale as Locale,
+  };
+}
+
+function toAuthChallenge(row: typeof authChallenges.$inferSelect): AuthChallenge {
+  return {
+    id: row.id,
+    userId: row.userId,
+    purpose: row.purpose as ChallengePurpose,
+    codeHash: row.codeHash,
+    expiresAt: row.expiresAt,
+    attempts: row.attempts,
+    consumedAt: row.consumedAt,
+    invalidatedAt: row.invalidatedAt,
+    createdAt: row.createdAt,
   };
 }
 
@@ -32,7 +50,7 @@ function toAuthSession(row: typeof sessions.$inferSelect): AuthSession {
   };
 }
 
-export function createPgAuthRepository(db: Database): AuthRepository {
+export function createPgAuthRepository(db: Database, outbox: EmailOutbox = createPgOutbox(db)): AuthRepository {
   async function findUser(where: ReturnType<typeof eq>): Promise<AuthUser | null> {
     const rows = await db
       .select({ user: users, profile: userProfiles })
@@ -55,6 +73,8 @@ export function createPgAuthRepository(db: Database): AuthRepository {
             email: input.email,
             passwordHash: input.passwordHash,
             status: 'active',
+            locale: input.locale,
+            verificationRequiredSince: sql`now()`,
           });
           await tx.insert(userProfiles).values({
             userId: id,
@@ -133,6 +153,84 @@ export function createPgAuthRepository(db: Database): AuthRepository {
         await tx.update(sessions).set({ revokedAt: new Date() })
           .where(and(eq(sessions.id, sessionId), isNull(sessions.revokedAt)));
       });
+    },
+    async createChallenge(input) {
+      const id = randomUUID();
+      await db.transaction(async tx => {
+        await tx.update(authChallenges).set({ invalidatedAt: sql`now()` })
+          .where(and(
+            eq(authChallenges.userId, input.userId),
+            eq(authChallenges.purpose, input.purpose),
+            isNull(authChallenges.consumedAt),
+            isNull(authChallenges.invalidatedAt),
+          ));
+        await tx.insert(authChallenges).values({
+          id,
+          userId: input.userId,
+          purpose: input.purpose,
+          codeHash: input.codeHash,
+          expiresAt: input.expiresAt,
+        });
+        await outbox.enqueue({ ...input.email, challengeId: id }, tx);
+      });
+      return id;
+    },
+    async findChallenge(id) {
+      const [row] = await db.select().from(authChallenges).where(eq(authChallenges.id, id)).limit(1);
+      return row ? toAuthChallenge(row) : null;
+    },
+    async recordFailedAttempt(id) {
+      const [row] = await db.update(authChallenges)
+        .set({ attempts: sql`${authChallenges.attempts} + 1` })
+        .where(eq(authChallenges.id, id))
+        .returning({ attempts: authChallenges.attempts });
+      return row?.attempts ?? 0;
+    },
+    async consumeChallenge(id) {
+      const rows = await db.update(authChallenges)
+        .set({ consumedAt: sql`now()` })
+        .where(and(
+          eq(authChallenges.id, id),
+          isNull(authChallenges.consumedAt),
+          isNull(authChallenges.invalidatedAt),
+        ))
+        .returning({ id: authChallenges.id });
+      return rows.length === 1;
+    },
+    async countChallengesSince(userId, since) {
+      const [row] = await db.select({ n: sql<number>`count(*)::int` }).from(authChallenges)
+        .where(and(eq(authChallenges.userId, userId), gte(authChallenges.createdAt, since)));
+      return row?.n ?? 0;
+    },
+    countEmailsTo: (address, since) => outbox.countRecipientSince(address, since),
+    async markEmailVerified(userId) {
+      await db.update(users).set({ emailVerifiedAt: sql`now()`, updatedAt: new Date() }).where(eq(users.id, userId));
+    },
+    async setLocale(userId, locale) {
+      await db.update(users).set({ locale, updatedAt: new Date() }).where(eq(users.id, userId));
+    },
+    async revokeAllSessions(userId) {
+      await db.transaction(async tx => {
+        const owned = tx.select({ id: sessions.id }).from(sessions).where(eq(sessions.userId, userId));
+        await tx.update(refreshTokens).set({ revokedAt: new Date() })
+          .where(and(sql`${refreshTokens.sessionId} IN (${owned})`, isNull(refreshTokens.revokedAt)));
+        await tx.update(sessions).set({ revokedAt: new Date() })
+          .where(and(eq(sessions.userId, userId), isNull(sessions.revokedAt)));
+      });
+    },
+    async deleteStaleUnverified(olderThan) {
+      // Every table referencing users(id) is ON DELETE CASCADE (profiles,
+      // sessions -> refresh_tokens, auth_challenges, game state, ...).
+      const rows = await db.delete(users)
+        .where(and(
+          isNull(users.emailVerifiedAt),
+          lt(users.verificationRequiredSince, olderThan),
+        ))
+        .returning({ id: users.id });
+      return rows.length;
+    },
+    async enqueueEmail(msg) {
+      await outbox.enqueue(msg);
     },
   };
 }

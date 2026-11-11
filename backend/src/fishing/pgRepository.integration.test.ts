@@ -28,6 +28,7 @@ async function seedUser() {
     passwordHash: 'scrypt$c2FsdA$a2V5',
     username: `fish_${randomUUID().slice(0, 8)}`,
     country: 'BR',
+    locale: 'en',
   });
   return user.id;
 }
