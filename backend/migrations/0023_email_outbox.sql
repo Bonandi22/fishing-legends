@@ -13,6 +13,7 @@ CREATE TABLE email_outbox (
   created_at timestamptz NOT NULL DEFAULT now(),
   published_at timestamptz,
   sent_at timestamptz,
+  claimed_until timestamptz,
   CONSTRAINT email_outbox_kind_check CHECK (kind IN ('verify_email_code', 'login_code', 'password_reset_code', 'register_attempt_notice', 'code_expired_notice')),
   CONSTRAINT email_outbox_status_check CHECK (status IN ('pending', 'published', 'sent', 'failed'))
 );

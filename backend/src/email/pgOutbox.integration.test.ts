@@ -1,5 +1,5 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { createTestDatabase, type TestDatabase } from '../testing/pgHarness.js';
 import { emailOutbox } from '../db/schema.js';
 import { createPgOutbox } from './pgOutbox.js';
@@ -16,10 +16,27 @@ afterAll(() => harness?.close());
 describe('pg email outbox', () => {
   outboxContract(() => ({
     outbox: createPgOutbox(harness.db),
+    expireLeases: async () => {
+      await harness.db.update(emailOutbox).set({ claimedUntil: sql`now() - interval '1 second'` });
+    },
     setCreatedAt: async (id, at) => {
       await harness.db.update(emailOutbox).set({ createdAt: at }).where(eq(emailOutbox.id, id));
     },
   }));
+
+  it('concurrent claimPending calls return disjoint sets covering all pending rows', async () => {
+    const a = createPgOutbox(harness.db);
+    const b = createPgOutbox(harness.db);
+    const ids: string[] = [];
+    for (let i = 0; i < 20; i++) {
+      ids.push(await a.enqueue({ kind: 'login_code', to: `u${i}@example.com`, locale: 'en', payload: {} }));
+    }
+    const [x, y] = await Promise.all([a.claimPending(20), b.claimPending(20)]);
+    const xi = x.map(m => m.id);
+    const yi = y.map(m => m.id);
+    expect(xi.filter(i => yi.includes(i))).toEqual([]);
+    expect([...xi, ...yi].sort()).toEqual([...ids].sort());
+  });
 
   it('enqueue inside a rolled-back transaction leaves no row', async () => {
     const outbox = createPgOutbox(harness.db);

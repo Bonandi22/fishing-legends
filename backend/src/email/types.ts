@@ -30,3 +30,6 @@ export interface EmailOutbox {
   /** Rows (any status/kind) addressed to `to` (case-insensitive) created at or after `since`. */
   countRecipientSince(to: string, since: Date): Promise<number>;
 }
+
+/** How long a claimPending() claim holds a row before another relay may take it. */
+export const OUTBOX_CLAIM_LEASE_SECONDS = 30;

@@ -203,6 +203,7 @@ export const emailOutbox = pgTable('email_outbox', {
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   publishedAt: timestamp('published_at', { withTimezone: true }),
   sentAt: timestamp('sent_at', { withTimezone: true }),
+  claimedUntil: timestamp('claimed_until', { withTimezone: true }),
 }, table => ({
   statusCreatedAtIdx: index('email_outbox_status_created_at_idx').on(table.status, table.createdAt),
   recipientCreatedAtIdx: index('email_outbox_recipient_created_at_idx').on(table.recipient, table.createdAt),

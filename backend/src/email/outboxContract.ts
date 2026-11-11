@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import type { EmailOutbox } from './types.js';
+import { OUTBOX_CLAIM_LEASE_SECONDS, type EmailOutbox } from './types.js';
 
 const base = { kind: 'login_code', to: 'Ana@Example.com', locale: 'pt', payload: { code: '123456' } } as const;
 
@@ -7,6 +7,8 @@ export type OutboxHarness = {
   outbox: EmailOutbox;
   /** Backdate a row's created_at so the since-window can be exercised. */
   setCreatedAt(id: string, at: Date): Promise<void>;
+  /** Make every outstanding claim lease expire (advance the clock / backdate claimed_until). */
+  expireLeases(): Promise<void>;
 };
 
 /** Behavioural cases shared by the memory and PostgreSQL outboxes. */
@@ -32,6 +34,33 @@ export function outboxContract(make: () => OutboxHarness) {
     expect(await outbox.status(a)).toBe('sent');
     expect(await outbox.status(b)).toBe('failed');
     expect(await outbox.status('00000000-0000-4000-8000-000000000000')).toBeNull();
+  });
+
+  it('a second claimPending without markPublished returns nothing (lease)', async () => {
+    const { outbox } = make();
+    await outbox.enqueue({ ...base });
+    expect(await outbox.claimPending(10)).toHaveLength(1);
+    expect(await outbox.claimPending(10)).toEqual([]);
+  });
+
+  it('a row is claimable again after its lease expires', async () => {
+    const { outbox, expireLeases } = make();
+    const id = await outbox.enqueue({ ...base });
+    expect(await outbox.claimPending(10)).toHaveLength(1);
+    await expireLeases();
+    const again = await outbox.claimPending(10);
+    expect(again.map(m => m.id)).toEqual([id]);
+    expect(OUTBOX_CLAIM_LEASE_SECONDS).toBe(30);
+  });
+
+  it('claimPending returns a copy of the payload', async () => {
+    const { outbox, expireLeases } = make();
+    await outbox.enqueue({ ...base });
+    const [first] = await outbox.claimPending(10);
+    first!.payload.code = 'tampered';
+    await expireLeases();
+    const [second] = await outbox.claimPending(10);
+    expect(second!.payload.code).toBe('123456');
   });
 
   it('claimPending respects the limit', async () => {

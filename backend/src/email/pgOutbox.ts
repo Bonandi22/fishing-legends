@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { and, eq, gte, inArray, sql } from 'drizzle-orm';
 import type { Database } from '../db/client.js';
 import { emailOutbox } from '../db/schema.js';
-import type { EmailKind, EmailMessage, EmailOutbox, Locale, OutboxStatus } from './types.js';
+import { OUTBOX_CLAIM_LEASE_SECONDS, type EmailKind, type EmailMessage, type EmailOutbox, type Locale, type OutboxStatus } from './types.js';
 
 /** A Drizzle transaction (what `db.transaction(async tx => ...)` hands you). */
 export type DatabaseTransaction = Parameters<Parameters<Database['transaction']>[0]>[0];
@@ -23,18 +23,24 @@ export function createPgOutbox(db: Database): EmailOutbox {
       return id;
     },
     async claimPending(limit) {
+      // One atomic statement: the UPDATE persists the lease, so the claim
+      // outlives this statement (a bare FOR UPDATE would release on autocommit).
       const result = await db.execute<{
         id: string; kind: string; recipient: string; locale: string;
         payload: Record<string, string>; challenge_id: string | null; created_at: Date;
       }>(sql`
-        SELECT id, kind, recipient, locale, payload, challenge_id, created_at
-        FROM email_outbox
-        WHERE status = 'pending'
-        ORDER BY created_at
-        LIMIT ${limit}
-        FOR UPDATE SKIP LOCKED
+        UPDATE email_outbox
+        SET claimed_until = now() + make_interval(secs => ${OUTBOX_CLAIM_LEASE_SECONDS})
+        WHERE id IN (
+          SELECT id FROM email_outbox
+          WHERE status = 'pending' AND (claimed_until IS NULL OR claimed_until < now())
+          ORDER BY created_at
+          LIMIT ${limit}
+          FOR UPDATE SKIP LOCKED
+        )
+        RETURNING id, kind, recipient, locale, payload, challenge_id, created_at
       `);
-      return result.rows.map((r): EmailMessage => ({
+      return [...result.rows].sort((x, y) => new Date(x.created_at).getTime() - new Date(y.created_at).getTime()).map((r): EmailMessage => ({
         id: r.id,
         kind: r.kind as EmailKind,
         to: r.recipient,
