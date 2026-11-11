@@ -49,6 +49,8 @@ export type RefreshRotation =
 export type AuthRepository = {
   findUserByEmail(email: string): Promise<AuthUser | null>;
   findUserById(id: string): Promise<AuthUser | null>;
+  /** Case-insensitive, like the unique index on lower(username). */
+  isUsernameTaken(username: string): Promise<boolean>;
   createUser(input: {
     email: string;
     passwordHash: string;
@@ -70,14 +72,15 @@ export type AuthRepository = {
   revokeSession(sessionId: string): Promise<void>;
   /**
    * One transaction: invalidates the user's live challenges of the same purpose,
-   * inserts the challenge, and enqueues the email with its challengeId.
+   * inserts the challenge, and enqueues the email with its challengeId. `email:
+   * null` stores the challenge without sending anything (address over its cap).
    */
   createChallenge(input: {
     userId: string;
     purpose: ChallengePurpose;
     codeHash: string;
     expiresAt: Date;
-    email: Omit<EmailMessage, 'id' | 'createdAt' | 'challengeId'>;
+    email: Omit<EmailMessage, 'id' | 'createdAt' | 'challengeId'> | null;
   }): Promise<string>;
   findChallenge(id: string): Promise<AuthChallenge | null>;
   /**

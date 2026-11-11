@@ -62,4 +62,15 @@ describe('pg leaderboard service (integration)', () => {
     expect(nextPage.entries).toHaveLength(1);
     expect(nextPage.entries[0].rank).toBe(3);
   });
+
+  it('lists only players with game state (an unconfirmed account without state never appears)', async () => {
+    await auth.createUser({
+      email: `nostate-${randomUUID()}@example.com`, passwordHash: 'scrypt$c2FsdA$a2V5',
+      username: `ns_${randomUUID().slice(0, 8)}`, country: 'BR', locale: 'en',
+    });
+    const legacy = await seedPlayer(2, 1); // unverified (emailVerifiedAt null) but has state
+    const page = await leaderboard.list('anyone', 50, 0);
+    expect(page.total).toBe(1);
+    expect(page.entries.map(e => e.userId)).toEqual([legacy]);
+  });
 });

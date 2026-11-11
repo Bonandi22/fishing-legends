@@ -6,6 +6,8 @@ type Row = { msg: EmailMessage; status: OutboxStatus; attempts: number; lastErro
 export type MemoryOutbox = EmailOutbox & {
   /** Test helper: backdate a row's creation time. */
   setCreatedAt(id: string, at: Date): void;
+  /** Test helper: every enqueued message, oldest first, regardless of status. */
+  messages(): EmailMessage[];
 };
 
 export function createMemoryOutbox({ now = () => new Date() }: { now?: () => Date } = {}): MemoryOutbox {
@@ -63,6 +65,9 @@ export function createMemoryOutbox({ now = () => new Date() }: { now?: () => Dat
     setCreatedAt(id, at) {
       const r = rows.get(id);
       if (r) r.msg.createdAt = at;
+    },
+    messages() {
+      return [...rows.values()].map(r => ({ ...r.msg, payload: { ...r.msg.payload } }));
     },
   };
 }

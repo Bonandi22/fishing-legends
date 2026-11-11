@@ -29,25 +29,28 @@ export function createChallengeService(
   const newCode = () => String(randomInt(0, 1_000_000)).padStart(6, '0');
   const expiry = () => new Date(now().getTime() + cfg.ttlSeconds * 1000);
 
-  async function assertUnderCaps(user: AuthUser): Promise<void> {
+  /**
+   * The per-address cap only ever suppresses sending: it never throws. Notices can
+   * push a real address over it while a decoy never reaches it, so an error here
+   * would tell a caller whether the address has an account.
+   */
+  async function addressAtCap(address: string): Promise<boolean> {
+    return (await repo.countEmailsTo(address, new Date(now().getTime() - HOUR_MS))) >= MAX_EMAILS_PER_ADDRESS_PER_HOUR;
+  }
+
+  async function issue(user: AuthUser, purpose: ChallengePurpose): Promise<string> {
     const since = new Date(now().getTime() - HOUR_MS);
     if ((await repo.countChallengesSince(user.id, since)) >= MAX_CHALLENGES_PER_HOUR) {
       throw new Error('RESEND_TOO_SOON');
     }
-    if ((await repo.countEmailsTo(user.email, since)) >= MAX_EMAILS_PER_ADDRESS_PER_HOUR) {
-      throw new Error('RESEND_TOO_SOON');
-    }
-  }
-
-  async function issue(user: AuthUser, purpose: ChallengePurpose): Promise<string> {
-    await assertUnderCaps(user);
     const code = newCode();
+    const suppressEmail = await addressAtCap(user.email);
     return repo.createChallenge({
       userId: user.id,
       purpose,
       codeHash: hash(code),
       expiresAt: expiry(),
-      email: {
+      email: suppressEmail ? null : {
         kind: KIND_BY_PURPOSE[purpose],
         to: user.email,
         locale: user.locale,
@@ -117,7 +120,7 @@ export function createChallengeService(
     return !!c && !c.consumedAt && !c.invalidatedAt && now().getTime() < c.expiresAt.getTime();
   }
 
-  return { issue, issueDecoy, verify, resend, isStillValid };
+  return { issue, issueDecoy, verify, resend, isStillValid, addressAtCap };
 }
 
 export type ChallengeService = ReturnType<typeof createChallengeService>;

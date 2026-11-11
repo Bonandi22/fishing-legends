@@ -4,6 +4,9 @@ import { createPgOutbox } from './pgOutbox.js';
 import { createSmtpSender } from './smtp.js';
 import { createEmailWorker } from './worker.js';
 import { startEmailConsumer } from './consumer.js';
+import { codeValidityCheck } from './codeValidity.js';
+import { createPgAuthRepository } from '../auth/pgRepository.js';
+import { createChallengeService } from '../auth/challenges.js';
 
 // Never log payloads, codes or credentials: only error names.
 async function main() {
@@ -18,11 +21,12 @@ async function main() {
   let shuttingDown = false;
   const db = createDatabase(databaseUrl);
   const sender = createSmtpSender(config.email);
+  const outbox = createPgOutbox(db);
+  const challenges = createChallengeService(createPgAuthRepository(db, outbox), config.authCodes);
   const worker = createEmailWorker({
     sender,
-    outbox: createPgOutbox(db),
-    // Task 9 replaces this with a real check against the challenge row.
-    isCodeStillValid: async () => true,
+    outbox,
+    isCodeStillValid: codeValidityCheck(challenges),
     ttlMinutes: Math.round(config.authCodes.ttlSeconds / 60),
   });
   const consumer = await startEmailConsumer({

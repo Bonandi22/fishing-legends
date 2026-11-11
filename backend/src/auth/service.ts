@@ -1,6 +1,10 @@
 import { SignJWT, jwtVerify } from 'jose';
 import { hashPassword, hashToken, needsRehash, verifyPassword, createOpaqueToken } from './crypto.js';
-import type { AuthRepository } from './types.js';
+import type { ChallengeService } from './challenges.js';
+import type { AuthRepository, AuthUser } from './types.js';
+import type { Locale } from '../email/types.js';
+import { WeakPasswordError } from '../http/errors.js';
+import { checkPassword } from '../../../src/game/passwordPolicy.js';
 
 const ACCESS_ALGORITHM = 'HS256';
 
@@ -10,7 +14,15 @@ export type AuthServiceConfig = {
   refreshTokenTtlSeconds: number;
 };
 
-export function createAuthService(repository: AuthRepository, config: AuthServiceConfig) {
+export type AuthServiceDeps = {
+  challenges: ChallengeService;
+  /** Injectable for tests; defaults to the Argon2id hasher. */
+  hashPassword?: (password: string) => Promise<string>;
+};
+
+export function createAuthService(repository: AuthRepository, config: AuthServiceConfig, deps: AuthServiceDeps) {
+  const { challenges } = deps;
+  const hash = deps.hashPassword ?? hashPassword;
   // Compared against when an account is not found, so login timing does not reveal
   // whether an email is registered. Computed once at startup.
   const decoyPasswordHash = hashPassword('deep-blue-lure/login-timing-equalizer');
@@ -23,30 +35,74 @@ export function createAuthService(repository: AuthRepository, config: AuthServic
       .sign(config.accessTokenSecret);
   }
 
-  return {
-    async register(input: { email: string; password: string; username: string; country: string }) {
-      const email = input.email.trim().toLowerCase();
-      const existing = await repository.findUserByEmail(email);
-      if (existing) throw new Error('ACCOUNT_ALREADY_EXISTS');
+  async function startSession(user: AuthUser) {
+    if (user.status !== 'active') throw new Error('INVALID_CREDENTIALS');
+    const refreshToken = createOpaqueToken();
+    const session = await repository.createSession({
+      userId: user.id,
+      tokenHash: hashToken(refreshToken),
+      expiresAt: new Date(Date.now() + config.refreshTokenTtlSeconds * 1000),
+    });
+    return { accessToken: await issueAccessToken(user.id, session.id), refreshToken, session, user };
+  }
 
-      const user = await repository.createUser({
-        email,
-        passwordHash: await hashPassword(input.password),
-        username: input.username.trim(),
-        country: input.country,
-        locale: 'en',
-      });
-      const refreshToken = createOpaqueToken();
-      const session = await repository.createSession({
-        userId: user.id,
-        tokenHash: hashToken(refreshToken),
-        expiresAt: new Date(Date.now() + config.refreshTokenTtlSeconds * 1000),
-      });
-      return { accessToken: await issueAccessToken(user.id, session.id), refreshToken, session, user };
+  async function markVerified(user: AuthUser): Promise<AuthUser> {
+    if (user.emailVerifiedAt) return user;
+    await repository.markEmailVerified(user.id);
+    return { ...user, emailVerifiedAt: new Date() };
+  }
+
+  /**
+   * The answer for an address that already has an account: indistinguishable from a
+   * fresh registration (a challenge id that never verifies), while the owner gets a
+   * notice instead of a code. The notice is skipped silently at the address cap.
+   */
+  async function existingEmailResponse(email: string, locale: Locale): Promise<{ challengeId: string }> {
+    const challengeId = await challenges.issueDecoy(email, 'verify_email');
+    if (!(await challenges.addressAtCap(email))) {
+      await repository.enqueueEmail({ kind: 'register_attempt_notice', to: email, locale, payload: {} });
+    }
+    return { challengeId };
+  }
+
+  return {
+    async register(input: { email: string; password: string; username: string; country: string; locale?: Locale }) {
+      const email = input.email.trim().toLowerCase();
+      const username = input.username.trim();
+      const locale = input.locale ?? 'en';
+
+      // Everything before the email lookup is independent of whether the email is
+      // registered, so neither its outcome nor its cost can reveal that.
+      const issue = checkPassword(input.password, { email, username });
+      if (issue) throw new WeakPasswordError(issue);
+      // Both paths pay for the hash, keeping the response time in one class.
+      const passwordHash = await hash(input.password);
+      // Usernames are public (ranking): an explicit error leaks nothing about emails.
+      if (await repository.isUsernameTaken(username)) throw new Error('USERNAME_TAKEN');
+
+      const existing = await repository.findUserByEmail(email);
+      if (existing) return existingEmailResponse(email, existing.locale);
+
+      let user: AuthUser;
+      try {
+        user = await repository.createUser({ email, passwordHash, username, country: input.country, locale });
+      } catch (error) {
+        // Lost a race with a concurrent registration of the same email.
+        if (error instanceof Error && error.message === 'ACCOUNT_ALREADY_EXISTS') {
+          return existingEmailResponse(email, locale);
+        }
+        throw error;
+      }
+      return { challengeId: await challenges.issue(user, 'verify_email') };
     },
 
-    async login(input: { email: string; password: string }) {
-      const user = await repository.findUserByEmail(input.email.trim().toLowerCase());
+    async verifyEmail(input: { challengeId: string; code: string }) {
+      const user = await challenges.verify(input.challengeId, input.code, ['verify_email']);
+      return startSession(await markVerified(user));
+    },
+
+    async login(input: { email: string; password: string; locale?: Locale }) {
+      let user = await repository.findUserByEmail(input.email.trim().toLowerCase());
       const passwordMatches = await verifyPassword(
         input.password,
         user?.passwordHash ?? (await decoyPasswordHash),
@@ -59,14 +115,24 @@ export function createAuthService(repository: AuthRepository, config: AuthServic
       if (needsRehash(user.passwordHash)) {
         await repository.updatePasswordHash(user.id, await hashPassword(input.password));
       }
+      if (input.locale && input.locale !== user.locale) {
+        await repository.setLocale(user.id, input.locale);
+        user = { ...user, locale: input.locale };
+      }
 
-      const refreshToken = createOpaqueToken();
-      const session = await repository.createSession({
-        userId: user.id,
-        tokenHash: hashToken(refreshToken),
-        expiresAt: new Date(Date.now() + config.refreshTokenTtlSeconds * 1000),
-      });
-      return { accessToken: await issueAccessToken(user.id, session.id), refreshToken, session, user };
+      // An account that never confirmed its email (including every pre-existing
+      // one) confirms it now, with the same code screen.
+      const purpose = user.emailVerifiedAt ? 'login' : 'verify_email';
+      return { challengeId: await challenges.issue(user, purpose) };
+    },
+
+    async verifyLogin(input: { challengeId: string; code: string }) {
+      const user = await challenges.verify(input.challengeId, input.code, ['login', 'verify_email']);
+      return startSession(await markVerified(user));
+    },
+
+    async resendChallenge(challengeId: string) {
+      return { challengeId: await challenges.resend(challengeId) };
     },
 
     async refresh(refreshToken: string) {

@@ -116,11 +116,25 @@ describe('challenge service', () => {
     await expect(svc.issue(user, 'login')).rejects.toThrow('RESEND_TOO_SOON');
   });
 
-  it('per-address cap: 10 emails in an hour (notices included) block issue', async () => {
+  // The address cap must never surface as an error: notices can push a real
+  // address over it while a decoy never reaches it, which would be an oracle.
+  it('per-address cap: at 10 emails in an hour (notices included) issue still succeeds but sends nothing', async () => {
     for (let i = 0; i < 10; i++) {
       await repo.enqueueEmail({ kind: 'register_attempt_notice', to: user.email, locale: 'pt', payload: {} });
     }
-    await expect(svc.issue(user, 'verify_email')).rejects.toThrow('RESEND_TOO_SOON');
+    const id = await svc.issue(user, 'verify_email');
+    expect(await svc.isStillValid(id)).toBe(true);
+    expect(outbox.messages().filter(m => m.kind === 'verify_email_code')).toHaveLength(0);
+    expect(await outbox.countRecipientSince(user.email, new Date(0))).toBe(10);
+  });
+
+  it('per-address cap: a capped issue still supersedes the previous live challenge', async () => {
+    const first = await svc.issue(user, 'login');
+    for (let i = 0; i < 9; i++) {
+      await repo.enqueueEmail({ kind: 'register_attempt_notice', to: user.email, locale: 'pt', payload: {} });
+    }
+    await svc.issue(user, 'login');
+    expect(await svc.isStillValid(first)).toBe(false);
   });
 
   it('20 concurrent wrong verifies grant at most 5 INVALID_CODE and end at 5 attempts', async () => {

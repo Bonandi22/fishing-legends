@@ -2,6 +2,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { createApp } from '../app.js';
 import type { AppConfig } from '../config/env.js';
+import { registerSession } from '../testing/authClient.js';
 
 const config: AppConfig = {
   environment: 'test', host: '127.0.0.1', port: 8090,
@@ -23,7 +24,7 @@ const creds = { email: 'c@example.com', password: 'a-very-strong-password', user
 describe('CSRF double-submit', () => {
   it('rejects a mutating request without X-CSRF-Token', async () => {
     const a = await app();
-    const reg = await a.inject({ method: 'POST', url: '/api/v1/auth/register', payload: creds });
+    const reg = await registerSession(a, creds);
     const jar = cookieJar(reg.headers['set-cookie']);
     const res = await a.inject({
       method: 'POST', url: '/api/v1/auth/logout',
@@ -35,7 +36,7 @@ describe('CSRF double-submit', () => {
 
   it('rejects a mismatched X-CSRF-Token', async () => {
     const a = await app();
-    const reg = await a.inject({ method: 'POST', url: '/api/v1/auth/register', payload: creds });
+    const reg = await registerSession(a, creds);
     const jar = cookieJar(reg.headers['set-cookie']);
     const res = await a.inject({
       method: 'POST', url: '/api/v1/auth/logout',
@@ -47,7 +48,7 @@ describe('CSRF double-submit', () => {
 
   it('accepts a matching X-CSRF-Token', async () => {
     const a = await app();
-    const reg = await a.inject({ method: 'POST', url: '/api/v1/auth/register', payload: creds });
+    const reg = await registerSession(a, creds);
     const jar = cookieJar(reg.headers['set-cookie']);
     const res = await a.inject({
       method: 'POST', url: '/api/v1/auth/logout',
@@ -59,7 +60,7 @@ describe('CSRF double-submit', () => {
 
   it('logout as the browser now sends it — no Content-Type, no body — returns 204 and clears cookies', async () => {
     const a = await app();
-    const reg = await a.inject({ method: 'POST', url: '/api/v1/auth/register', payload: creds });
+    const reg = await registerSession(a, creds);
     const jar = cookieJar(reg.headers['set-cookie']);
     // This is the exact shape endpoints.logout() produces after the apiFetch fix:
     // a body-less POST with no Content-Type header. Before the fix apiFetch always
@@ -77,7 +78,7 @@ describe('CSRF double-submit', () => {
 
   it('logout with content-type application/json and an empty body is a clean 400, never a leaked 500', async () => {
     const a = await app();
-    const reg = await a.inject({ method: 'POST', url: '/api/v1/auth/register', payload: creds });
+    const reg = await registerSession(a, creds);
     const jar = cookieJar(reg.headers['set-cookie']);
     // Defence in depth for any client still sending the pre-fix shape: Fastify's
     // JSON parser rejects an empty body regardless of route schema, so the route
@@ -99,7 +100,9 @@ describe('CSRF double-submit', () => {
   it('does not require CSRF for login or register', async () => {
     const a = await app();
     const res = await a.inject({ method: 'POST', url: '/api/v1/auth/register', payload: creds });
-    expect(res.statusCode).toBe(201);
+    expect(res.statusCode).toBe(202);
+    const login = await a.inject({ method: 'POST', url: '/api/v1/auth/login', payload: { email: creds.email, password: creds.password } });
+    expect(login.statusCode).toBe(202);
   });
 
   it('does not require CSRF for GET', async () => {
@@ -110,7 +113,7 @@ describe('CSRF double-submit', () => {
 
   it('protects a normal authenticated mutation without X-CSRF-Token (Ruling F)', async () => {
     const a = await app();
-    const reg = await a.inject({ method: 'POST', url: '/api/v1/auth/register', payload: creds });
+    const reg = await registerSession(a, creds);
     const jar = cookieJar(reg.headers['set-cookie']);
     const res = await a.inject({
       method: 'POST', url: '/api/v1/migration/local/preview',
@@ -123,7 +126,7 @@ describe('CSRF double-submit', () => {
 
   it('lets the same mutation through with a matching X-CSRF-Token', async () => {
     const a = await app();
-    const reg = await a.inject({ method: 'POST', url: '/api/v1/auth/register', payload: creds });
+    const reg = await registerSession(a, creds);
     const jar = cookieJar(reg.headers['set-cookie']);
     const res = await a.inject({
       method: 'POST', url: '/api/v1/migration/local/preview',
@@ -136,8 +139,8 @@ describe('CSRF double-submit', () => {
 
   it('a stale dbl_csrf at the legacy path does not permanently break mutations', async () => {
     const a = await app();
-    const reg = await a.inject({ method: 'POST', url: '/api/v1/auth/register', payload: creds });
-    expect(reg.statusCode).toBe(201);
+    const reg = await registerSession(a, creds);
+    expect(reg.statusCode).toBe(200);
     const setCookies = ([] as string[]).concat(reg.headers['set-cookie'] as string[]);
 
     // The register/login response must clear the pre-fix dbl_csrf at Path=/api so a

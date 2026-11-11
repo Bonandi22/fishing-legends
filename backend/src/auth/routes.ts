@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import type { FastifyInstance } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
-import { loginSchema, registerSchema } from './schemas.js';
+import { challengeResponseSchema, loginSchema, registerSchema, resendSchema, verifyCodeSchema } from './schemas.js';
 import type { createAuthService } from './service.js';
 import { setAuthCookies, clearAuthCookies, readAccessToken, readRefreshToken, type CookieConfig } from './cookies.js';
 
@@ -17,20 +17,41 @@ function pickUser(u: { id: string; email: string; username: string; country: str
 export async function registerAuthRoutes(app: FastifyInstance, service: AuthService, cookieCfg: CookieConfig): Promise<void> {
   const r = app.withTypeProvider<ZodTypeProvider>();
 
+  // Registration and login never issue a session directly: they answer with a
+  // challenge, and the session comes from verifying the emailed code. Register
+  // answers the same way whether or not the email is already registered.
   r.post('/api/v1/auth/register', {
-    schema: { tags: ['auth'], summary: 'Create an account', body: registerSchema, response: { 201: sessionSchema } },
+    schema: { tags: ['auth'], summary: 'Create an account (emails a confirmation code)', body: registerSchema, response: { 202: challengeResponseSchema } },
   }, async (request, reply) => {
-    const result = await service.register(request.body);
+    return reply.status(202).send(await service.register(request.body));
+  });
+
+  r.post('/api/v1/auth/verify-email', {
+    schema: { tags: ['auth'], summary: 'Confirm the email with the code and start a session', body: verifyCodeSchema, response: { 200: sessionSchema } },
+  }, async (request, reply) => {
+    const result = await service.verifyEmail(request.body);
     setAuthCookies(reply, result, cookieCfg);
-    return reply.status(201).send({ user: pickUser(result.user) });
+    return reply.status(200).send({ user: pickUser(result.user) });
   });
 
   r.post('/api/v1/auth/login', {
-    schema: { tags: ['auth'], summary: 'Start an authenticated session', body: loginSchema, response: { 200: sessionSchema } },
+    schema: { tags: ['auth'], summary: 'Check the password (emails a login code)', body: loginSchema, response: { 202: challengeResponseSchema } },
   }, async (request, reply) => {
-    const result = await service.login(request.body);
+    return reply.status(202).send(await service.login(request.body));
+  });
+
+  r.post('/api/v1/auth/login/verify', {
+    schema: { tags: ['auth'], summary: 'Verify the login code and start a session', body: verifyCodeSchema, response: { 200: sessionSchema } },
+  }, async (request, reply) => {
+    const result = await service.verifyLogin(request.body);
     setAuthCookies(reply, result, cookieCfg);
     return reply.status(200).send({ user: pickUser(result.user) });
+  });
+
+  r.post('/api/v1/auth/challenges/resend', {
+    schema: { tags: ['auth'], summary: 'Send a new code for a pending challenge', body: resendSchema, response: { 202: challengeResponseSchema } },
+  }, async (request, reply) => {
+    return reply.status(202).send(await service.resendChallenge(request.body.challengeId));
   });
 
   r.post('/api/v1/auth/refresh', {

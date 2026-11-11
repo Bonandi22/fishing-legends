@@ -2,6 +2,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { createApp } from '../app.js';
 import type { AppConfig } from '../config/env.js';
+import { latestCodeFor, latestEmailTo, registerSession } from '../testing/authClient.js';
 
 const config: AppConfig = {
   environment: 'test', host: '127.0.0.1', port: 8090,
@@ -34,10 +35,10 @@ function expectCleared(setCookie: string | string[] | undefined): void {
 }
 
 describe('auth routes with cookies', () => {
-  it('register sets dbl_at, dbl_rt, dbl_csrf and returns only { user }', async () => {
+  it('verify-email sets dbl_at, dbl_rt, dbl_csrf and returns only { user }', async () => {
     const a = await app();
-    const res = await a.inject({ method: 'POST', url: '/api/v1/auth/register', payload: creds });
-    expect(res.statusCode).toBe(201);
+    const res = await registerSession(a, creds);
+    expect(res.statusCode).toBe(200);
     expect(res.json()).toEqual({ user: expect.objectContaining({ email: 'a@example.com', username: 'angler_one' }) });
     expect(res.json()).not.toHaveProperty('accessToken');
     const jar = cookieJar(res.headers['set-cookie']);
@@ -48,7 +49,7 @@ describe('auth routes with cookies', () => {
 
   it('refresh reads the dbl_rt cookie and re-emits cookies (204)', async () => {
     const a = await app();
-    const reg = await a.inject({ method: 'POST', url: '/api/v1/auth/register', payload: creds });
+    const reg = await registerSession(a, creds);
     const jar = cookieJar(reg.headers['set-cookie']);
     const res = await a.inject({
       method: 'POST', url: '/api/v1/auth/refresh',
@@ -70,7 +71,7 @@ describe('auth routes with cookies', () => {
 
   it('a failed refresh clears all three cookies (I3)', async () => {
     const a = await app();
-    const reg = await a.inject({ method: 'POST', url: '/api/v1/auth/register', payload: creds });
+    const reg = await registerSession(a, creds);
     const jar = cookieJar(reg.headers['set-cookie']);
     // Rotate once, then replay the now-stale token to force REFRESH_TOKEN_REUSED.
     await a.inject({
@@ -96,7 +97,7 @@ describe('auth routes with cookies', () => {
 
   it('logout clears the cookies', async () => {
     const a = await app();
-    const reg = await a.inject({ method: 'POST', url: '/api/v1/auth/register', payload: creds });
+    const reg = await registerSession(a, creds);
     const jar = cookieJar(reg.headers['set-cookie']);
     const res = await a.inject({
       method: 'POST', url: '/api/v1/auth/logout',
@@ -109,7 +110,7 @@ describe('auth routes with cookies', () => {
 
   it('logout succeeds without an access token (expired/absent dbl_at) (C3)', async () => {
     const a = await app();
-    const reg = await a.inject({ method: 'POST', url: '/api/v1/auth/register', payload: creds });
+    const reg = await registerSession(a, creds);
     const jar = cookieJar(reg.headers['set-cookie']);
     const res = await a.inject({
       method: 'POST', url: '/api/v1/auth/logout',
@@ -122,7 +123,7 @@ describe('auth routes with cookies', () => {
 
   it('logout with a garbage access token still 204s and clears (C3)', async () => {
     const a = await app();
-    const reg = await a.inject({ method: 'POST', url: '/api/v1/auth/register', payload: creds });
+    const reg = await registerSession(a, creds);
     const jar = cookieJar(reg.headers['set-cookie']);
     const res = await a.inject({
       method: 'POST', url: '/api/v1/auth/logout',
@@ -135,7 +136,7 @@ describe('auth routes with cookies', () => {
 
   it('requireAuth accepts a Bearer token with no cookies at all (I5)', async () => {
     const a = await app();
-    const reg = await a.inject({ method: 'POST', url: '/api/v1/auth/register', payload: creds });
+    const reg = await registerSession(a, creds);
     const jar = cookieJar(reg.headers['set-cookie']);
     // The dbl_at cookie value IS the raw access-token JWT.
     const me = await a.inject({

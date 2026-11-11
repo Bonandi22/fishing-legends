@@ -33,6 +33,10 @@ export function createMemoryAuthRepository(outbox: EmailOutbox = createMemoryOut
     async findUserById(id) {
       return users.get(id) ?? null;
     },
+    async isUsernameTaken(username) {
+      const target = username.toLowerCase();
+      return [...users.values()].some(u => u.username.toLowerCase() === target);
+    },
     async createUser(input) {
       if ([...users.values()].some(u => u.email === input.email)) throw new Error('ACCOUNT_ALREADY_EXISTS');
       if ([...users.values()].some(u => u.username.toLowerCase() === input.username.toLowerCase())) {
@@ -94,7 +98,7 @@ export function createMemoryAuthRepository(outbox: EmailOutbox = createMemoryOut
         invalidatedAt: null,
         createdAt: now,
       });
-      await outbox.enqueue({ ...input.email, challengeId: id });
+      if (input.email) await outbox.enqueue({ ...input.email, challengeId: id });
       return id;
     },
     async findChallenge(id) {

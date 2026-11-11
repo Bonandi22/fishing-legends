@@ -65,6 +65,11 @@ export function createPgAuthRepository(db: Database, outbox: EmailOutbox = creat
   return {
     findUserByEmail: email => findUser(eq(users.email, email)),
     findUserById: id => findUser(eq(users.id, id)),
+    async isUsernameTaken(username) {
+      const [row] = await db.select({ userId: userProfiles.userId }).from(userProfiles)
+        .where(sql`lower(${userProfiles.username}) = lower(${username})`).limit(1);
+      return Boolean(row);
+    },
     async createUser(input) {
       const id = randomUUID();
       try {
@@ -175,7 +180,7 @@ export function createPgAuthRepository(db: Database, outbox: EmailOutbox = creat
           codeHash: input.codeHash,
           expiresAt: input.expiresAt,
         });
-        await outbox.enqueue({ ...input.email, challengeId: id }, tx);
+        if (input.email) await outbox.enqueue({ ...input.email, challengeId: id }, tx);
       });
       return id;
     },

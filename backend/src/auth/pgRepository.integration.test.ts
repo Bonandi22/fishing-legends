@@ -83,9 +83,9 @@ describe('pg auth repository (integration)', () => {
     const email = `legacy-${crypto.randomUUID()}@example.com`;
     await repo.createUser(newUser({ email, passwordHash: await legacyScryptHash('legacy-secret-123') }));
 
-    const service = createAuthService(repo, serviceConfig);
+    const service = createAuthService(repo, serviceConfig, { challenges: createChallengeService(repo, authCodes) });
     const result = await service.login({ email, password: 'legacy-secret-123' });
-    expect(result.accessToken).toEqual(expect.any(String));
+    expect(result.challengeId).toEqual(expect.any(String));
 
     const stored = await repo.findUserByEmail(email);
     expect(stored?.passwordHash.startsWith('$argon2id$')).toBe(true);
@@ -143,6 +143,67 @@ describe('pg auth repository (integration)', () => {
     codeHash: 'hash',
     expiresAt: new Date(Date.now() + 600_000),
     email: { kind: 'verify_email_code' as const, to, locale: 'en' as const, payload: { code: '123456' } },
+  });
+
+  it('createChallenge with email: null stores and supersedes, but enqueues nothing', async () => {
+    const user = await repo.createUser(newUser());
+    const first = await repo.createChallenge(challengeInput(user.id, user.email));
+    const silent = await repo.createChallenge({ ...challengeInput(user.id, user.email), email: null });
+    expect((await repo.findChallenge(first))?.invalidatedAt).toBeInstanceOf(Date);
+    expect((await repo.findChallenge(silent))?.invalidatedAt).toBeNull();
+    expect(await harness.db.select().from(emailOutbox).where(eq(emailOutbox.challengeId, silent))).toHaveLength(0);
+    expect(await repo.countEmailsTo(user.email, new Date(Date.now() - 60_000))).toBe(1);
+  });
+
+  it('isUsernameTaken is case-insensitive', async () => {
+    await repo.createUser(newUser({ username: 'Taken_Name' }));
+    expect(await repo.isUsernameTaken('taken_NAME')).toBe(true);
+    expect(await repo.isUsernameTaken('free_name')).toBe(false);
+  });
+
+  describe('auth flows against PostgreSQL', () => {
+    const service = () => createAuthService(repo, serviceConfig, { challenges: createChallengeService(repo, authCodes) });
+    const codeFor = async (challengeId: string) => {
+      const [row] = await harness.db.select().from(emailOutbox).where(eq(emailOutbox.challengeId, challengeId));
+      return String((row.payload as Record<string, string>).code);
+    };
+    const input = () => ({
+      email: `flow-${crypto.randomUUID()}@example.com`, password: 'a-very-strong-password',
+      username: `f_${crypto.randomUUID().slice(0, 8)}`, country: 'BR', locale: 'pt' as const,
+    });
+
+    it('register -> verify-email marks verified and starts a session', async () => {
+      const svc = service();
+      const data = input();
+      const { challengeId } = await svc.register(data);
+      const session = await svc.verifyEmail({ challengeId, code: await codeFor(challengeId) });
+      expect(session.accessToken).toEqual(expect.any(String));
+      expect((await repo.findUserByEmail(data.email))?.emailVerifiedAt).toBeInstanceOf(Date);
+    });
+
+    it('register with an existing email: decoy id + register_attempt_notice, no new user', async () => {
+      const svc = service();
+      const data = input();
+      await svc.register(data);
+      const { challengeId } = await svc.register({ ...data, username: `g_${crypto.randomUUID().slice(0, 8)}` });
+      const decoy = await repo.findChallenge(challengeId);
+      expect(decoy).toMatchObject({ userId: null, decoyEmail: data.email, purpose: 'verify_email' });
+      const kinds = (await harness.db.select().from(emailOutbox).where(eq(emailOutbox.recipient, data.email))).map(r => r.kind);
+      expect(kinds.sort()).toEqual(['register_attempt_notice', 'verify_email_code']);
+      expect(await harness.db.select().from(users).where(eq(users.email, data.email))).toHaveLength(1);
+    });
+
+    it('login of an unverified account -> verify_email challenge; login/verify marks it verified', async () => {
+      const svc = service();
+      const data = input();
+      await svc.register(data);
+      const { challengeId } = await svc.login({ email: data.email, password: data.password, locale: 'fr' });
+      expect((await repo.findChallenge(challengeId))?.purpose).toBe('verify_email');
+      await svc.verifyLogin({ challengeId, code: await codeFor(challengeId) });
+      const stored = await repo.findUserByEmail(data.email);
+      expect(stored?.emailVerifiedAt).toBeInstanceOf(Date);
+      expect(stored?.locale).toBe('fr');
+    });
   });
 
   it('createUser stores locale and marks verification as required', async () => {

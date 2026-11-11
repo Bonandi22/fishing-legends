@@ -11,7 +11,13 @@ type SecurityOptions = {
 
 // Credential endpoints get a second, tighter budget so a brute-force run there
 // cannot hide inside the general gameplay allowance (and vice versa).
-const AUTH_RATE_LIMITED_URLS = new Set(['/api/v1/auth/login', '/api/v1/auth/register']);
+const AUTH_RATE_LIMITED_URLS = new Set([
+  '/api/v1/auth/login',
+  '/api/v1/auth/register',
+  '/api/v1/auth/verify-email',
+  '/api/v1/auth/login/verify',
+  '/api/v1/auth/challenges/resend',
+]);
 
 type Bucket = { count: number; resetAt: number };
 
@@ -73,7 +79,9 @@ export function registerSecurityHooks(app: FastifyInstance, options: SecurityOpt
     const key = clientKey(request);
     const now = Date.now();
 
-    if (request.method === 'POST' && AUTH_RATE_LIMITED_URLS.has(request.url)) {
+    // Match on the path alone: a query string must not move a request out of the bucket.
+    const path = request.url.split('?', 1)[0];
+    if (request.method === 'POST' && AUTH_RATE_LIMITED_URLS.has(path)) {
       if (overLimit(authRequests, key, options.authRateLimitMax, options.authRateLimitWindowMs, now)) {
         reply.header('retry-after', Math.ceil((authRequests.get(key)!.resetAt - now) / 1000));
         return reply.status(429).send({ error: { code: 'RATE_LIMITED', message: 'Too many requests' } });
