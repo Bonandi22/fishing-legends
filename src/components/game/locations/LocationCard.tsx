@@ -86,7 +86,7 @@ export default function LocationCard({ location, unlocked, playerLevel, onSelect
       type="button"
       data-location={location.id}
       onClick={() => onSelect(location)}
-      className={`${shell} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lure hover:border-lure/40`}
+      className={`${shell} focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-lure hover:border-lure/40`}
     >
       {body}
     </button>

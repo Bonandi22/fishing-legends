@@ -41,7 +41,7 @@ export default function CosmeticCard({
 
       <p className="truncate text-sm font-semibold text-foreground">{name}</p>
 
-      <div className="mt-auto flex min-h-[3.25rem] flex-col justify-end gap-1.5">
+      <div className="mt-auto flex min-h-13 flex-col justify-end gap-1.5">
         {equipped ? (
           <span className="inline-flex items-center justify-center gap-1 text-xs font-semibold text-lure">
             <Check className="h-3.5 w-3.5" aria-hidden="true" />

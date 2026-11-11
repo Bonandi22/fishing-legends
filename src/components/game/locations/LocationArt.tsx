@@ -19,7 +19,7 @@ export default function LocationArt({ name, img, emoji, waterColor, uncharted }:
   const showPhoto = img && !uncharted;
 
   return (
-    <div className="relative aspect-[16/10] overflow-hidden bg-menu-raised">
+    <div className="relative aspect-16/10 overflow-hidden bg-menu-raised">
       {showPhoto ? (
         <img
           src={img}

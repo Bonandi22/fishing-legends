@@ -32,7 +32,7 @@ export default function SettingsSheet({ musicPlaying, onToggleMusic, musicTrack,
           variant="outline"
           size="icon"
           aria-label={t('menu.settingsTitle')}
-          className="h-9 w-9 border-lure/25 bg-menu-panel/70 text-foreground backdrop-blur hover:border-lure/50"
+          className="h-9 w-9 border-lure/25 bg-menu-panel/70 text-foreground backdrop-blur-sm hover:border-lure/50"
         >
           <Settings className="h-4 w-4" />
         </Button>

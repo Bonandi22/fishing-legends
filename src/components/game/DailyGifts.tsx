@@ -84,7 +84,7 @@ export default function DailyGifts({ player, onClaim, onBack }: Props) {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={() => setPopup(null)}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-xs"
           >
             <motion.div
               initial={{ scale: 0.85, y: 16 }}

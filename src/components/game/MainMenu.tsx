@@ -121,7 +121,7 @@ export default function MainMenu({
         >
           <motion.header variants={item} className="text-center">
             <h1
-              className="font-display bg-gradient-to-b from-foreground via-lure to-[hsl(200_80%_28%)] bg-clip-text text-5xl font-black uppercase leading-[0.82] tracking-[0.05em] text-transparent sm:text-6xl"
+              className="font-display bg-linear-to-b from-foreground via-lure to-[hsl(200_80%_28%)] bg-clip-text text-5xl font-black uppercase leading-[0.82] tracking-wider text-transparent sm:text-6xl"
             >
               {WORDMARK.map(line => (
                 <span key={line} className="block">{line}</span>

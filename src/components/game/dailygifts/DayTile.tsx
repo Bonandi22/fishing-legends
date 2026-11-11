@@ -38,7 +38,7 @@ export default function DayTile({ day, reward, state }: Props) {
           <RewardIcon r={reward} />
         )}
       </span>
-      <span className="min-h-[2.25rem] text-[0.7rem] leading-tight text-muted-foreground">
+      <span className="min-h-9 text-[0.7rem] leading-tight text-muted-foreground">
         {rewardLabel(reward, t)}
       </span>
       {exclusive && (
