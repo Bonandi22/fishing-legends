@@ -2,13 +2,23 @@ import { apiFetch } from './client';
 import type { ApiUser, PlayerProfile, GameStateEnvelope, LeaderboardPage, Season } from './types';
 import type { RewardGrant } from '@/game/rewards';
 
-export interface RegisterInput { email: string; password: string; username: string; country: string; }
+export interface RegisterInput { email: string; password: string; username: string; country: string; locale: string; }
+export interface CodeInput { challengeId: string; code: string; }
 
-export function register(input: RegisterInput): Promise<{ user: ApiUser }> {
+export function register(input: RegisterInput): Promise<{ challengeId: string }> {
   return apiFetch('/auth/register', { method: 'POST', body: input });
 }
-export function login(input: { email: string; password: string }): Promise<{ user: ApiUser }> {
+export function verifyEmail(input: CodeInput): Promise<{ user: ApiUser }> {
+  return apiFetch('/auth/verify-email', { method: 'POST', body: input });
+}
+export function login(input: { email: string; password: string; locale: string }): Promise<{ challengeId: string }> {
   return apiFetch('/auth/login', { method: 'POST', body: input });
+}
+export function verifyLogin(input: CodeInput): Promise<{ user: ApiUser }> {
+  return apiFetch('/auth/login/verify', { method: 'POST', body: input });
+}
+export function resendCode(input: { challengeId: string }): Promise<{ challengeId: string }> {
+  return apiFetch('/auth/challenges/resend', { method: 'POST', body: input });
 }
 export function logout(): Promise<void> {
   return apiFetch('/auth/logout', { method: 'POST' });

@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { ZodError } from 'zod';
 import { hasZodFastifySchemaValidationErrors } from 'fastify-type-provider-zod';
 import { pgConstraint, pgErrorCode } from '../db/pgErrors.js';
+import type { PasswordIssue } from '../../../src/game/passwordPolicy.js';
 
 export { pgConstraint, pgErrorCode };
 
@@ -13,6 +14,14 @@ export class AppError extends Error {
   ) {
     super(message);
     this.name = 'AppError';
+  }
+}
+
+/** Thrown by register (and later password reset); the response carries `error.reason`. */
+export class WeakPasswordError extends Error {
+  constructor(public readonly reason: PasswordIssue) {
+    super('WEAK_PASSWORD');
+    this.name = 'WeakPasswordError';
   }
 }
 
@@ -54,6 +63,12 @@ const DOMAIN_ERRORS: Record<string, DomainErrorSpec> = {
   CSRF_FAILED: { status: 403, message: 'CSRF token missing or invalid' },
   STATE_VERSION_CONFLICT: { status: 409, message: 'The game state was modified elsewhere; reload before saving' },
   GAME_STATE_NOT_FOUND: { status: 409, message: 'No saved game state for this account yet' },
+  INVALID_CODE: { status: 400, message: 'The code is not valid' },
+  CHALLENGE_EXPIRED: { status: 410, message: 'The code has expired; request a new one' },
+  TOO_MANY_ATTEMPTS: { status: 429, message: 'Too many attempts; request a new code' },
+  CHALLENGE_NOT_FOUND: { status: 404, message: 'The code request was not found or is no longer valid' },
+  RESEND_TOO_SOON: { status: 429, message: 'Please wait before requesting another code' },
+  WEAK_PASSWORD: { status: 400, message: 'The password does not meet the password policy' },
 };
 
 export function registerErrorHandling(app: FastifyInstance): void {
@@ -68,7 +83,11 @@ export function registerErrorHandling(app: FastifyInstance): void {
       const spec = DOMAIN_ERRORS[error.message];
       if (spec) {
         return reply.status(spec.status).send({
-          error: { code: error.message, message: spec.message },
+          error: {
+            code: error.message,
+            message: spec.message,
+            ...(error instanceof WeakPasswordError ? { reason: error.reason } : {}),
+          },
         });
       }
     }

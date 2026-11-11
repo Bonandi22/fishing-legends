@@ -11,7 +11,10 @@ function Probe() {
     <div>
       <span data-testid="status">{a.status}</span>
       <span data-testid="user">{a.user?.username ?? '-'}</span>
-      <button onClick={() => a.login('e@x.com', 'pw').catch(() => {})}>login</button>
+      <button onClick={() => a.login('e@x.com', 'pw', 'pt').then(r => { document.title = r.challengeId; }).catch(() => {})}>login</button>
+      <button onClick={() => a.register({ email: 'e@x.com', password: 'pw', username: 'Angler', country: 'BR', locale: 'pt' }).then(r => { document.title = r.challengeId; })}>register</button>
+      <button onClick={() => a.completeChallenge('register', 'c1', '123456')}>complete-register</button>
+      <button onClick={() => a.completeChallenge('login', 'c1', '123456')}>complete-login</button>
       <button onClick={() => a.logout()}>logout</button>
     </div>
   );
@@ -41,15 +44,50 @@ describe('AuthProvider', () => {
     expect(screen.getByTestId('user').textContent).toBe('Angler');
   });
 
-  it('login updates status and user; fires onAuthenticated', async () => {
+  it('login resolves a challengeId and stays anonymous', async () => {
     vi.spyOn(endpoints, 'getMe').mockRejectedValue(new ApiError(401, 'X', ''));
-    vi.spyOn(endpoints, 'login').mockResolvedValue({ user: { id: 'u1', username: 'Angler', email: 'e@x.com', country: 'BR' } } as never);
+    const login = vi.spyOn(endpoints, 'login').mockResolvedValue({ challengeId: 'ch-1' });
     const onAuth = vi.fn();
     render(<AuthProvider onAuthenticated={onAuth}><Probe /></AuthProvider>);
     await waitFor(() => expect(screen.getByTestId('status').textContent).toBe('anonymous'));
     fireEvent.click(screen.getByText('login'));
+    await waitFor(() => expect(document.title).toBe('ch-1'));
+    expect(login).toHaveBeenCalledWith({ email: 'e@x.com', password: 'pw', locale: 'pt' });
+    expect(screen.getByTestId('status').textContent).toBe('anonymous');
+    expect(onAuth).not.toHaveBeenCalled();
+  });
+
+  it('register resolves a challengeId and stays anonymous', async () => {
+    vi.spyOn(endpoints, 'getMe').mockRejectedValue(new ApiError(401, 'X', ''));
+    vi.spyOn(endpoints, 'register').mockResolvedValue({ challengeId: 'ch-2' });
+    render(<AuthProvider><Probe /></AuthProvider>);
+    await waitFor(() => expect(screen.getByTestId('status').textContent).toBe('anonymous'));
+    fireEvent.click(screen.getByText('register'));
+    await waitFor(() => expect(document.title).toBe('ch-2'));
+    expect(screen.getByTestId('status').textContent).toBe('anonymous');
+  });
+
+  it('completeChallenge(register) authenticates and fires onAuthenticated', async () => {
+    vi.spyOn(endpoints, 'getMe').mockRejectedValue(new ApiError(401, 'X', ''));
+    const v = vi.spyOn(endpoints, 'verifyEmail').mockResolvedValue({ user: { id: 'u1', username: 'Angler', email: 'e@x.com', country: 'BR' } } as never);
+    const onAuth = vi.fn();
+    render(<AuthProvider onAuthenticated={onAuth}><Probe /></AuthProvider>);
+    await waitFor(() => expect(screen.getByTestId('status').textContent).toBe('anonymous'));
+    fireEvent.click(screen.getByText('complete-register'));
     await waitFor(() => expect(screen.getByTestId('status').textContent).toBe('authenticated'));
+    expect(v).toHaveBeenCalledWith({ challengeId: 'c1', code: '123456' });
+    expect(screen.getByTestId('user').textContent).toBe('Angler');
     expect(onAuth).toHaveBeenCalled();
+  });
+
+  it('completeChallenge(login) uses verifyLogin', async () => {
+    vi.spyOn(endpoints, 'getMe').mockRejectedValue(new ApiError(401, 'X', ''));
+    const v = vi.spyOn(endpoints, 'verifyLogin').mockResolvedValue({ user: { id: 'u1', username: 'Angler', email: 'e@x.com', country: 'BR' } } as never);
+    render(<AuthProvider><Probe /></AuthProvider>);
+    await waitFor(() => expect(screen.getByTestId('status').textContent).toBe('anonymous'));
+    fireEvent.click(screen.getByText('complete-login'));
+    await waitFor(() => expect(screen.getByTestId('status').textContent).toBe('authenticated'));
+    expect(v).toHaveBeenCalledWith({ challengeId: 'c1', code: '123456' });
   });
 
   it('logout returns to anonymous', async () => {

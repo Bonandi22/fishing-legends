@@ -1,3 +1,5 @@
+import type { EmailMessage, Locale } from '../email/types.js';
+
 export type AuthUser = {
   id: string;
   email: string;
@@ -5,6 +7,24 @@ export type AuthUser = {
   username: string;
   country: string;
   status: 'active' | 'suspended' | 'deleted';
+  emailVerifiedAt: Date | null;
+  locale: Locale;
+};
+
+export type ChallengePurpose = 'verify_email' | 'login' | 'password_reset';
+
+export type AuthChallenge = {
+  id: string;
+  /** Null for a decoy challenge (anti-enumeration; never emailed). */
+  userId: string | null;
+  decoyEmail: string | null;
+  purpose: ChallengePurpose;
+  codeHash: string;
+  expiresAt: Date;
+  attempts: number;
+  consumedAt: Date | null;
+  invalidatedAt: Date | null;
+  createdAt: Date;
 };
 
 export type AuthSession = {
@@ -29,11 +49,14 @@ export type RefreshRotation =
 export type AuthRepository = {
   findUserByEmail(email: string): Promise<AuthUser | null>;
   findUserById(id: string): Promise<AuthUser | null>;
+  /** Case-insensitive, like the unique index on lower(username). */
+  isUsernameTaken(username: string): Promise<boolean>;
   createUser(input: {
     email: string;
     passwordHash: string;
     username: string;
     country: string;
+    locale: Locale;
   }): Promise<AuthUser>;
   updatePasswordHash(userId: string, passwordHash: string): Promise<void>;
   createSession(input: {
@@ -47,6 +70,44 @@ export type AuthRepository = {
     nextExpiresAt: Date;
   }): Promise<RefreshRotation>;
   revokeSession(sessionId: string): Promise<void>;
+  /**
+   * One transaction: invalidates the user's live challenges of the same purpose,
+   * inserts the challenge, and enqueues the email with its challengeId. `email:
+   * null` stores the challenge without sending anything (address over its cap).
+   */
+  createChallenge(input: {
+    userId: string;
+    purpose: ChallengePurpose;
+    codeHash: string;
+    expiresAt: Date;
+    email: Omit<EmailMessage, 'id' | 'createdAt' | 'challengeId'> | null;
+  }): Promise<string>;
+  findChallenge(id: string): Promise<AuthChallenge | null>;
+  /**
+   * Atomically reserves one guess on a live challenge. Returns the new attempt
+   * count, or null when the challenge is not live or already used `max` attempts.
+   */
+  reserveAttempt(id: string, max: number): Promise<number | null>;
+  /** Stores a decoy row (no user, never emailed); invalidates prior live decoys for the same email+purpose. */
+  createDecoyChallenge(input: {
+    email: string;
+    purpose: ChallengePurpose;
+    codeHash: string;
+    expiresAt: Date;
+  }): Promise<string>;
+  countDecoyChallengesSince(email: string, since: Date): Promise<number>;
+  /** Atomic: true only for the single caller that consumed a live challenge. */
+  consumeChallenge(id: string): Promise<boolean>;
+  countChallengesSince(userId: string, since: Date): Promise<number>;
+  /** Emails (any kind/status) addressed to the address since `since`. */
+  countEmailsTo(address: string, since: Date): Promise<number>;
+  markEmailVerified(userId: string): Promise<void>;
+  setLocale(userId: string, locale: Locale): Promise<void>;
+  revokeAllSessions(userId: string): Promise<void>;
+  /** Deletes unverified accounts whose verification window started before `olderThan`. Returns the count. */
+  deleteStaleUnverified(olderThan: Date): Promise<number>;
+  /** Enqueue a notice that has no challenge. */
+  enqueueEmail(msg: Omit<EmailMessage, 'id' | 'createdAt'>): Promise<void>;
   /** In-memory only — backs the leaderboard's dev/test listing. */
   listUsers?(): Promise<AuthUser[]>;
 };

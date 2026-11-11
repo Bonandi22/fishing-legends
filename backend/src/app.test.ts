@@ -3,7 +3,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { createApp } from './app.js';
 import type { AppConfig } from './config/env.js';
-import { registerAndAuth } from './testing/authClient.js';
+import { registerAndAuth, registerSession } from './testing/authClient.js';
 
 const testConfig: AppConfig = {
   environment: 'test',
@@ -72,17 +72,13 @@ describe('backend foundation', () => {
     const app = await createApp({ config: testConfig });
     apps.add(app);
 
-    const registerResponse = await app.inject({
-      method: 'POST',
-      url: '/api/v1/auth/register',
-      payload: {
+    const registerResponse = await registerSession(app, {
         email: 'angler@example.com',
         password: 'a-strong-password-123',
         username: 'angler_one',
         country: 'br',
-      },
-    });
-    expect(registerResponse.statusCode).toBe(201);
+      });
+    expect(registerResponse.statusCode).toBe(200);
     const registered = registerResponse.json();
     expect(registered).not.toHaveProperty('accessToken');
     expect(registered).not.toHaveProperty('refreshToken');
@@ -117,11 +113,7 @@ describe('backend foundation', () => {
     const app = await createApp({ config: testConfig });
     apps.add(app);
 
-    const registered = await app.inject({
-      method: 'POST',
-      url: '/api/v1/auth/register',
-      payload: { email: 'logout@example.com', password: 'a-strong-password-123', username: 'logout_user', country: 'br' },
-    });
+    const registered = await registerSession(app, { email: 'logout@example.com', password: 'a-strong-password-123', username: 'logout_user', country: 'br' });
     const jar = cookieJar(registered);
 
     const loggedOut = await app.inject({
@@ -145,11 +137,7 @@ describe('backend foundation', () => {
     const app = await createApp({ config: testConfig });
     apps.add(app);
 
-    const registered = await app.inject({
-      method: 'POST',
-      url: '/api/v1/auth/register',
-      payload: { email: 'reuse@example.com', password: 'a-strong-password-123', username: 'reuse_user', country: 'br' },
-    });
+    const registered = await registerSession(app, { email: 'reuse@example.com', password: 'a-strong-password-123', username: 'reuse_user', country: 'br' });
     const jar = cookieJar(registered);
     const originalRt = jar.dbl_rt;
 
@@ -191,7 +179,7 @@ describe('backend foundation', () => {
       url: '/api/v1/auth/register',
       payload: { email: 'a@example.com', password: 'a-strong-password-123', username: 'CaseAngler', country: 'br' },
     });
-    expect(first.statusCode).toBe(201);
+    expect(first.statusCode).toBe(202);
 
     const clash = await app.inject({
       method: 'POST',
@@ -355,6 +343,19 @@ describe('backend foundation', () => {
     const app = await createApp({ config: testConfig });
     apps.add(app);
     const client = await registerAndAuth(app, { username: 'ranking_user' });
+    const seedState = {
+      schemaVersion: 1,
+      player: {
+        level: 2, xp: 0, xpToNextLevel: 200, totalFishCaught: 0, collection: [],
+        unlockedLocations: ['atlantic'], heaviestFish: null, warehouse: [], coins: 0,
+        activeSkin: 'default', ownedSkins: ['default'], activeBoatSkin: 'classic', ownedBoatSkins: ['classic'],
+        luckMultiplierEnd: null, strengthMultiplierEnd: null, lastRouletteDate: null,
+        aquariumWarehouse: [], aquariumSectors: { 1: [], 2: [], 3: [], 4: [], 5: [] },
+        dailyGiftsLastClaim: null, dailyGiftsDay: 1, dailyGiftsWeek: 1, nets: 0,
+      },
+    };
+    // Only players with game state are ranked.
+    expect((await client.request({ method: 'POST', url: '/api/v1/me/state/bootstrap', payload: { state: seedState } })).statusCode).toBe(200);
 
     const response = await client.request({ method: 'GET', url: '/api/v1/leaderboard?limit=10&offset=0' });
     expect(response.statusCode).toBe(200);

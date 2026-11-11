@@ -10,13 +10,15 @@ export function createPgLeaderboardService(db: Database) {
       const rows = await db
         .select({ userId: userProfiles.userId, username: userProfiles.username, country: userProfiles.country, state: playerGameState.state })
         .from(userProfiles)
-        .leftJoin(playerGameState, eq(playerGameState.userId, userProfiles.userId));
+        // Only players with game state rank. Accounts awaiting email confirmation
+        // never get a session, so they never have state and never appear.
+        .innerJoin(playerGameState, eq(playerGameState.userId, userProfiles.userId));
 
       const sources: LeaderboardSource[] = rows.map(row => ({
         userId: row.userId,
         username: row.username,
         country: row.country,
-        stats: extractPlayerStats(row.state ?? null),
+        stats: extractPlayerStats(row.state),
       }));
       return buildLeaderboard(sources, limit, offset);
     },

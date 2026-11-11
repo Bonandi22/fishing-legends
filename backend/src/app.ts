@@ -35,12 +35,24 @@ import { registerSeasonsRoutes } from './seasons/routes.js';
 import { createMemorySeasonsService } from './seasons/service.js';
 import { createPgSeasonsService } from './seasons/pgRepository.js';
 import { createPgOutbox } from './email/pgOutbox.js';
+import { createMemoryOutbox, type MemoryOutbox } from './email/outbox.js';
 import { createAmqpPublisher } from './email/amqp.js';
 import { createOutboxRelay } from './email/relay.js';
+import { createChallengeService } from './auth/challenges.js';
+import type { AuthRepository } from './auth/types.js';
 
 export type AppDependencies = {
   config: AppConfig;
 };
+
+/** Dev/test only: the in-memory collaborators behind an app built without DATABASE_URL. */
+export type MemoryHandles = { outbox: MemoryOutbox; authRepository: AuthRepository };
+const memoryHandles = new WeakMap<FastifyInstance, MemoryHandles>();
+
+/** Returns the in-memory outbox and auth repository, or undefined for a PostgreSQL-backed app. */
+export function memoryHandlesOf(app: FastifyInstance): MemoryHandles | undefined {
+  return memoryHandles.get(app);
+}
 
 export async function createApp({ config }: AppDependencies): Promise<FastifyInstance> {
   if (config.environment === 'production' && !config.databaseUrl) {
@@ -84,12 +96,17 @@ export async function createApp({ config }: AppDependencies): Promise<FastifyIns
     databaseConfigured: Boolean(config.databaseUrl),
   });
   const database = config.databaseUrl ? createDatabase(config.databaseUrl) : null;
-  const authRepository = database ? createPgAuthRepository(database) : createMemoryAuthRepository();
+  const memoryOutbox = database ? null : createMemoryOutbox();
+  const authRepository = database
+    ? createPgAuthRepository(database, createPgOutbox(database))
+    : createMemoryAuthRepository(memoryOutbox!);
+  if (memoryOutbox) memoryHandles.set(app, { outbox: memoryOutbox, authRepository });
+  const challengeService = createChallengeService(authRepository, config.authCodes);
   const authService = createAuthService(authRepository, {
     accessTokenSecret: config.accessTokenSecret,
     accessTokenTtlSeconds: config.accessTokenTtlSeconds,
     refreshTokenTtlSeconds: config.refreshTokenTtlSeconds,
-  });
+  }, { challenges: challengeService });
   const cookieCfg = {
     secure: config.cookieSecure,
     domain: config.cookieDomain,

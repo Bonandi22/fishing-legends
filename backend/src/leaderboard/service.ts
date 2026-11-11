@@ -7,12 +7,12 @@ export function createMemoryLeaderboardService(authRepository: AuthRepository, g
   return {
     async list(_userId: string, limit: number, offset: number) {
       const users = await authRepository.listUsers?.() ?? [];
-      const sources: LeaderboardSource[] = users.map(user => ({
-        userId: user.id,
-        username: user.username,
-        country: user.country,
-        stats: extractPlayerStats(gameStateStore.get(user.id)?.state ?? null),
-      }));
+      // Same rule as PostgreSQL: only players with game state rank.
+      const sources: LeaderboardSource[] = users.flatMap(user => {
+        const record = gameStateStore.get(user.id);
+        if (!record) return [];
+        return [{ userId: user.id, username: user.username, country: user.country, stats: extractPlayerStats(record.state) }];
+      });
       return buildLeaderboard(sources, limit, offset);
     },
   };

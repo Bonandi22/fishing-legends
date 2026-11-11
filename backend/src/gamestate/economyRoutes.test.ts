@@ -2,7 +2,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { createApp } from '../app.js';
 import type { AppConfig } from '../config/env.js';
-import { registerAndAuth } from '../testing/authClient.js';
+import { registerAndAuth, registerSession } from '../testing/authClient.js';
 import { SAVE_SCHEMA_VERSION } from '../../../src/game/persistence.js';
 import { FISH } from '../../../src/game/data.js';
 
@@ -84,7 +84,7 @@ describe('POST /api/v1/me/economy/warehouse/sell', () => {
 
   it('no X-CSRF-Token -> 403 CSRF_FAILED', async () => {
     const a = await app();
-    const reg = await a.inject({ method: 'POST', url: '/api/v1/auth/register', payload: { email: 'e@example.com', password: 'a-very-strong-password', username: 'econ_user', country: 'br' } });
+    const reg = await registerSession(a, { email: 'e@example.com', password: 'a-very-strong-password', username: 'econ_user', country: 'br' });
     const jar: Record<string, string> = {};
     for (const c of ([] as string[]).concat(reg.headers['set-cookie'] as string[])) {
       const [p] = c.split(';'); const i = p.indexOf('='); jar[p.slice(0, i)] = p.slice(i + 1);
@@ -100,7 +100,7 @@ describe('POST /api/v1/me/economy/warehouse/sell', () => {
 
   it('no Idempotency-Key -> 400 INVALID_IDEMPOTENCY_KEY', async () => {
     const a = await app();
-    const reg = await a.inject({ method: 'POST', url: '/api/v1/auth/register', payload: { email: 'e2@example.com', password: 'a-very-strong-password', username: 'econ_user2', country: 'br' } });
+    const reg = await registerSession(a, { email: 'e2@example.com', password: 'a-very-strong-password', username: 'econ_user2', country: 'br' });
     const jar: Record<string, string> = {};
     for (const c of ([] as string[]).concat(reg.headers['set-cookie'] as string[])) {
       const [p] = c.split(';'); const i = p.indexOf('='); jar[p.slice(0, i)] = p.slice(i + 1);

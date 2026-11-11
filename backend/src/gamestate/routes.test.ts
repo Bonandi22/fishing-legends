@@ -2,7 +2,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { createApp } from '../app.js';
 import type { AppConfig } from '../config/env.js';
-import { registerAndAuth } from '../testing/authClient.js';
+import { registerAndAuth, registerSession } from '../testing/authClient.js';
 
 const config: AppConfig = {
   environment: 'test', host: '127.0.0.1', port: 8090,
@@ -74,7 +74,7 @@ describe('me/state', () => {
 
   it('bootstrap without X-CSRF-Token is 403', async () => {
     const a = await app();
-    const reg = await a.inject({ method: 'POST', url: '/api/v1/auth/register', payload: { email: 'g@example.com', password: 'a-very-strong-password', username: 'gs_user', country: 'br' } });
+    const reg = await registerSession(a, { email: 'g@example.com', password: 'a-very-strong-password', username: 'gs_user', country: 'br' });
     const setCookie = ([] as string[]).concat(reg.headers['set-cookie'] as string[]);
     const jar: Record<string, string> = {};
     for (const c of setCookie) { const [p] = c.split(';'); const i = p.indexOf('='); jar[p.slice(0, i)] = p.slice(i + 1); }

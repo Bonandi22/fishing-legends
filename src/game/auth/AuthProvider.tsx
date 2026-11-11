@@ -8,8 +8,14 @@ export type AuthStatus = 'loading' | 'anonymous' | 'authenticated';
 export interface AuthContextValue {
   status: AuthStatus;
   user: ApiUser | null;
-  login(email: string, password: string): Promise<void>;
-  register(input: { email: string; password: string; username: string; country: string }): Promise<void>;
+  /** Step 1 of the 2-step login: the server emails a code and returns its challenge id. */
+  login(email: string, password: string, locale: string): Promise<{ challengeId: string }>;
+  /** Step 1 of signup: creates the (unverified) account and emails a confirmation code. */
+  register(input: endpoints.RegisterInput): Promise<{ challengeId: string }>;
+  /** Step 2: exchange the emailed code for a session. */
+  completeChallenge(kind: 'register' | 'login', challengeId: string, code: string): Promise<void>;
+  /** Re-sends the code; returns the NEW challenge id to use from then on. */
+  resendCode(challengeId: string): Promise<string>;
   logout(): Promise<void>;
 }
 
@@ -40,15 +46,24 @@ export function AuthProvider({ children, onAuthenticated, onLoggedOut, onBeforeL
     return () => { alive = false; };
   }, [enter]);
 
-  const login = useCallback(async (email: string, password: string) => {
-    const { user: u } = await endpoints.login({ email, password });
+  const login = useCallback(
+    (email: string, password: string, locale: string) => endpoints.login({ email, password, locale }),
+    [],
+  );
+
+  const register = useCallback((input: endpoints.RegisterInput) => endpoints.register(input), []);
+
+  const completeChallenge = useCallback(async (kind: 'register' | 'login', challengeId: string, code: string) => {
+    const { user: u } = kind === 'register'
+      ? await endpoints.verifyEmail({ challengeId, code })
+      : await endpoints.verifyLogin({ challengeId, code });
     await enter(u);
   }, [enter]);
 
-  const register = useCallback(async (input: { email: string; password: string; username: string; country: string }) => {
-    const { user: u } = await endpoints.register(input);
-    await enter(u);
-  }, [enter]);
+  const resendCode = useCallback(async (challengeId: string) => {
+    const { challengeId: next } = await endpoints.resendCode({ challengeId });
+    return next;
+  }, []);
 
   const logout = useCallback(async () => {
     try { await onBeforeLogoutRef.current?.(); } catch { /* best-effort flush */ }
@@ -56,7 +71,7 @@ export function AuthProvider({ children, onAuthenticated, onLoggedOut, onBeforeL
     onLoggedOutRef.current?.();
   }, []);
 
-  return <AuthContext.Provider value={{ status, user, login, register, logout }}>{children}</AuthContext.Provider>;
+  return <AuthContext.Provider value={{ status, user, login, register, completeChallenge, resendCode, logout }}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth(): AuthContextValue {

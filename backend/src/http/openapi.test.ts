@@ -43,6 +43,7 @@ describe('generated OpenAPI contract', () => {
     const expected = [
       '/health', '/ready',
       '/api/v1/auth/register', '/api/v1/auth/login', '/api/v1/auth/refresh', '/api/v1/auth/logout',
+      '/api/v1/auth/verify-email', '/api/v1/auth/login/verify', '/api/v1/auth/challenges/resend',
       '/api/v1/me', '/api/v1/catalog',
       '/api/v1/me/fishing/cast', '/api/v1/me/fishing/land',
       '/api/v1/me/economy/aquarium/place', '/api/v1/me/economy/skins/equip',
