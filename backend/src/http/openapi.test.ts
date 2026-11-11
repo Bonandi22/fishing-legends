@@ -19,7 +19,7 @@ const config: AppConfig = {
   authRateLimitMax: 1000,
   authRateLimitWindowMs: 300_000,
   trustProxy: false,
-  cookieSecure: false,
+  cookieSecure: false, email: { smtp: { host: 'localhost', port: 1025, secure: false }, from: 'test@localhost' }, authCodes: { secret: new Uint8Array(32), ttlSeconds: 1800, maxAttempts: 5, resendCooldownSeconds: 60 },
 };
 
 let app: FastifyInstance;

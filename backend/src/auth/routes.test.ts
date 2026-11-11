@@ -9,7 +9,7 @@ const config: AppConfig = {
   logLevel: 'silent', accessTokenTtlSeconds: 900, refreshTokenTtlSeconds: 2_592_000,
   corsOrigins: [], rateLimitMax: 1000, rateLimitWindowMs: 60_000,
   authRateLimitMax: 1000, authRateLimitWindowMs: 300_000, trustProxy: false,
-  cookieSecure: false,
+  cookieSecure: false, email: { smtp: { host: 'localhost', port: 1025, secure: false }, from: 'test@localhost' }, authCodes: { secret: new Uint8Array(32), ttlSeconds: 1800, maxAttempts: 5, resendCooldownSeconds: 60 },
 };
 const apps = new Set<Awaited<ReturnType<typeof createApp>>>();
 afterEach(async () => { await Promise.all([...apps].map(a => a.close())); apps.clear(); });
