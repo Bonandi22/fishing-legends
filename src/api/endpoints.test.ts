@@ -1,12 +1,50 @@
 import { describe, expect, it, vi } from 'vitest';
 import * as client from './client';
-import { register, login, logout, getMe, getGameState, bootstrapGameState, sellWarehouse, purchaseNet, purchaseMultiplier, purchaseSkin, equipSkin, spinRoulette, spinSkinRoulette, claimDailyGift, placeAquariumFish, castLine, landCatch, getLeaderboard, getCurrentSeason } from './endpoints';
+import { register, login, verifyEmail, verifyLogin, resendCode, logout, getMe, getGameState, bootstrapGameState, sellWarehouse, purchaseNet, purchaseMultiplier, purchaseSkin, equipSkin, spinRoulette, spinSkinRoulette, claimDailyGift, placeAquariumFish, castLine, landCatch, getLeaderboard, getCurrentSeason } from './endpoints';
+
+describe('auth code endpoints', () => {
+  it('login POSTs email, password and locale', async () => {
+    const spy = vi.spyOn(client, 'apiFetch').mockResolvedValue({ challengeId: 'c1' } as never);
+    expect(await login({ email: 'a@b.c', password: 'p', locale: 'pt' })).toEqual({ challengeId: 'c1' });
+    expect(spy).toHaveBeenCalledWith('/auth/login', { method: 'POST', body: { email: 'a@b.c', password: 'p', locale: 'pt' } });
+    spy.mockRestore();
+  });
+  it('verifyEmail POSTs /auth/verify-email', async () => {
+    const spy = vi.spyOn(client, 'apiFetch').mockResolvedValue({ user: { id: '1' } } as never);
+    await verifyEmail({ challengeId: 'c1', code: '123456' });
+    expect(spy).toHaveBeenCalledWith('/auth/verify-email', { method: 'POST', body: { challengeId: 'c1', code: '123456' } });
+    spy.mockRestore();
+  });
+  it('verifyLogin POSTs /auth/login/verify', async () => {
+    const spy = vi.spyOn(client, 'apiFetch').mockResolvedValue({ user: { id: '1' } } as never);
+    await verifyLogin({ challengeId: 'c1', code: '123456' });
+    expect(spy).toHaveBeenCalledWith('/auth/login/verify', { method: 'POST', body: { challengeId: 'c1', code: '123456' } });
+    spy.mockRestore();
+  });
+  it('resendCode POSTs /auth/challenges/resend', async () => {
+    const spy = vi.spyOn(client, 'apiFetch').mockResolvedValue({ challengeId: 'c2' } as never);
+    expect(await resendCode({ challengeId: 'c1' })).toEqual({ challengeId: 'c2' });
+    expect(spy).toHaveBeenCalledWith('/auth/challenges/resend', { method: 'POST', body: { challengeId: 'c1' } });
+    spy.mockRestore();
+  });
+  it('the non-exempt code routes send the CSRF header through apiFetch when the cookie exists', async () => {
+    document.cookie = 'dbl_csrf=tok123';
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(async () => new Response(JSON.stringify({ challengeId: 'c' }), { status: 202 }));
+    await verifyEmail({ challengeId: 'c', code: '123456' });
+    await verifyLogin({ challengeId: 'c', code: '123456' });
+    await resendCode({ challengeId: 'c' });
+    expect(fetchSpy).toHaveBeenCalledTimes(3);
+    for (const c of fetchSpy.mock.calls) expect((c[1]!.headers as Record<string, string>)['X-CSRF-Token']).toBe('tok123');
+    fetchSpy.mockRestore();
+    document.cookie = 'dbl_csrf=; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+  });
+});
 
 describe('endpoints', () => {
   it('register POSTs /auth/register with the body', async () => {
     const spy = vi.spyOn(client, 'apiFetch').mockResolvedValue({ user: { id: '1' } } as never);
-    await register({ email: 'a@b.c', password: 'p', username: 'u', country: 'br' });
-    expect(spy).toHaveBeenCalledWith('/auth/register', { method: 'POST', body: { email: 'a@b.c', password: 'p', username: 'u', country: 'br' } });
+    await register({ email: 'a@b.c', password: 'p', username: 'u', country: 'br', locale: 'en' });
+    expect(spy).toHaveBeenCalledWith('/auth/register', { method: 'POST', body: { email: 'a@b.c', password: 'p', username: 'u', country: 'br', locale: 'en' } });
     spy.mockRestore();
   });
 

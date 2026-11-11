@@ -4,17 +4,20 @@ import { User, LogIn } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useI18n } from '@/game/i18n';
+import { checkPassword } from '@/game/passwordPolicy';
 import { useAuth } from '@/game/auth/AuthProvider';
 import { ApiError } from '@/api/client';
 import { COUNTRIES, flagToIso2 } from '@/game/auth/countries';
 import { TUTORIAL_KEY } from './account';
+import CodeStep from './CodeStep';
+import PasswordStrength from './PasswordStrength';
 
 type Mode = 'signup' | 'login';
 
 interface Props { open: boolean; onClose: () => void; }
 
 export default function AccountModal({ open, onClose }: Props) {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const { status, user, login, register, logout } = useAuth();
   const [mode, setMode] = useState<Mode>('signup');
   const [email, setEmail] = useState('');
@@ -23,6 +26,7 @@ export default function AccountModal({ open, onClose }: Props) {
   const [flag, setFlag] = useState('🌍');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [challenge, setChallenge] = useState<{ id: string; kind: 'register' | 'login' } | null>(null);
   const [tutorialVisible, setTutorialVisible] = useState(() => localStorage.getItem(TUTORIAL_KEY) !== '1');
 
   const dismissTutorial = () => { localStorage.setItem(TUTORIAL_KEY, '1'); setTutorialVisible(false); };
@@ -32,13 +36,18 @@ export default function AccountModal({ open, onClose }: Props) {
   const emailTrimmed = email.trim();
   const usernameTrimmed = username.trim();
   const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailTrimmed);
-  const passwordValid = password.length >= 12 && password.length <= 128;
+  const passwordIssue = checkPassword(password, { email: emailTrimmed, username: usernameTrimmed });
   const usernameValid = /^[a-zA-Z0-9_]{3,20}$/.test(usernameTrimmed);
-  const signupValid = emailValid && passwordValid && usernameValid;
+  const signupValid = emailValid && passwordIssue === null && usernameValid;
 
   const errText = (e: unknown): string => {
     if (e instanceof ApiError) {
       if (e.code === 'VALIDATION_ERROR' && mode === 'signup') return t('auth.err.SIGNUP_INVALID');
+      if (e.code === 'WEAK_PASSWORD' && e.reason) {
+        const reasonKey = `auth.pw.${e.reason}`;
+        const reasonMsg = t(reasonKey as never);
+        if (reasonMsg !== reasonKey) return reasonMsg;
+      }
       const key = `auth.err.${e.code}` as const;
       const msg = t(key as never);
       // An unmapped code is not necessarily a bad form — stay neutral.
@@ -50,9 +59,13 @@ export default function AccountModal({ open, onClose }: Props) {
   const submit = async () => {
     setError(null); setBusy(true);
     try {
-      if (mode === 'login') await login(email.trim(), password);
-      else await register({ email: email.trim(), password, username: username.trim(), country: flagToIso2(flag) });
-      onClose();
+      if (mode === 'login') {
+        const { challengeId } = await login(email.trim(), password, lang);
+        setChallenge({ id: challengeId, kind: 'login' });
+      } else {
+        const { challengeId } = await register({ email: email.trim(), password, username: username.trim(), country: flagToIso2(flag), locale: lang });
+        setChallenge({ id: challengeId, kind: 'register' });
+      }
     } catch (e) {
       setError(errText(e));
     } finally {
@@ -95,6 +108,12 @@ export default function AccountModal({ open, onClose }: Props) {
                 <p className="text-sm text-muted-foreground">{user.email}</p>
                 <Button variant="outline" className="w-full" onClick={() => { void logout(); onClose(); }}>{t('auth.logoutCta')}</Button>
               </div>
+            ) : challenge ? (
+              <CodeStep
+                challengeId={challenge.id} kind={challenge.kind}
+                onDone={() => { setChallenge(null); setPassword(''); onClose(); }}
+                onBack={() => { setChallenge(null); setError(null); }}
+              />
             ) : (
               <div className="space-y-3">
                 {error && <p className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p>}
@@ -109,7 +128,10 @@ export default function AccountModal({ open, onClose }: Props) {
                 <Input id="acc-pw" type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••"
                   minLength={mode === 'signup' ? 12 : undefined} maxLength={mode === 'signup' ? 128 : undefined} />
                 {mode === 'signup' && (
-                  <p className={`text-xs ${password.length > 0 && !passwordValid ? 'text-destructive' : 'text-muted-foreground'}`}>{t('auth.passwordHint')}</p>
+                  <>
+                    <p className="text-xs text-muted-foreground">{t('auth.passwordHint')}</p>
+                    <PasswordStrength password={password} email={emailTrimmed} username={usernameTrimmed} />
+                  </>
                 )}
 
                 {mode === 'signup' && (

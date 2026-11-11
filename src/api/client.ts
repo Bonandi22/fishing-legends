@@ -1,5 +1,5 @@
 export class ApiError extends Error {
-  constructor(public readonly status: number, public readonly code: string, message: string) {
+  constructor(public readonly status: number, public readonly code: string, message: string, public readonly reason?: string) {
     super(message);
     this.name = 'ApiError';
   }
@@ -63,11 +63,12 @@ async function run<T>(path: string, opts: Opts, isRetry: boolean): Promise<T> {
   }
 
   if (!res.ok) {
-    const parsed = await res.json().catch(() => null) as { error?: { code?: string; message?: string } } | null;
+    const parsed = await res.json().catch(() => null) as { error?: { code?: string; message?: string; reason?: string } } | null;
     throw new ApiError(
       res.status,
       parsed?.error?.code ?? 'UNKNOWN',
       parsed?.error?.message ?? res.statusText,
+      parsed?.error?.reason,
     );
   }
 

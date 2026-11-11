@@ -21,17 +21,32 @@ beforeEach(() => { cleanup(); vi.restoreAllMocks(); localStorage.clear();
 
 describe('AccountModal', () => {
   it('logs in with email + password', async () => {
-    const login = vi.spyOn(endpoints, 'login').mockResolvedValue({ user: { id: 'u1', username: 'Angler', email: 'e@x.com', country: 'BR' } } as never);
+    const login = vi.spyOn(endpoints, 'login').mockResolvedValue({ challengeId: 'ch-1' });
     renderModal();
     fireEvent.click(await screen.findByRole('button', { name: /já tenho conta/i }));
     fireEvent.change(screen.getByLabelText(/e-mail/i), { target: { value: 'e@x.com' } });
     fireEvent.change(screen.getByLabelText(/palavra-passe/i), { target: { value: 'a-strong-password' } });
     fireEvent.click(screen.getByRole('button', { name: /^entrar$/i }));
-    await waitFor(() => expect(login).toHaveBeenCalledWith({ email: 'e@x.com', password: 'a-strong-password' }));
+    await waitFor(() => expect(login).toHaveBeenCalledWith({ email: 'e@x.com', password: 'a-strong-password', locale: 'pt' }));
+    expect(await screen.findByLabelText(/código de 6 dígitos/i)).toBeInTheDocument();
+  });
+
+  it('login: entering the emailed code authenticates and closes the modal', async () => {
+    vi.spyOn(endpoints, 'login').mockResolvedValue({ challengeId: 'ch-1' });
+    const verify = vi.spyOn(endpoints, 'verifyLogin').mockResolvedValue({ user: { id: 'u1', username: 'Angler', email: 'e@x.com', country: 'BR' } } as never);
+    const { onClose } = renderModal();
+    fireEvent.click(await screen.findByRole('button', { name: /já tenho conta/i }));
+    fireEvent.change(screen.getByLabelText(/e-mail/i), { target: { value: 'e@x.com' } });
+    fireEvent.change(screen.getByLabelText(/palavra-passe/i), { target: { value: 'a-strong-password' } });
+    fireEvent.click(screen.getByRole('button', { name: /^entrar$/i }));
+    fireEvent.change(await screen.findByLabelText(/código de 6 dígitos/i), { target: { value: '123456' } });
+    fireEvent.click(screen.getByRole('button', { name: /confirmar/i }));
+    await waitFor(() => expect(verify).toHaveBeenCalledWith({ challengeId: 'ch-1', code: '123456' }));
+    await waitFor(() => expect(onClose).toHaveBeenCalled());
   });
 
   it('registers with email, password, username, country (ISO-2)', async () => {
-    const register = vi.spyOn(endpoints, 'register').mockResolvedValue({ user: { id: 'u1', username: 'Angler', email: 'e@x.com', country: 'BR' } } as never);
+    const register = vi.spyOn(endpoints, 'register').mockResolvedValue({ challengeId: 'ch-1' });
     renderModal();
     fireEvent.change(await screen.findByLabelText(/e-mail/i), { target: { value: 'e@x.com' } });
     fireEvent.change(screen.getByLabelText(/palavra-passe/i), { target: { value: 'a-strong-password' } });
@@ -40,7 +55,7 @@ describe('AccountModal', () => {
     fireEvent.click(screen.getByRole('button', { name: '🇧🇷' }));
     fireEvent.click(screen.getByRole('button', { name: /criar conta/i }));
     await waitFor(() => expect(register).toHaveBeenCalledWith(
-      expect.objectContaining({ email: 'e@x.com', password: 'a-strong-password', username: 'Angler', country: 'BR' }),
+      expect.objectContaining({ email: 'e@x.com', password: 'a-strong-password', username: 'Angler', country: 'BR', locale: 'pt' }),
     ));
   });
 
@@ -54,6 +69,25 @@ describe('AccountModal', () => {
     expect(screen.getByRole('button', { name: /criar conta/i })).toBeEnabled();
   });
 
+  it('signup: a common password blocks submit and shows the reason', async () => {
+    renderModal();
+    fireEvent.change(await screen.findByLabelText(/e-mail/i), { target: { value: 'e@x.com' } });
+    fireEvent.change(screen.getByLabelText(/nome de utilizador/i), { target: { value: 'Angler' } });
+    fireEvent.change(screen.getByLabelText(/palavra-passe/i), { target: { value: 'password1234' } });
+    expect(screen.getByRole('button', { name: /criar conta/i })).toBeDisabled();
+    expect(screen.getByText(/demasiado comum|comum demais/i)).toBeInTheDocument();
+  });
+
+  it('signup: maps a server WEAK_PASSWORD reason', async () => {
+    vi.spyOn(endpoints, 'register').mockRejectedValue(new ApiError(400, 'WEAK_PASSWORD', 'x', 'TOO_COMMON'));
+    renderModal();
+    fireEvent.change(await screen.findByLabelText(/e-mail/i), { target: { value: 'e@x.com' } });
+    fireEvent.change(screen.getByLabelText(/palavra-passe/i), { target: { value: 'a-strong-password' } });
+    fireEvent.change(screen.getByLabelText(/nome de utilizador/i), { target: { value: 'Angler' } });
+    fireEvent.click(screen.getByRole('button', { name: /criar conta/i }));
+    expect(await screen.findByText(/comum demais/i)).toBeInTheDocument();
+  });
+
   it('signup: submit disabled with a spaced username, enabled with "my_angler"', async () => {
     renderModal();
     fireEvent.change(await screen.findByLabelText(/e-mail/i), { target: { value: 'e@x.com' } });
@@ -65,13 +99,13 @@ describe('AccountModal', () => {
   });
 
   it('login: submit is not gated by signup rules (short password ok to attempt)', async () => {
-    const login = vi.spyOn(endpoints, 'login').mockResolvedValue({ user: { id: 'u1', username: 'Angler', email: 'e@x.com', country: 'BR' } } as never);
+    const login = vi.spyOn(endpoints, 'login').mockResolvedValue({ challengeId: 'ch-1' });
     renderModal();
     fireEvent.click(await screen.findByRole('button', { name: /já tenho conta/i }));
     fireEvent.change(screen.getByLabelText(/e-mail/i), { target: { value: 'e@x.com' } });
     fireEvent.change(screen.getByLabelText(/palavra-passe/i), { target: { value: 'short' } });
     fireEvent.click(screen.getByRole('button', { name: /^entrar$/i }));
-    await waitFor(() => expect(login).toHaveBeenCalledWith({ email: 'e@x.com', password: 'short' }));
+    await waitFor(() => expect(login).toHaveBeenCalledWith({ email: 'e@x.com', password: 'short', locale: 'pt' }));
   });
 
   it('shows a mapped error message on invalid credentials', async () => {
