@@ -116,6 +116,7 @@ jobs:
       RABBITMQ_URL: amqp://guest:guest@localhost:5672
       SMTP_HOST: localhost
       SMTP_PORT: "1025"
+      MAILPIT_URL: http://localhost:8025
       AUTH_CODE_SECRET: ci-only-auth-code-secret-not-a-real-secret-0123
 
     steps:

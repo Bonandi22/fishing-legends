@@ -68,9 +68,7 @@ services:
       - ./tsconfig.backend.json:/app/tsconfig.backend.json
       - ./drizzle.config.ts:/app/drizzle.config.ts
 
-  # enabled once backend/src/email/workerMain.ts exists (Task 5)
   email-worker:
-    profiles: ["email"]
     build:
       context: .
       dockerfile: backend/Dockerfile
