@@ -37,7 +37,7 @@ export default function SurfaceBar({
           variant="outline"
           size="sm"
           onClick={onDailyGifts}
-          className="relative gap-1.5 border-lure/25 bg-menu-panel/70 text-foreground backdrop-blur hover:border-lure/50"
+          className="relative gap-1.5 border-lure/25 bg-menu-panel/70 text-foreground backdrop-blur-sm hover:border-lure/50"
         >
           <Gift className="h-4 w-4" />
           {t('menu.dailyGifts')}

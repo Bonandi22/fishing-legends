@@ -91,7 +91,7 @@ export default function PullMinigame({ fish, strengthActive, strengthPower, onWi
 
   return (
     <motion.div
-      className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-background/90 px-2 py-4 backdrop-blur-sm sm:px-4"
+      className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-background/90 px-2 py-4 backdrop-blur-xs sm:px-4"
       role="dialog"
       aria-modal="true"
       aria-label={`${t('fish.pull')}: ${fish.name}`}

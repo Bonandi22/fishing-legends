@@ -19,7 +19,7 @@ function BoatOverlay({ skinId }: { skinId: string }) {
   return (
     <>
       <motion.div
-        className="absolute bottom-0 left-0 right-0 z-[5] pointer-events-none select-none"
+        className="absolute bottom-0 left-0 right-0 z-5 pointer-events-none select-none"
         style={{ perspective: '900px' }}
         animate={{ y: [0, -6, 0, 4, 0], rotate: [0, 0.3, 0, -0.25, 0] }}
         transition={{ duration: 5.5, repeat: Infinity, ease: 'easeInOut' }}
@@ -461,7 +461,7 @@ export default function FishingScreen({ location, player, onCast, onLand, onBack
   }, [clearFishingTimer, t]);
 
   return (
-    <div className="relative h-[100dvh] min-h-screen w-full overflow-hidden bg-abyss">
+    <div className="relative h-dvh min-h-screen w-full overflow-hidden bg-abyss">
       {/* 3D Scene */}
       <FishingScene3D
         location={location}
@@ -475,7 +475,7 @@ export default function FishingScreen({ location, player, onCast, onLand, onBack
       {location.type === 'ocean' && <BoatOverlay skinId={player.activeBoatSkin} />}
 
       {/* Rod overlay — rendered ABOVE the boat so the rod appears in front */}
-      <div className="absolute inset-0 z-[6] pointer-events-none">
+      <div className="absolute inset-0 z-6 pointer-events-none">
         <RodOverlayCanvas activeSkin={player.activeSkin} />
       </div>
 
@@ -489,7 +489,7 @@ export default function FishingScreen({ location, player, onCast, onLand, onBack
             exit={{ opacity: 0, y: -30 }}
           >
             <motion.div
-              className="rounded-full border border-lure/40 bg-abyss/80 px-6 py-2 shadow-[0_0_24px_hsl(var(--lure)/0.35)] backdrop-blur"
+              className="rounded-full border border-lure/40 bg-abyss/80 px-6 py-2 shadow-[0_0_24px_hsl(var(--lure)/0.35)] backdrop-blur-sm"
               animate={{ scale: [1, 1.05, 1] }}
               transition={{ duration: 1.5, repeat: Infinity }}
             >
@@ -586,7 +586,7 @@ export default function FishingScreen({ location, player, onCast, onLand, onBack
       <AnimatePresence>
         {phase === 'caught' && currentFish && (
           <motion.div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-abyss/90 backdrop-blur-sm"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-abyss/90 backdrop-blur-xs"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -640,7 +640,7 @@ export default function FishingScreen({ location, player, onCast, onLand, onBack
 
         {phase === 'lost' && currentFish && (
           <motion.div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-abyss/90 backdrop-blur-sm"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-abyss/90 backdrop-blur-xs"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}

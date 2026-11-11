@@ -104,7 +104,7 @@ export default function Ranking({ player, onBack }: Props) {
         <motion.div
           initial={{ opacity: 0, x: 24 }}
           animate={{ opacity: 1, x: 0 }}
-          className="menu-panel fixed bottom-4 right-4 z-30 max-w-[15rem] rounded-xl border border-lure/40 p-4"
+          className="menu-panel fixed bottom-4 right-4 z-30 max-w-60 rounded-xl border border-lure/40 p-4"
         >
           <p className="mb-1 text-xs text-muted-foreground">{t('rank.yourPosition')}</p>
           <p className="font-display text-3xl font-black text-lure">#{playerRank}</p>

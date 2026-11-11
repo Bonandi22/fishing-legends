@@ -424,7 +424,7 @@ export default function SubmarineFishing({ player, onCast, onLand, onBack }: Pro
       )}
 
       {phase === 'empty' && (
-        <div className="absolute inset-0 z-40 flex flex-col items-center justify-center gap-4 bg-abyss/80 backdrop-blur-sm">
+        <div className="absolute inset-0 z-40 flex flex-col items-center justify-center gap-4 bg-abyss/80 backdrop-blur-xs">
           <p className="text-lg font-semibold text-foreground">{t('sub.unavailable')}</p>
           <Button variant="outline" onClick={onBack} className="hud-panel">{t('sub.back')}</Button>
         </div>
@@ -563,7 +563,7 @@ export default function SubmarineFishing({ player, onCast, onLand, onBack }: Pro
       <AnimatePresence>
         {caughtFish && (
           <motion.div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-abyss/90 backdrop-blur-sm"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-abyss/90 backdrop-blur-xs"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}

@@ -1,8 +1,338 @@
-@import url('https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@400;600;700;900&family=Cinzel:wght@400;700;900&family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@400;600;700;900&family=Cinzel:wght@400;700;900&family=Inter:wght@300;400;500;600;700&display=swap')
+layer(base);
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import 'tailwindcss';
+
+@plugin 'tailwindcss-animate';
+
+@custom-variant dark (&:is(.dark *));
+
+@utility container {
+  margin-inline: auto;
+  padding-inline: 2rem;
+  @media (width >= --theme(--breakpoint-sm)) {
+    max-width: none;
+  }
+  @media (width >= 1400px) {
+    max-width: 1400px;
+  }
+}
+
+@theme {
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+
+  --color-abyss: hsl(var(--abyss));
+
+  --color-lure: hsl(var(--lure));
+  --color-lure-foreground: hsl(var(--lure-foreground));
+
+  --color-biolume: hsl(var(--biolume));
+  --color-menu-panel: hsl(var(--menu-panel));
+  --color-menu-raised: hsl(var(--menu-raised));
+
+  --color-sidebar: hsl(var(--sidebar-background));
+  --color-sidebar-foreground: hsl(var(--sidebar-foreground));
+  --color-sidebar-primary: hsl(var(--sidebar-primary));
+  --color-sidebar-primary-foreground: hsl(var(--sidebar-primary-foreground));
+  --color-sidebar-accent: hsl(var(--sidebar-accent));
+  --color-sidebar-accent-foreground: hsl(var(--sidebar-accent-foreground));
+  --color-sidebar-border: hsl(var(--sidebar-border));
+  --color-sidebar-ring: hsl(var(--sidebar-ring));
+
+  --radius-lg: var(--radius);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 4px);
+
+  --font-display: 'Big Shoulders Display', Cinzel, serif;
+
+  --animate-accordion-down: accordion-down 0.2s ease-out;
+  --animate-accordion-up: accordion-up 0.2s ease-out;
+
+  @keyframes accordion-down {
+    from {
+      height: 0;
+    }
+    to {
+      height: var(--radix-accordion-content-height);
+    }
+  }
+  @keyframes accordion-up {
+    from {
+      height: var(--radix-accordion-content-height);
+    }
+    to {
+      height: 0;
+    }
+  }
+}
+
+/*
+  The default border color has changed to `currentcolor` in Tailwind CSS v4,
+  so we've added these compatibility styles to make sure everything still
+  looks the same as it did with Tailwind CSS v3.
+
+  If we ever want to remove these styles, we need to add an explicit border
+  color utility to any element that depends on these defaults.
+*/
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-gray-200, currentcolor);
+  }
+}
+
+@utility screen-shell {
+  min-height: 100dvh;
+  overflow-x: hidden;
+  padding: max(1rem, env(safe-area-inset-top))
+    max(1rem, env(safe-area-inset-right))
+    max(1.25rem, env(safe-area-inset-bottom))
+    max(1rem, env(safe-area-inset-left));
+}
+
+@utility screen-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  & > :first-child {
+    min-width: 0;
+  }
+}
+
+@utility touch-target {
+  min-height: 2.75rem;
+}
+
+@utility surface-glass {
+  background: hsl(var(--card) / 0.82);
+  border: 1px solid hsl(var(--border) / 0.9);
+  box-shadow: 0 18px 45px hsl(220 40% 2% / 0.2);
+  backdrop-filter: blur(14px);
+}
+
+@utility text-rarity-common {
+  color: hsl(var(--rarity-common));
+}
+
+@utility text-rarity-uncommon {
+  color: hsl(var(--rarity-uncommon));
+}
+
+@utility text-rarity-legendary {
+  color: hsl(var(--rarity-legendary));
+}
+
+@utility text-rarity-abyssal {
+  color: hsl(var(--rarity-abyssal));
+}
+
+@utility text-rarity-volcanic {
+  color: hsl(var(--rarity-volcanic));
+}
+
+@utility text-rarity-platinum {
+  color: hsl(var(--rarity-platinum));
+}
+
+@utility text-rarity-legends {
+  color: hsl(var(--rarity-legends));
+}
+
+@utility text-rarity-cosmic {
+  color: hsl(var(--rarity-cosmic));
+}
+
+@utility bg-rarity-common {
+  background-color: hsl(var(--rarity-common));
+}
+
+@utility bg-rarity-uncommon {
+  background-color: hsl(var(--rarity-uncommon));
+}
+
+@utility bg-rarity-legendary {
+  background-color: hsl(var(--rarity-legendary));
+}
+
+@utility bg-rarity-abyssal {
+  background-color: hsl(var(--rarity-abyssal));
+}
+
+@utility bg-rarity-volcanic {
+  background-color: hsl(var(--rarity-volcanic));
+}
+
+@utility bg-rarity-platinum {
+  background-color: hsl(var(--rarity-platinum));
+}
+
+@utility bg-rarity-legends {
+  background-color: hsl(var(--rarity-legends));
+}
+
+@utility bg-rarity-cosmic {
+  background-color: hsl(var(--rarity-cosmic));
+}
+
+@utility border-rarity-common {
+  border-color: hsl(var(--rarity-common));
+}
+
+@utility border-rarity-uncommon {
+  border-color: hsl(var(--rarity-uncommon));
+}
+
+@utility border-rarity-legendary {
+  border-color: hsl(var(--rarity-legendary));
+}
+
+@utility border-rarity-abyssal {
+  border-color: hsl(var(--rarity-abyssal));
+}
+
+@utility border-rarity-volcanic {
+  border-color: hsl(var(--rarity-volcanic));
+}
+
+@utility border-rarity-platinum {
+  border-color: hsl(var(--rarity-platinum));
+}
+
+@utility border-rarity-legends {
+  border-color: hsl(var(--rarity-legends));
+}
+
+@utility border-rarity-cosmic {
+  border-color: hsl(var(--rarity-cosmic));
+}
+
+@utility world-bg-2 {
+  background: radial-gradient(
+    circle at 50% 30%,
+    hsl(0 70% 35%),
+    hsl(0 80% 15%) 60%,
+    hsl(0 90% 8%)
+  );
+}
+
+@utility world-bg-3 {
+  background: radial-gradient(
+    circle at 50% 30%,
+    hsl(140 60% 35%),
+    hsl(140 70% 15%) 60%,
+    hsl(140 80% 8%)
+  );
+}
+
+@utility font-body {
+  /* Main menu descent */
+  font-family: 'Inter', sans-serif;
+}
+
+@utility hud-panel {
+  /* Glass panel for HUD overlays that sit on a live fishing scene */
+  background: hsl(var(--abyss) / 0.75);
+  border: 1px solid hsl(var(--lure) / 0.15);
+  backdrop-filter: blur(8px);
+}
+
+@utility menu-surface {
+  background: linear-gradient(
+    180deg,
+    hsl(198 70% 16%) 0%,
+    hsl(202 62% 11%) 22%,
+    hsl(205 55% 7%) 55%,
+    hsl(var(--abyss)) 100%
+  );
+}
+
+@utility menu-caustic {
+  background:
+    radial-gradient(
+      60% 40% at 22% 0%,
+      hsl(var(--lure) / 0.28),
+      transparent 70%
+    ),
+    radial-gradient(
+      50% 45% at 82% 6%,
+      hsl(var(--biolume) / 0.18),
+      transparent 72%
+    );
+  filter: blur(6px);
+  animation: menu-caustic-drift 22s ease-in-out infinite alternate;
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+}
+
+@utility menu-panel {
+  background: hsl(var(--menu-panel) / 0.85);
+  border: 1px solid hsl(var(--lure) / 0.16);
+  box-shadow:
+    0 24px 60px hsl(205 60% 2% / 0.5),
+    inset 0 1px 0 hsl(var(--lure) / 0.06);
+  backdrop-filter: blur(12px);
+}
+
+@utility menu-row {
+  background: hsl(var(--menu-raised) / 0.5);
+  border: 1px solid hsl(var(--border) / 0.6);
+  &:hover {
+    background: hsl(var(--menu-raised) / 0.8);
+    border-color: hsl(var(--lure) / 0.35);
+  }
+}
+
+@utility deep-shell {
+  /* Shared ground for every non-menu game screen */
+  background: linear-gradient(
+    180deg,
+    hsl(202 52% 12%) 0%,
+    hsl(205 50% 8%) 40%,
+    hsl(var(--abyss)) 100%
+  );
+}
+
+@utility chart-surface {
+  /* Location survey — bathymetric chart the spot cards sit on */
+  background: radial-gradient(
+    130% 90% at 50% -12%,
+    hsl(198 58% 15%) 0%,
+    hsl(204 54% 8%) 44%,
+    hsl(var(--abyss)) 100%
+  );
+}
 
 @layer base {
   :root {
@@ -90,134 +420,8 @@
 }
 
 @layer utilities {
-  .screen-shell {
-    min-height: 100dvh;
-    overflow-x: hidden;
-    padding: max(1rem, env(safe-area-inset-top)) max(1rem, env(safe-area-inset-right))
-      max(1.25rem, env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-left));
-  }
-  .screen-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 1rem;
-    margin-bottom: 1.5rem;
-  }
-  .screen-header > :first-child {
-    min-width: 0;
-  }
-  .touch-target {
-    min-height: 2.75rem;
-  }
-  .surface-glass {
-    background: hsl(var(--card) / 0.82);
-    border: 1px solid hsl(var(--border) / 0.9);
-    box-shadow: 0 18px 45px hsl(220 40% 2% / 0.2);
-    backdrop-filter: blur(14px);
-  }
-  .text-rarity-common { color: hsl(var(--rarity-common)); }
-  .text-rarity-uncommon { color: hsl(var(--rarity-uncommon)); }
-  .text-rarity-legendary { color: hsl(var(--rarity-legendary)); }
-  .text-rarity-abyssal { color: hsl(var(--rarity-abyssal)); }
-  .text-rarity-volcanic { color: hsl(var(--rarity-volcanic)); }
-  .text-rarity-platinum { color: hsl(var(--rarity-platinum)); }
-  .text-rarity-legends { color: hsl(var(--rarity-legends)); }
-  .text-rarity-cosmic { color: hsl(var(--rarity-cosmic)); }
-  .bg-rarity-common { background-color: hsl(var(--rarity-common)); }
-  .bg-rarity-uncommon { background-color: hsl(var(--rarity-uncommon)); }
-  .bg-rarity-legendary { background-color: hsl(var(--rarity-legendary)); }
-  .bg-rarity-abyssal { background-color: hsl(var(--rarity-abyssal)); }
-  .bg-rarity-volcanic { background-color: hsl(var(--rarity-volcanic)); }
-  .bg-rarity-platinum { background-color: hsl(var(--rarity-platinum)); }
-  .bg-rarity-legends { background-color: hsl(var(--rarity-legends)); }
-  .bg-rarity-cosmic { background-color: hsl(var(--rarity-cosmic)); }
-  .border-rarity-common { border-color: hsl(var(--rarity-common)); }
-  .border-rarity-uncommon { border-color: hsl(var(--rarity-uncommon)); }
-  .border-rarity-legendary { border-color: hsl(var(--rarity-legendary)); }
-  .border-rarity-abyssal { border-color: hsl(var(--rarity-abyssal)); }
-  .border-rarity-volcanic { border-color: hsl(var(--rarity-volcanic)); }
-  .border-rarity-platinum { border-color: hsl(var(--rarity-platinum)); }
-  .border-rarity-legends { border-color: hsl(var(--rarity-legends)); }
-  .border-rarity-cosmic { border-color: hsl(var(--rarity-cosmic)); }
-
-  .world-bg-2 {
-    background: radial-gradient(circle at 50% 30%, hsl(0 70% 35%), hsl(0 80% 15%) 60%, hsl(0 90% 8%));
-  }
-
-  .world-bg-3 {
-    background: radial-gradient(circle at 50% 30%, hsl(140 60% 35%), hsl(140 70% 15%) 60%, hsl(140 80% 8%));
-  }
-
-  /* Main menu descent */
-  .font-body {
-    font-family: 'Inter', sans-serif;
-  }
-  /* Glass panel for HUD overlays that sit on a live fishing scene */
-  .hud-panel {
-    background: hsl(var(--abyss) / 0.75);
-    border: 1px solid hsl(var(--lure) / 0.15);
-    backdrop-filter: blur(8px);
-  }
-  .menu-surface {
-    background:
-      linear-gradient(
-        180deg,
-        hsl(198 70% 16%) 0%,
-        hsl(202 62% 11%) 22%,
-        hsl(205 55% 7%) 55%,
-        hsl(var(--abyss)) 100%
-      );
-  }
-  .menu-caustic {
-    background:
-      radial-gradient(60% 40% at 22% 0%, hsl(var(--lure) / 0.28), transparent 70%),
-      radial-gradient(50% 45% at 82% 6%, hsl(var(--biolume) / 0.18), transparent 72%);
-    filter: blur(6px);
-    animation: menu-caustic-drift 22s ease-in-out infinite alternate;
-  }
-  .menu-panel {
-    background: hsl(var(--menu-panel) / 0.85);
-    border: 1px solid hsl(var(--lure) / 0.16);
-    box-shadow: 0 24px 60px hsl(205 60% 2% / 0.5), inset 0 1px 0 hsl(var(--lure) / 0.06);
-    backdrop-filter: blur(12px);
-  }
-  .menu-row {
-    background: hsl(var(--menu-raised) / 0.5);
-    border: 1px solid hsl(var(--border) / 0.6);
-  }
-  .menu-row:hover {
-    background: hsl(var(--menu-raised) / 0.8);
-    border-color: hsl(var(--lure) / 0.35);
-  }
-
   @keyframes menu-caustic-drift {
     from { transform: translate3d(-3%, 0, 0) scale(1.05); opacity: 0.7; }
     to   { transform: translate3d(4%, 2%, 0) scale(1.15); opacity: 1; }
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .menu-caustic { animation: none; }
-  }
-
-  /* Shared ground for every non-menu game screen */
-  .deep-shell {
-    background:
-      linear-gradient(
-        180deg,
-        hsl(202 52% 12%) 0%,
-        hsl(205 50% 8%) 40%,
-        hsl(var(--abyss)) 100%
-      );
-  }
-
-  /* Location survey — bathymetric chart the spot cards sit on */
-  .chart-surface {
-    background:
-      radial-gradient(
-        130% 90% at 50% -12%,
-        hsl(198 58% 15%) 0%,
-        hsl(204 54% 8%) 44%,
-        hsl(var(--abyss)) 100%
-      );
   }
 }

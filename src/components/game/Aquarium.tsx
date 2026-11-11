@@ -86,11 +86,11 @@ export default function Aquarium({ player, onMoveToSector, onBack }: Props) {
           variant="outline"
           size="sm"
           onClick={onBack}
-          className="shrink-0 border-lure/25 bg-menu-panel/70 backdrop-blur"
+          className="shrink-0 border-lure/25 bg-menu-panel/70 backdrop-blur-sm"
         >
           {t('loc.back')}
         </Button>
-        <h1 className="font-display text-2xl font-black uppercase tracking-wide text-white drop-shadow sm:text-3xl">
+        <h1 className="font-display text-2xl font-black uppercase tracking-wide text-white drop-shadow-sm sm:text-3xl">
           {t('aquarium.title')}
         </h1>
         <Button
@@ -112,7 +112,7 @@ export default function Aquarium({ player, onMoveToSector, onBack }: Props) {
             ))}
           </div>
 
-          <div className="relative z-0 mt-5 h-[58vh] overflow-hidden rounded-2xl border border-lure/25 bg-cyan-950/30 shadow-2xl backdrop-blur-sm">
+          <div className="relative z-0 mt-5 h-[58vh] overflow-hidden rounded-2xl border border-lure/25 bg-cyan-950/30 shadow-2xl backdrop-blur-xs">
             {currentFish.length === 0 ? (
               <div className="flex h-full items-center justify-center px-6 text-center text-cyan-50/80">
                 <div>

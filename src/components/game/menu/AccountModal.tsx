@@ -66,10 +66,10 @@ export default function AccountModal({ open, onClose }: Props) {
         <motion.div
           initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
           onClick={onClose}
-          className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-4 bg-black/70 p-4 backdrop-blur-sm"
+          className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-4 bg-black/70 p-4 backdrop-blur-xs"
         >
           {tutorialVisible && (
-            <div className="max-w-sm rounded-xl border border-lure/40 bg-card/90 p-4 text-left shadow-lg backdrop-blur" role="status" onClick={e => e.stopPropagation()}>
+            <div className="max-w-sm rounded-xl border border-lure/40 bg-card/90 p-4 text-left shadow-lg backdrop-blur-sm" role="status" onClick={e => e.stopPropagation()}>
               <h2 className="mb-1 text-base font-bold text-foreground">{t('menu.tutorialTitle')}</h2>
               <p className="mb-3 text-sm leading-relaxed text-muted-foreground">{t('menu.tutorialBody')}</p>
               <Button type="button" size="sm" onClick={dismissTutorial} className="min-h-10">{t('menu.tutorialDismiss')}</Button>
