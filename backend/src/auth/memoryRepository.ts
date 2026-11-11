@@ -135,9 +135,9 @@ export function createMemoryAuthRepository(outbox: EmailOutbox = createMemoryOut
       });
       return id;
     },
-    async countDecoyChallengesSince(email, since) {
+    async countDecoyChallengesSince(email, purpose, since) {
       const target = email.toLowerCase();
-      return [...challenges.values()].filter(c => c.decoyEmail === target && c.createdAt >= since).length;
+      return [...challenges.values()].filter(c => c.decoyEmail === target && c.purpose === purpose && c.createdAt >= since).length;
     },
     async consumeChallenge(id) {
       const c = challenges.get(id);
@@ -145,8 +145,8 @@ export function createMemoryAuthRepository(outbox: EmailOutbox = createMemoryOut
       challenges.set(id, { ...c, consumedAt: new Date() });
       return true;
     },
-    async countChallengesSince(userId, since) {
-      return [...challenges.values()].filter(c => c.userId === userId && c.createdAt >= since).length;
+    async countChallengesSince(userId, purpose, since) {
+      return [...challenges.values()].filter(c => c.userId === userId && c.purpose === purpose && c.createdAt >= since).length;
     },
     countEmailsTo: (address, since) => outbox.countRecipientSince(address, since),
     async markEmailVerified(userId) {

@@ -37,7 +37,8 @@ describe('memory auth repository (verification + challenges)', () => {
     expect((await repo.findChallenge(other))?.invalidatedAt).toBeNull();
     expect((await repo.findChallenge(b))?.invalidatedAt).toBeNull();
     expect(await repo.consumeChallenge(a)).toBe(false);
-    expect(await repo.countChallengesSince(u.id, new Date(Date.now() - 1000))).toBe(3);
+    expect(await repo.countChallengesSince(u.id, 'verify_email', new Date(Date.now() - 1000))).toBe(2);
+    expect(await repo.countChallengesSince(u.id, 'login', new Date(Date.now() - 1000))).toBe(1);
     expect(await repo.countEmailsTo(u.email, new Date(Date.now() - 1000))).toBe(3);
   });
 
@@ -66,7 +67,8 @@ describe('memory auth repository (verification + challenges)', () => {
     const live = await repo.findChallenge(second);
     expect(live?.userId).toBeNull();
     expect(live?.decoyEmail).toBe('ghost@example.com');
-    expect(await repo.countDecoyChallengesSince('GHOST@example.com', new Date(Date.now() - 1000))).toBe(2);
+    expect(await repo.countDecoyChallengesSince('GHOST@example.com', 'login', new Date(Date.now() - 1000))).toBe(2);
+    expect(await repo.countDecoyChallengesSince('GHOST@example.com', 'password_reset', new Date(Date.now() - 1000))).toBe(0);
   });
 
   it('consumeChallenge is true only once', async () => {

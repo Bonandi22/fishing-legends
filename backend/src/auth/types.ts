@@ -95,10 +95,10 @@ export type AuthRepository = {
     codeHash: string;
     expiresAt: Date;
   }): Promise<string>;
-  countDecoyChallengesSince(email: string, since: Date): Promise<number>;
+  countDecoyChallengesSince(email: string, purpose: ChallengePurpose, since: Date): Promise<number>;
   /** Atomic: true only for the single caller that consumed a live challenge. */
   consumeChallenge(id: string): Promise<boolean>;
-  countChallengesSince(userId: string, since: Date): Promise<number>;
+  countChallengesSince(userId: string, purpose: ChallengePurpose, since: Date): Promise<number>;
   /** Emails (any kind/status) addressed to the address since `since`. */
   countEmailsTo(address: string, since: Date): Promise<number>;
   markEmailVerified(userId: string): Promise<void>;

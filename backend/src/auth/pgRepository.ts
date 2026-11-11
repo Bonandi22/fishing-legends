@@ -223,9 +223,9 @@ export function createPgAuthRepository(db: Database, outbox: EmailOutbox = creat
       });
       return id;
     },
-    async countDecoyChallengesSince(email, since) {
+    async countDecoyChallengesSince(email, purpose, since) {
       const [row] = await db.select({ n: sql<number>`count(*)::int` }).from(authChallenges)
-        .where(and(eq(authChallenges.decoyEmail, email.toLowerCase()), gte(authChallenges.createdAt, since)));
+        .where(and(eq(authChallenges.decoyEmail, email.toLowerCase()), eq(authChallenges.purpose, purpose), gte(authChallenges.createdAt, since)));
       return row?.n ?? 0;
     },
     async consumeChallenge(id) {
@@ -239,9 +239,9 @@ export function createPgAuthRepository(db: Database, outbox: EmailOutbox = creat
         .returning({ id: authChallenges.id });
       return rows.length === 1;
     },
-    async countChallengesSince(userId, since) {
+    async countChallengesSince(userId, purpose, since) {
       const [row] = await db.select({ n: sql<number>`count(*)::int` }).from(authChallenges)
-        .where(and(eq(authChallenges.userId, userId), gte(authChallenges.createdAt, since)));
+        .where(and(eq(authChallenges.userId, userId), eq(authChallenges.purpose, purpose), gte(authChallenges.createdAt, since)));
       return row?.n ?? 0;
     },
     countEmailsTo: (address, since) => outbox.countRecipientSince(address, since),

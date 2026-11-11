@@ -40,7 +40,7 @@ export function createChallengeService(
 
   async function issue(user: AuthUser, purpose: ChallengePurpose): Promise<string> {
     const since = new Date(now().getTime() - HOUR_MS);
-    if ((await repo.countChallengesSince(user.id, since)) >= MAX_CHALLENGES_PER_HOUR) {
+    if ((await repo.countChallengesSince(user.id, purpose, since)) >= MAX_CHALLENGES_PER_HOUR) {
       throw new Error('RESEND_TOO_SOON');
     }
     const code = newCode();
@@ -66,7 +66,7 @@ export function createChallengeService(
    */
   async function issueDecoy(email: string, purpose: ChallengePurpose): Promise<string> {
     const since = new Date(now().getTime() - HOUR_MS);
-    if ((await repo.countDecoyChallengesSince(email, since)) >= MAX_CHALLENGES_PER_HOUR) {
+    if ((await repo.countDecoyChallengesSince(email, purpose, since)) >= MAX_CHALLENGES_PER_HOUR) {
       throw new Error('RESEND_TOO_SOON');
     }
     return repo.createDecoyChallenge({ email, purpose, codeHash: hash(newCode()), expiresAt: expiry() });

@@ -67,15 +67,15 @@ describe('password recovery', () => {
     expect(latestEmailTo(b, creds.email)?.locale).toBe('ja');
   });
 
-  it('the hourly cap passes through the same on both paths (6th request is 429)', async () => {
+  it('the hourly cap is per purpose: a recently active account and an unknown email hit 429 on the same (6th) request', async () => {
     const a = await app();
-    await registerSession(a, creds);
-    // The known account already used one challenge for registration, so it reaches the cap sooner.
-    for (const [email, allowed] of [[creds.email, 4], ['ghost@x.com', 5]] as const) {
-      for (let i = 0; i < allowed; i++) expect((await forgot(a, email)).statusCode).toBe(202);
-      const over = await forgot(a, email);
-      expect(over.statusCode).toBe(429);
-      expect(over.json().error.code).toBe('RESEND_TOO_SOON');
+    await registerSession(a, creds); // verify_email challenge
+    await post(a, '/api/v1/auth/login', { email: creds.email, password: creds.password }); // login challenge
+    for (const email of [creds.email, 'ghost@x.com']) {
+      for (let i = 0; i < 5; i++) expect((await forgot(a, email)).statusCode).toBe(202);
+      const sixth = await forgot(a, email);
+      expect(sixth.statusCode).toBe(429);
+      expect(sixth.json().error.code).toBe('RESEND_TOO_SOON');
     }
   });
 
@@ -173,5 +173,20 @@ describe('password recovery', () => {
       expect(res.statusCode).toBe(403);
       expect(res.json().error.code).toBe('CSRF_FAILED');
     }
+  });
+
+  it('a failing password update leaves sessions revoked and the old password working', async () => {
+    const a = await app();
+    const session = await registerSession(a, creds);
+    const refreshToken = jarFrom(session.headers['set-cookie']).dbl_rt;
+    const f = await forgot(a, creds.email);
+    const repo = handles(a).authRepository;
+    const original = repo.updatePasswordHash;
+    repo.updatePasswordHash = async () => { throw new Error('boom'); };
+    const res = await reset(a, { challengeId: f.json().challengeId, code: latestCodeFor(a, creds.email), newPassword: NEW_PASSWORD });
+    repo.updatePasswordHash = original;
+    expect(res.statusCode).toBe(500);
+    expect((await a.inject({ method: 'POST', url: '/api/v1/auth/refresh', cookies: { dbl_rt: refreshToken } })).statusCode).toBe(401);
+    expect((await post(a, '/api/v1/auth/login', { email: creds.email, password: creds.password })).statusCode).toBe(202);
   });
 });

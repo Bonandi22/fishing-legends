@@ -257,7 +257,8 @@ describe('pg auth repository (integration)', () => {
     expect((await repo.findChallenge(second))?.invalidatedAt).toBeNull();
     expect((await repo.findChallenge(other))?.invalidatedAt).toBeNull();
     expect(await repo.consumeChallenge(first)).toBe(false);
-    expect(await repo.countChallengesSince(user.id, new Date(Date.now() - 60_000))).toBe(3);
+    expect(await repo.countChallengesSince(user.id, 'verify_email', new Date(Date.now() - 60_000))).toBe(2);
+    expect(await repo.countChallengesSince(user.id, 'login', new Date(Date.now() - 60_000))).toBe(1);
     expect(await repo.countEmailsTo(user.email, new Date(Date.now() - 60_000))).toBe(3);
 
     const rows = await harness.db.select().from(emailOutbox).where(eq(emailOutbox.challengeId, second));
@@ -327,7 +328,8 @@ describe('pg auth repository (integration)', () => {
     const live = await repo.findChallenge(second);
     expect(live?.userId).toBeNull();
     expect(live?.decoyEmail).toBe('ghost@example.com');
-    expect(await repo.countDecoyChallengesSince('GHOST@example.com', new Date(Date.now() - 60_000))).toBe(2);
+    expect(await repo.countDecoyChallengesSince('GHOST@example.com', 'login', new Date(Date.now() - 60_000))).toBe(2);
+    expect(await repo.countDecoyChallengesSince('GHOST@example.com', 'password_reset', new Date(Date.now() - 60_000))).toBe(0);
     expect(await repo.countEmailsTo('ghost@example.com', new Date(Date.now() - 60_000))).toBe(0);
   });
 

@@ -156,9 +156,11 @@ export function createAuthService(repository: AuthRepository, config: AuthServic
       if (issue) throw new WeakPasswordError(issue);
       if (await verifyPassword(input.newPassword, user.passwordHash)) throw new WeakPasswordError('SAME_AS_CURRENT');
 
-      // Ordered so the worst partial failure is "password changed, sessions revoked".
-      await repository.updatePasswordHash(user.id, await hash(input.newPassword));
+      // No transaction spans these writes and the code is already consumed, so the order
+      // decides the worst case: sessions revoked but password unchanged (the user simply
+      // requests a new code), never a changed password with live sessions.
       await repository.revokeAllSessions(user.id);
+      await repository.updatePasswordHash(user.id, await hash(input.newPassword));
       // The code proved possession of the mailbox.
       await markVerified(user);
     },
