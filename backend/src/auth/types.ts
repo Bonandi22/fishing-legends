@@ -102,11 +102,11 @@ export type AuthRepository = {
   /** Emails (any status; any kind unless `kind` is given) addressed to the address since `since`. */
   countEmailsTo(address: string, since: Date, kind?: EmailKind): Promise<number>;
   /**
-   * Failed code attempts on challenges created since `since` that belong to the
-   * address: the account registered with it (any purpose) and decoys issued for it.
+   * Failed code attempts on `purpose` challenges created since `since` that belong
+   * to the address: the account registered with it and decoys issued for it.
    * Every reserved attempt counts as failed except the one that consumed a challenge.
    */
-  countFailedAttemptsSince(email: string, since: Date): Promise<number>;
+  countFailedAttemptsSince(email: string, purpose: ChallengePurpose, since: Date): Promise<number>;
   markEmailVerified(userId: string): Promise<void>;
   setLocale(userId: string, locale: Locale): Promise<void>;
   revokeAllSessions(userId: string): Promise<void>;

@@ -2481,3 +2481,25 @@ Confirmação de email, login em 2 passos e recuperação de palavra-passe, em 3
   comuns; os access tokens sobrevivem a um reset até 15 min; os testes de
   integração partilham a fila `email.send` com um worker local (parar o
   `email-worker` do Docker); textos dos emails sem revisão de nativos.
+
+### Fase 11 — correções da revisão final (I1–I4)
+
+- **Limite por endereço (I1)**: os códigos `login`, e `verify_email` emitidos a
+  partir do login, já não contam para o limite de 10 emails/h por endereço (só são
+  emitidos depois de a palavra-passe estar certa). O limite de 5/h por utilizador e
+  finalidade continua. O `register_attempt_notice` é enviado no máximo 1 vez por
+  endereço a cada 24 h, e a resposta do registo não muda.
+- **Reset (I2)**: a política da palavra-passe (com o username) e `SAME_AS_CURRENT`
+  correm depois de o código bater certo e antes de o consumir. Uma palavra-passe
+  rejeitada gasta uma tentativa, não o código. O cliente valida também com o
+  username e mostra a mensagem de `CHALLENGE_NOT_FOUND` no ecrã para onde volta.
+- **Outbox (I3)**: `markSent`/`markFailed` substituem `payload.code` por
+  `[redacted]`. A limpeza horária apaga as linhas `sent`/`failed` com mais de
+  7 dias. Os backups feitos antes desta correção podem conter códigos em claro,
+  todos expirados há muito (validade de 30 min).
+- **Teto de tentativas (I4)**: no máximo 30 tentativas falhadas em 24 h (janela
+  móvel) por (endereço normalizado, finalidade). Depois disso a verificação
+  responde `TOO_MANY_ATTEMPTS` sem gastar tentativa, até a janela limpar. A conta
+  e as iscas para o mesmo endereço partilham o orçamento, por isso não há oráculo.
+  Esgotar o orçamento do reset não bloqueia `login` nem `verify_email`. Sem
+  migração: o teto é calculado a partir de `auth_challenges.attempts`.

@@ -245,11 +245,12 @@ export function createPgAuthRepository(db: Database, outbox: EmailOutbox = creat
       return row?.n ?? 0;
     },
     countEmailsTo: (address, since, kind) => outbox.countRecipientSince(address, since, kind),
-    async countFailedAttemptsSince(email, since) {
+    async countFailedAttemptsSince(email, purpose, since) {
       const target = email.toLowerCase();
       const [row] = await db.select({
         n: sql<number>`coalesce(sum(${authChallenges.attempts} - (${authChallenges.consumedAt} IS NOT NULL)::int), 0)::int`,
       }).from(authChallenges).where(and(
+        eq(authChallenges.purpose, purpose),
         gte(authChallenges.createdAt, since),
         sql`(${authChallenges.decoyEmail} = ${target}
           OR ${authChallenges.userId} IN (SELECT ${users.id} FROM ${users} WHERE ${users.email} = ${target}))`,

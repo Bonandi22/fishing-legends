@@ -115,7 +115,7 @@ describe('memory auth repository (createChallenge guard)', () => {
     const r = createMemoryAuthRepository(createMemoryOutbox());
     await expect(r.createChallenge(input(crypto.randomUUID(), 'x@example.com'))).rejects.toThrow('USER_NOT_FOUND');
   });
-  it('countFailedAttemptsSince sums failed attempts for an address: its account and decoys to it', async () => {
+  it('countFailedAttemptsSince sums failed attempts per (address, purpose): its account and decoys to it', async () => {
     const u = await repo.createUser(newUser());
     const real = await repo.createChallenge(input(u.id, u.email, 'login'));
     await repo.reserveAttempt(real, 5);
@@ -130,8 +130,11 @@ describe('memory auth repository (createChallenge guard)', () => {
     await repo.reserveAttempt(ghost, 5);
 
     const since = new Date(Date.now() - 60_000);
-    expect(await repo.countFailedAttemptsSince(u.email, since)).toBe(4);
-    expect(await repo.countFailedAttemptsSince('GHOST@example.com', since)).toBe(1);
-    expect(await repo.countFailedAttemptsSince(u.email, new Date(Date.now() + 60_000))).toBe(0);
+    expect(await repo.countFailedAttemptsSince(u.email, 'login', since)).toBe(2);
+    expect(await repo.countFailedAttemptsSince(u.email, 'verify_email', since)).toBe(1);
+    expect(await repo.countFailedAttemptsSince(u.email, 'password_reset', since)).toBe(1);
+    expect(await repo.countFailedAttemptsSince('GHOST@example.com', 'login', since)).toBe(1);
+    expect(await repo.countFailedAttemptsSince('GHOST@example.com', 'password_reset', since)).toBe(0);
+    expect(await repo.countFailedAttemptsSince(u.email, 'login', new Date(Date.now() + 60_000))).toBe(0);
   });
 });

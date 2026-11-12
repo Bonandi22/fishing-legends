@@ -6,7 +6,10 @@ import type { AuthRepository, AuthUser, ChallengePurpose } from './types.js';
 const HOUR_MS = 60 * 60 * 1000;
 const MAX_CHALLENGES_PER_HOUR = 5;
 const MAX_EMAILS_PER_ADDRESS_PER_HOUR = 10;
-/** Rolling ceiling on failed code attempts per address, across all purposes. */
+/**
+ * Rolling ceiling on failed code attempts per (address, purpose). Per purpose so
+ * that exhausting the anonymous reset budget cannot block login or verify_email.
+ */
 const MAX_FAILED_ATTEMPTS_PER_WINDOW = 30;
 const FAILED_ATTEMPTS_WINDOW_MS = 24 * HOUR_MS;
 
@@ -107,13 +110,14 @@ export function createChallengeService(
     const user = challenge.userId === null ? null : await repo.findUserById(challenge.userId);
     if (challenge.userId !== null && !user) throw new Error('CHALLENGE_NOT_FOUND');
 
-    // Long-horizon ceiling, keyed on the address so a decoy issued for a registered
-    // address shares that account's budget (otherwise the two would diverge and
-    // reveal that the address exists). Checked before reserving: a refused guess
-    // costs nothing, and the right code is refused too until the window clears.
+    // Long-horizon ceiling per (address, purpose), keyed on the address so a decoy
+    // issued for a registered address shares that account's budget (otherwise the
+    // two would diverge and reveal that the address exists). Checked before
+    // reserving: a refused guess costs nothing, and the right code is refused too
+    // until the window clears.
     const subject = user ? user.email : challenge.decoyEmail ?? '';
     const windowStart = new Date(now().getTime() - FAILED_ATTEMPTS_WINDOW_MS);
-    if ((await repo.countFailedAttemptsSince(subject, windowStart)) >= MAX_FAILED_ATTEMPTS_PER_WINDOW) {
+    if ((await repo.countFailedAttemptsSince(subject, challenge.purpose, windowStart)) >= MAX_FAILED_ATTEMPTS_PER_WINDOW) {
       throw new Error('TOO_MANY_ATTEMPTS');
     }
 

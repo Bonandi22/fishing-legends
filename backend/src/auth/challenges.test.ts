@@ -231,70 +231,70 @@ describe('challenge service', () => {
     expect(await svc.isStillValid(id)).toBe(false);
   });
 
-  // I4: a rolling 24h ceiling of 30 failed attempts per subject, across purposes.
+  // I4: a rolling 24h ceiling of 30 failed attempts per (address, purpose).
+  const outcome = async (fn: () => Promise<unknown>) => {
+    try { await fn(); return 'ok'; } catch (e) { return (e as Error).message; }
+  };
+  /** `failures` wrong guesses on fresh challenges of one purpose; steps the clock past the 5/h issue cap. */
+  async function burn(start: (p: ChallengePurpose) => Promise<string>, purpose: ChallengePurpose, failures: number) {
+    let done = 0;
+    for (let i = 0; done < failures; i++) {
+      if (i > 0 && i % 5 === 0) advance(3601);
+      const id = await start(purpose);
+      for (let k = 0; k < 5 && done < failures; k++, done++) {
+        expect(await outcome(() => svc.verify(id, 'abcdef', [purpose]))).toMatch(/INVALID_CODE|TOO_MANY_ATTEMPTS/);
+      }
+    }
+  }
+
   describe.each([
     ['real account', (p: ChallengePurpose) => svc.issue(user, p)],
     ['decoy', (p: ChallengePurpose) => svc.issueDecoy('ghost@example.com', p)],
   ])('24h failed-attempt ceiling: %s', (_name, start) => {
-    const outcome = async (fn: () => Promise<unknown>) => {
-      try { await fn(); return 'ok'; } catch (e) { return (e as Error).message; }
-    };
-    async function burn(failures: number) {
-      const purposes: ChallengePurpose[] = ['login', 'password_reset', 'verify_email'];
-      let done = 0;
-      for (let i = 0; done < failures; i++) {
-        const purpose = purposes[i % 3];
-        const id = await start(purpose);
-        for (let k = 0; k < 5 && done < failures; k++, done++) {
-          expect(await outcome(() => svc.verify(id, 'abcdef', [purpose]))).toMatch(/INVALID_CODE|TOO_MANY_ATTEMPTS/);
-        }
-      }
-    }
+    it('30 failed reset guesses trip the reset ceiling (no attempt spent) until 24h pass; login is unaffected', async () => {
+      await burn(start, 'password_reset', 30);
+      const reset = await start('password_reset');
+      expect(await outcome(() => svc.verify(reset, 'abcdef', ['password_reset']))).toBe('TOO_MANY_ATTEMPTS');
+      expect((await repo.findChallenge(reset))?.attempts).toBe(0);
 
-    it('after 30 failures every verify answers TOO_MANY_ATTEMPTS without spending an attempt, until 24h pass', async () => {
-      await burn(30);
-      const id = await start('login');
-      expect(await outcome(() => svc.verify(id, 'abcdef', ['login']))).toBe('TOO_MANY_ATTEMPTS');
-      expect((await repo.findChallenge(id))?.attempts).toBe(0);
+      const login = await start('login');
+      expect(await outcome(() => svc.verify(login, 'abcdef', ['login']))).toBe('INVALID_CODE');
+
       advance(24 * 3600 + 1);
-      const fresh = await start('login');
-      expect(await outcome(() => svc.verify(fresh, 'abcdef', ['login']))).toBe('INVALID_CODE');
+      const fresh = await start('password_reset');
+      expect(await outcome(() => svc.verify(fresh, 'abcdef', ['password_reset']))).toBe('INVALID_CODE');
     });
   });
 
-  it('after 30 failures the right code is refused too (real account)', async () => {
-    const purposes: ChallengePurpose[] = ['login', 'password_reset', 'verify_email'];
-    for (let i = 0; i < 6; i++) {
-      const id = await svc.issue(user, purposes[i % 3]);
-      for (let k = 0; k < 5; k++) await svc.verify(id, 'abcdef', [purposes[i % 3]]).catch(() => undefined);
-    }
+  it('30 failed reset guesses still let the owner get and use login and verify_email codes', async () => {
+    await burn(p => svc.issue(user, p), 'password_reset', 30);
+    const login = await svc.issue(user, 'login');
+    expect((await svc.verify(login, await sentCode(), ['login'])).id).toBe(user.id);
+    const verify = await svc.issue(user, 'verify_email', { afterPasswordCheck: true });
+    expect((await svc.verify(verify, await sentCode(), ['verify_email'])).id).toBe(user.id);
+    const reset = await svc.issue(user, 'password_reset');
+    await expect(svc.verify(reset, await sentCode(), ['password_reset'])).rejects.toThrow('TOO_MANY_ATTEMPTS');
+  });
+
+  it('after 30 failed login guesses the right login code is refused too', async () => {
+    await burn(p => svc.issue(user, p), 'login', 30);
     const id = await svc.issue(user, 'login');
-    const code = await sentCode();
-    await expect(svc.verify(id, code, ['login'])).rejects.toThrow('TOO_MANY_ATTEMPTS');
+    await expect(svc.verify(id, await sentCode(), ['login'])).rejects.toThrow('TOO_MANY_ATTEMPTS');
   });
 
   // A register-existing decoy targets a real address. If it had its own budget, an
   // attacker could compare it against `forgot` to learn whether the address exists.
-  it('failures on decoys for a real address count against that account', async () => {
-    const purposes: ChallengePurpose[] = ['login', 'password_reset', 'verify_email'];
-    for (let i = 0; i < 6; i++) {
-      const id = await svc.issueDecoy(user.email.toUpperCase(), purposes[i % 3]);
-      for (let k = 0; k < 5; k++) await svc.verify(id, 'abcdef', [purposes[i % 3]]).catch(() => undefined);
-    }
-    const id = await svc.issue(user, 'login');
-    const code = await sentCode();
-    await expect(svc.verify(id, code, ['login'])).rejects.toThrow('TOO_MANY_ATTEMPTS');
+  it('failures on decoys for a real address count against that account, per purpose', async () => {
+    await burn(p => svc.issueDecoy(user.email.toUpperCase(), p), 'verify_email', 30);
+    const verify = await svc.issue(user, 'verify_email');
+    await expect(svc.verify(verify, await sentCode(), ['verify_email'])).rejects.toThrow('TOO_MANY_ATTEMPTS');
+    const login = await svc.issue(user, 'login');
+    expect((await svc.verify(login, await sentCode(), ['login'])).id).toBe(user.id);
   });
 
   it('29 failures still allow the right code', async () => {
-    const purposes: ChallengePurpose[] = ['login', 'password_reset', 'verify_email'];
-    let done = 0;
-    for (let i = 0; done < 29; i++) {
-      const id = await svc.issue(user, purposes[i % 3]);
-      for (let k = 0; k < 5 && done < 29; k++, done++) await svc.verify(id, 'abcdef', [purposes[i % 3]]).catch(() => undefined);
-    }
-    const id = await svc.issue(user, 'login');
-    const code = await sentCode();
-    expect((await svc.verify(id, code, ['login'])).id).toBe(user.id);
+    await burn(p => svc.issue(user, p), 'password_reset', 29);
+    const id = await svc.issue(user, 'password_reset');
+    expect((await svc.verify(id, await sentCode(), ['password_reset'])).id).toBe(user.id);
   });
 });
