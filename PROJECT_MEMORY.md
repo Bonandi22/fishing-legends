@@ -2454,3 +2454,30 @@ nenhum PR fica aberto.
 - **Follow-ups opcionais**: subir `@react-three/fiber` / ajustar tipo de sombra;
   trocar `tailwindcss-animate` por `tw-animate-css`; CI ainda em Node 20 (EOL
   desde abril de 2026) — subir para 22/24.
+
+## Fase 11 · bloco 1 — Segurança da conta
+
+Confirmação de email, login em 2 passos e recuperação de palavra-passe, em 3 PRs.
+
+- **O que foi construído**
+  - PR 1 (#51): pipeline de email — tabela `email_outbox`, RabbitMQ (`email.send`,
+    `email.dead`), `email-worker` com SMTP (Mailpit em dev).
+  - PR 2 (#52): confirmação de email obrigatória, 2 passos no login e política de
+    palavras-passe NIST.
+  - PR 3: recuperação de palavra-passe por código de email + limpeza periódica
+    (contas nunca confirmadas após 7 dias; desafios, reais e isca, expirados há
+    mais de 24 h), executada pelo `email-worker` no arranque e de hora a hora.
+- **Decisões do utilizador**: 2 passos em todo o login com palavra-passe quando o
+  refresh token expirou; confirmação de email obrigatória; RabbitMQ como broker;
+  política NIST; códigos válidos 30 minutos.
+- **Endurecimento vindo das revisões**: lease no outbox; worker sai se perder o
+  broker (o supervisor reinicia); reserva atómica de tentativas; desafios isca
+  guardados (sem enumeração de emails); limites por finalidade; rate limit e CSRF
+  por rota correspondida (não pelo URL cru).
+- **Migrações**: 0023 (`email_outbox`), 0024 (verificação + `auth_challenges`),
+  0025 (desafios isca). Sem 0026: a limpeza de desafios filtra por `expires_at`
+  numa tabela que a própria limpeza mantém pequena, sem índice novo.
+- **Em aberto**: pequenos ajustes de UX; +45 kB no bundle da lista de palavras-passe
+  comuns; os access tokens sobrevivem a um reset até 15 min; os testes de
+  integração partilham a fila `email.send` com um worker local (parar o
+  `email-worker` do Docker); textos dos emails sem revisão de nativos.

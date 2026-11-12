@@ -91,6 +91,34 @@ database is destructive and must never run unattended.
 4. Restart the backend: `docker compose -f docker-compose.prod.yaml --env-file .env.production start backend`.
 5. Smoke-test the app before considering the incident resolved.
 
+## Email pipeline (confirmation, 2-step login, password recovery)
+
+Account emails go backend -> `email_outbox` (PostgreSQL) -> RabbitMQ queue
+`email.send` -> the `email-worker` service -> your SMTP provider. The stack runs
+two extra services for this: `rabbitmq` and `email-worker`. The worker also runs
+the hourly cleanup (accounts never confirmed within 7 days; challenges expired
+for more than 24 h) and logs only the two counts.
+
+**Choosing an SMTP provider.** Any provider with SMTP relay works (Amazon SES,
+Mailgun, Postmark, Brevo, ...). Create a sending domain, publish its SPF and
+DKIM records, and put the relay host/port/credentials in `SMTP_HOST`,
+`SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASSWORD`, and a sender on that
+domain in `EMAIL_FROM`. Without working SMTP, nobody can confirm an account or
+log in, so test with a real mailbox right after deploying.
+
+**What to watch.**
+
+- `email_outbox` rows stuck in `pending` or `failed` for more than a few minutes:
+  `SELECT status, count(*), min(created_at) FROM email_outbox GROUP BY status;`
+  A growing `pending` means the worker or broker is down; `failed` means the SMTP
+  provider is rejecting messages (check `docker compose logs email-worker`).
+- The `email.dead` queue in the RabbitMQ management UI (messages the worker gave
+  up on). Investigate before purging.
+- The worker exits when it loses the broker connection and relies on the
+  container restart policy; repeated restarts mean RabbitMQ is unreachable.
+- `AUTH_CODE_SECRET` must be >= 32 random chars and `RABBITMQ_URL` passwords must
+  be percent-encoded (see `.env.production.example`).
+
 ## Environment variable reference
 
 See `.env.production.example` for the full list with inline comments. The
