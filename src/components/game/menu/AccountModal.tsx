@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type FormEvent } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { User, LogIn } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -59,7 +59,18 @@ export default function AccountModal({ open, onClose }: Props) {
     return t('auth.err.NETWORK');
   };
 
-  const submit = async () => {
+  const canSubmit = !busy && !!email && !!password && (mode === 'login' || signupValid);
+
+  // Forget everything typed into the form, so the next person on this device
+  // does not find the previous account's email or password pre-filled.
+  const resetForm = () => {
+    setMode('login'); setEmail(''); setPassword(''); setUsername(''); setFlag('🌍');
+    setError(null); setNotice(null); setChallenge(null); setForgotOpen(false);
+  };
+
+  const submit = async (e?: FormEvent) => {
+    e?.preventDefault();
+    if (!canSubmit) return;
     setError(null); setBusy(true);
     try {
       if (mode === 'login') {
@@ -82,8 +93,12 @@ export default function AccountModal({ open, onClose }: Props) {
         <motion.div
           initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
           onClick={onClose}
-          className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-4 bg-black/70 p-4 backdrop-blur-xs"
+          className="fixed inset-0 z-50 overflow-y-auto bg-black/70 backdrop-blur-xs"
         >
+          {/* min-h-full + justify-center centres short content but lets tall
+              content (tutorial + signup form) grow and scroll instead of being
+              clipped above and below the viewport. */}
+          <div className="flex min-h-full flex-col items-center justify-center gap-4 p-4">
           {tutorialVisible && (
             <div className="max-w-sm rounded-xl border border-lure/40 bg-card/90 p-4 text-left shadow-lg backdrop-blur-sm" role="status" onClick={e => e.stopPropagation()}>
               <h2 className="mb-1 text-base font-bold text-foreground">{t('menu.tutorialTitle')}</h2>
@@ -109,7 +124,7 @@ export default function AccountModal({ open, onClose }: Props) {
               <div className="space-y-3 text-center">
                 <p className="text-lg font-semibold text-foreground">{user.username}</p>
                 <p className="text-sm text-muted-foreground">{user.email}</p>
-                <Button variant="outline" className="w-full" onClick={() => { void logout(); onClose(); }}>{t('auth.logoutCta')}</Button>
+                <Button variant="outline" className="w-full" onClick={() => { void logout(); resetForm(); onClose(); }}>{t('auth.logoutCta')}</Button>
               </div>
             ) : challenge ? (
               <CodeStep
@@ -136,7 +151,7 @@ export default function AccountModal({ open, onClose }: Props) {
                 onBack={() => { setForgotOpen(false); setError(null); }}
               />
             ) : (
-              <div className="space-y-3">
+              <form className="space-y-3" onSubmit={submit} noValidate>
                 {notice && <p role="status" className="rounded-lg bg-lure/10 px-3 py-2 text-sm text-foreground">{notice}</p>}
                 {error &&<p className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p>}
 
@@ -172,7 +187,7 @@ export default function AccountModal({ open, onClose }: Props) {
                   </>
                 )}
 
-                <Button onClick={submit} disabled={busy || !email || !password || (mode === 'signup' && !signupValid)} className="w-full">
+                <Button type="submit" disabled={!canSubmit} className="w-full">
                   {mode === 'signup' ? t('auth.signupCta') : t('auth.loginCta')}
                 </Button>
                 {mode === 'login' && (
@@ -186,9 +201,10 @@ export default function AccountModal({ open, onClose }: Props) {
                   <LogIn className="h-3.5 w-3.5" />
                   {mode === 'signup' ? t('auth.haveAccount') : t('auth.needAccount')}
                 </button>
-              </div>
+              </form>
             )}
           </motion.div>
+          </div>
         </motion.div>
       )}
     </AnimatePresence>

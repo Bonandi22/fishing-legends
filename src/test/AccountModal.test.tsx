@@ -127,4 +127,42 @@ describe('AccountModal', () => {
     fireEvent.click(screen.getByRole('button', { name: /sair/i }));
     await waitFor(() => expect(endpoints.logout).toHaveBeenCalled());
   });
+
+  it('login: submitting the form (Enter) sends the login request', async () => {
+    const login = vi.spyOn(endpoints, 'login').mockResolvedValue({ challengeId: 'ch-1' });
+    renderModal();
+    fireEvent.click(await screen.findByRole('button', { name: /já tenho conta/i }));
+    fireEvent.change(screen.getByLabelText(/e-mail/i), { target: { value: 'e@x.com' } });
+    const pw = screen.getByLabelText(/palavra-passe/i);
+    fireEvent.change(pw, { target: { value: 'a-strong-password' } });
+    fireEvent.submit(pw.closest('form')!);
+    await waitFor(() => expect(login).toHaveBeenCalledWith({ email: 'e@x.com', password: 'a-strong-password', locale: 'pt' }));
+  });
+
+  it('login: submitting an incomplete form does nothing', async () => {
+    const login = vi.spyOn(endpoints, 'login').mockResolvedValue({ challengeId: 'ch-1' });
+    renderModal();
+    fireEvent.click(await screen.findByRole('button', { name: /já tenho conta/i }));
+    fireEvent.change(screen.getByLabelText(/e-mail/i), { target: { value: 'e@x.com' } });
+    fireEvent.submit(screen.getByLabelText(/palavra-passe/i).closest('form')!);
+    await new Promise(r => setTimeout(r, 0));
+    expect(login).not.toHaveBeenCalled();
+  });
+
+  it('after log-out the form no longer holds the previous credentials', async () => {
+    vi.spyOn(endpoints, 'login').mockResolvedValue({ challengeId: 'ch-1' });
+    vi.spyOn(endpoints, 'verifyLogin').mockResolvedValue({ user: { id: 'u1', username: 'Angler', email: 'e@x.com', country: 'BR' } } as never);
+    vi.spyOn(endpoints, 'logout').mockResolvedValue();
+    renderModal();
+    fireEvent.click(await screen.findByRole('button', { name: /já tenho conta/i }));
+    fireEvent.change(screen.getByLabelText(/e-mail/i), { target: { value: 'e@x.com' } });
+    fireEvent.change(screen.getByLabelText(/palavra-passe/i), { target: { value: 'a-strong-password' } });
+    fireEvent.click(screen.getByRole('button', { name: /^entrar$/i }));
+    fireEvent.change(await screen.findByLabelText(/código de 6 dígitos/i), { target: { value: '123456' } });
+    fireEvent.click(screen.getByRole('button', { name: /confirmar/i }));
+    fireEvent.click(await screen.findByRole('button', { name: /sair/i }));
+    const email = await screen.findByLabelText(/e-mail/i);
+    expect(email).toHaveValue('');
+    expect(screen.getByLabelText(/palavra-passe/i)).toHaveValue('');
+  });
 });
