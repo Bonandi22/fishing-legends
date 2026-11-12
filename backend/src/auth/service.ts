@@ -7,6 +7,8 @@ import { WeakPasswordError } from '../http/errors.js';
 import { checkPassword } from '../../../src/game/passwordPolicy.js';
 
 const ACCESS_ALGORITHM = 'HS256';
+/** At most one register_attempt_notice per address in this window. */
+const NOTICE_INTERVAL_MS = 24 * 60 * 60 * 1000;
 
 export type AuthServiceConfig = {
   accessTokenSecret: Uint8Array;
@@ -55,11 +57,15 @@ export function createAuthService(repository: AuthRepository, config: AuthServic
   /**
    * The answer for an address that already has an account: indistinguishable from a
    * fresh registration (a challenge id that never verifies), while the owner gets a
-   * notice instead of a code. The notice is skipped silently at the address cap.
+   * notice instead of a code. The notice is skipped silently at the address cap,
+   * and after the first one in 24h: repeats tell the owner nothing new and would
+   * only help fill the address cap.
    */
   async function existingEmailResponse(email: string, locale: Locale): Promise<{ challengeId: string }> {
     const challengeId = await challenges.issueDecoy(email, 'verify_email');
-    if (!(await challenges.addressAtCap(email))) {
+    const noticeSentRecently =
+      (await repository.countEmailsTo(email, new Date(Date.now() - NOTICE_INTERVAL_MS), 'register_attempt_notice')) > 0;
+    if (!noticeSentRecently && !(await challenges.addressAtCap(email))) {
       await repository.enqueueEmail({ kind: 'register_attempt_notice', to: email, locale, payload: {} });
     }
     return { challengeId };
@@ -120,15 +126,56 @@ export function createAuthService(repository: AuthRepository, config: AuthServic
         user = { ...user, locale: input.locale };
       }
 
-      // An account that never confirmed its email (including every pre-existing
-      // one) confirms it now, with the same code screen.
-      const purpose = user.emailVerifiedAt ? 'login' : 'verify_email';
-      return { challengeId: await challenges.issue(user, purpose) };
+      // Always a `login` code, even for an account that never confirmed its email
+      // (including every pre-existing one): verifyLogin marks it verified, since the
+      // code proves the mailbox. Not `verify_email`, whose failed-attempt budget is
+      // shared with the decoys anyone can create by registering the address, which
+      // would let a stranger lock the owner out of login.
+      return { challengeId: await challenges.issue(user, 'login') };
     },
 
     async verifyLogin(input: { challengeId: string; code: string }) {
+      // Still accepts `verify_email`: challenges issued by login before it switched to
+      // `login` codes stay usable until they expire.
       const user = await challenges.verify(input.challengeId, input.code, ['login', 'verify_email']);
       return startSession(await markVerified(user));
+    },
+
+    /**
+     * Always answers with a challenge id. An unknown email gets a stored decoy that
+     * goes through the same cap and cooldown, so the answer reveals nothing.
+     */
+    async forgotPassword(input: { email: string; locale?: Locale }) {
+      const email = input.email.trim().toLowerCase();
+      const user = await repository.findUserByEmail(email);
+      if (!user || user.status !== 'active') {
+        return { challengeId: await challenges.issueDecoy(email, 'password_reset') };
+      }
+      if (input.locale && input.locale !== user.locale) {
+        await repository.setLocale(user.id, input.locale);
+        user.locale = input.locale;
+      }
+      return { challengeId: await challenges.issue(user, 'password_reset') };
+    },
+
+    async resetPassword(input: { challengeId: string; code: string; newPassword: string }) {
+      // The code is checked first: a wrong code costs an attempt and nothing else leaks.
+      // A decoy challenge never verifies, so it can never reach the policy check. The
+      // policy runs before the code is consumed, so a rejected password costs one
+      // attempt, not the code.
+      const user = await challenges.verify(input.challengeId, input.code, ['password_reset'], async u => {
+        const issue = checkPassword(input.newPassword, { email: u.email, username: u.username });
+        if (issue) throw new WeakPasswordError(issue);
+        if (await verifyPassword(input.newPassword, u.passwordHash)) throw new WeakPasswordError('SAME_AS_CURRENT');
+      });
+
+      // No transaction spans these writes and the code is already consumed, so the order
+      // decides the worst case: sessions revoked but password unchanged (the user simply
+      // requests a new code), never a changed password with live sessions.
+      await repository.revokeAllSessions(user.id);
+      await repository.updatePasswordHash(user.id, await hash(input.newPassword));
+      // The code proved possession of the mailbox.
+      await markVerified(user);
     },
 
     async resendChallenge(challengeId: string) {

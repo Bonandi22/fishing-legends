@@ -1,4 +1,4 @@
-# CLAUDE.md — Deep Blue Lure
+# CLAUDE.md — Fishing Legends
 
 Instruções para agentes trabalhando neste repositório. Complementa, não substitui,
 o histórico técnico em [`PROJECT_MEMORY.md`](./PROJECT_MEMORY.md), que continua sendo
@@ -6,7 +6,7 @@ a fonte de verdade sobre roadmap, decisões e pontos de parada.
 
 ## O que é o projeto
 
-Deep Blue Lure é um jogo de pesca 3D (React + TypeScript + Three.js). Historicamente
+Fishing Legends é um jogo de pesca 3D (React + TypeScript + Three.js). Historicamente
 uma SPA frontend-only com persistência em `localStorage`. Está em curso a Task 6:
 transformar o frontend num cliente de uma **API backend confiável** (Fastify + PostgreSQL)
 que passa a ser autoridade sobre identidade, progresso, economia, inventário, capturas,
@@ -73,10 +73,11 @@ docker/nginx.conf         Config nginx do frontend em produção
 | `npm run dev` | Servidor Vite (frontend) |
 | `npm run build` | Build de produção do frontend |
 | `npm test` | Vitest — testes **unitários** do frontend + backend (repos em memória). Exclui `*.integration.test.ts` |
-| `npm run test:integration` | Testes do backend contra PostgreSQL real (`vitest.integration.config.ts`). Precisa de `DATABASE_URL`/`TEST_DATABASE_URL` |
+| `npm run test:integration` | Testes do backend contra PostgreSQL real (`vitest.integration.config.ts`). Precisa de `DATABASE_URL`/`TEST_DATABASE_URL`. Localmente, parar antes o `email-worker` do Docker (`docker compose stop email-worker`): ele consome a fila partilhada `email.send` e rouba mensagens dos testes |
 | `npm run lint` | ESLint (config lint `**/*.{ts,tsx}` com globals de browser — impreciso para backend) |
 | `npm run backend:dev` | Backend via `tsx` (precisa de `ACCESS_TOKEN_SECRET` com ≥32 chars) |
 | `npm run backend:start` | Igual, sem watch — usado no contentor |
+| `npm run backend:email-worker` | Worker de email (consome `email.send` do RabbitMQ, envia por SMTP e corre a limpeza horária de contas não confirmadas/desafios expirados). No Docker sobe como serviço `email-worker`; Mailpit (caixa de entrada de dev) em http://localhost:8025 |
 | `npm run backend:typecheck` | `tsc --noEmit -p tsconfig.backend.json` |
 | `npm run backend:db:migrate` | Aplica `backend/migrations/*.sql` pendentes via `backend/src/db/migrate.ts` (precisa de `DATABASE_URL`) |
 | `npm run backend:db:generate` | `drizzle-kit generate` — só para **detetar drift** entre `db/schema.ts` e as migrações à mão (saída em `backend/migrations/generated/`, git-ignored) |

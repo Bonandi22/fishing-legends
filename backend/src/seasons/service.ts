@@ -13,7 +13,7 @@ export function createMemorySeasonsService() {
   const season: Season = {
     id: 'local-season-1',
     seasonKey: 'season-1',
-    name: 'Deep Blue Season 1',
+    name: 'Fishing Legends Season 1',
     status: 'active',
     startsAt: '2026-01-01T00:00:00.000Z',
     endsAt: '2099-01-01T00:00:00.000Z',

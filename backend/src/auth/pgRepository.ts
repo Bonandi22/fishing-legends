@@ -223,9 +223,9 @@ export function createPgAuthRepository(db: Database, outbox: EmailOutbox = creat
       });
       return id;
     },
-    async countDecoyChallengesSince(email, since) {
+    async countDecoyChallengesSince(email, purpose, since) {
       const [row] = await db.select({ n: sql<number>`count(*)::int` }).from(authChallenges)
-        .where(and(eq(authChallenges.decoyEmail, email.toLowerCase()), gte(authChallenges.createdAt, since)));
+        .where(and(eq(authChallenges.decoyEmail, email.toLowerCase()), eq(authChallenges.purpose, purpose), gte(authChallenges.createdAt, since)));
       return row?.n ?? 0;
     },
     async consumeChallenge(id) {
@@ -239,12 +239,24 @@ export function createPgAuthRepository(db: Database, outbox: EmailOutbox = creat
         .returning({ id: authChallenges.id });
       return rows.length === 1;
     },
-    async countChallengesSince(userId, since) {
+    async countChallengesSince(userId, purpose, since) {
       const [row] = await db.select({ n: sql<number>`count(*)::int` }).from(authChallenges)
-        .where(and(eq(authChallenges.userId, userId), gte(authChallenges.createdAt, since)));
+        .where(and(eq(authChallenges.userId, userId), eq(authChallenges.purpose, purpose), gte(authChallenges.createdAt, since)));
       return row?.n ?? 0;
     },
-    countEmailsTo: (address, since) => outbox.countRecipientSince(address, since),
+    countEmailsTo: (address, since, kind) => outbox.countRecipientSince(address, since, kind),
+    async countFailedAttemptsSince(email, purpose, since) {
+      const target = email.toLowerCase();
+      const [row] = await db.select({
+        n: sql<number>`coalesce(sum(${authChallenges.attempts} - (${authChallenges.consumedAt} IS NOT NULL)::int), 0)::int`,
+      }).from(authChallenges).where(and(
+        eq(authChallenges.purpose, purpose),
+        gte(authChallenges.createdAt, since),
+        sql`(${authChallenges.decoyEmail} = ${target}
+          OR ${authChallenges.userId} IN (SELECT ${users.id} FROM ${users} WHERE ${users.email} = ${target}))`,
+      ));
+      return row?.n ?? 0;
+    },
     async markEmailVerified(userId) {
       await db.update(users).set({ emailVerifiedAt: sql`now()`, updatedAt: new Date() }).where(eq(users.id, userId));
     },
@@ -271,6 +283,13 @@ export function createPgAuthRepository(db: Database, outbox: EmailOutbox = creat
         .returning({ id: users.id });
       return rows.length;
     },
+    async deleteExpiredChallenges(olderThan) {
+      const rows = await db.delete(authChallenges)
+        .where(lt(authChallenges.expiresAt, olderThan))
+        .returning({ id: authChallenges.id });
+      return rows.length;
+    },
+    deleteFinishedEmails: olderThan => outbox.deleteFinishedBefore(olderThan),
     async enqueueEmail(msg) {
       await outbox.enqueue(msg);
     },

@@ -1,11 +1,14 @@
 import { randomUUID } from 'node:crypto';
-import { and, eq, gte, inArray, sql } from 'drizzle-orm';
+import { and, eq, gte, inArray, lt, sql } from 'drizzle-orm';
 import type { Database } from '../db/client.js';
 import { emailOutbox } from '../db/schema.js';
-import { OUTBOX_CLAIM_LEASE_SECONDS, type EmailKind, type EmailMessage, type EmailOutbox, type Locale, type OutboxStatus } from './types.js';
+import { OUTBOX_CLAIM_LEASE_SECONDS, REDACTED_CODE, type EmailKind, type EmailMessage, type EmailOutbox, type Locale, type OutboxStatus } from './types.js';
 
 /** A Drizzle transaction (what `db.transaction(async tx => ...)` hands you). */
 export type DatabaseTransaction = Parameters<Parameters<Database['transaction']>[0]>[0];
+
+/** The payload with its code (if any) replaced by REDACTED_CODE; other keys are kept. */
+const redactedPayload = sql`jsonb_set(${emailOutbox.payload}, '{code}', to_jsonb(${REDACTED_CODE}::text), false)`;
 
 export function createPgOutbox(db: Database): EmailOutbox {
   return {
@@ -58,24 +61,34 @@ export function createPgOutbox(db: Database): EmailOutbox {
     },
     async markSent(id) {
       await db.update(emailOutbox)
-        .set({ status: 'sent', sentAt: sql`now()` })
+        .set({ status: 'sent', sentAt: sql`now()`, payload: redactedPayload })
         .where(eq(emailOutbox.id, id));
     },
     async markFailed(id, reason) {
       await db.update(emailOutbox)
-        .set({ status: 'failed', lastError: reason, attempts: sql`${emailOutbox.attempts} + 1` })
+        .set({ status: 'failed', lastError: reason, attempts: sql`${emailOutbox.attempts} + 1`, payload: redactedPayload })
         .where(eq(emailOutbox.id, id));
     },
     async status(id) {
       const [row] = await db.select({ status: emailOutbox.status }).from(emailOutbox).where(eq(emailOutbox.id, id));
       return (row?.status as OutboxStatus | undefined) ?? null;
     },
-    async countRecipientSince(to, since) {
+    async countRecipientSince(to, since, kind) {
       const [row] = await db
         .select({ n: sql<number>`count(*)::int` })
         .from(emailOutbox)
-        .where(and(eq(emailOutbox.recipient, to.toLowerCase()), gte(emailOutbox.createdAt, since)));
+        .where(and(
+          eq(emailOutbox.recipient, to.toLowerCase()),
+          gte(emailOutbox.createdAt, since),
+          kind ? eq(emailOutbox.kind, kind) : undefined,
+        ));
       return row?.n ?? 0;
+    },
+    async deleteFinishedBefore(olderThan) {
+      const rows = await db.delete(emailOutbox)
+        .where(and(inArray(emailOutbox.status, ['sent', 'failed']), lt(emailOutbox.createdAt, olderThan)))
+        .returning({ id: emailOutbox.id });
+      return rows.length;
     },
   };
 }

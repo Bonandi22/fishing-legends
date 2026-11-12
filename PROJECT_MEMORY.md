@@ -2454,3 +2454,69 @@ nenhum PR fica aberto.
 - **Follow-ups opcionais**: subir `@react-three/fiber` / ajustar tipo de sombra;
   trocar `tailwindcss-animate` por `tw-animate-css`; CI ainda em Node 20 (EOL
   desde abril de 2026) — subir para 22/24.
+
+## Fase 11 · bloco 1 — Segurança da conta
+
+Confirmação de email, login em 2 passos e recuperação de palavra-passe, em 3 PRs.
+
+- **O que foi construído**
+  - PR 1 (#51): pipeline de email — tabela `email_outbox`, RabbitMQ (`email.send`,
+    `email.dead`), `email-worker` com SMTP (Mailpit em dev).
+  - PR 2 (#52): confirmação de email obrigatória, 2 passos no login e política de
+    palavras-passe NIST.
+  - PR 3: recuperação de palavra-passe por código de email + limpeza periódica
+    (contas nunca confirmadas após 7 dias; desafios, reais e isca, expirados há
+    mais de 24 h), executada pelo `email-worker` no arranque e de hora a hora.
+- **Decisões do utilizador**: 2 passos em todo o login com palavra-passe quando o
+  refresh token expirou; confirmação de email obrigatória; RabbitMQ como broker;
+  política NIST; códigos válidos 30 minutos.
+- **Endurecimento vindo das revisões**: lease no outbox; worker sai se perder o
+  broker (o supervisor reinicia); reserva atómica de tentativas; desafios isca
+  guardados (sem enumeração de emails); limites por finalidade; rate limit e CSRF
+  por rota correspondida (não pelo URL cru).
+- **Migrações**: 0023 (`email_outbox`), 0024 (verificação + `auth_challenges`),
+  0025 (desafios isca). Sem 0026: a limpeza de desafios filtra por `expires_at`
+  numa tabela que a própria limpeza mantém pequena, sem índice novo.
+- **Em aberto**: pequenos ajustes de UX; +45 kB no bundle da lista de palavras-passe
+  comuns; os access tokens sobrevivem a um reset até 15 min; os testes de
+  integração partilham a fila `email.send` com um worker local (parar o
+  `email-worker` do Docker); textos dos emails sem revisão de nativos.
+
+### Fase 11 — correções da revisão final (I1–I4)
+
+- **Limite por endereço (I1)**: os códigos `login` já não contam para o limite de 10 emails/h por endereço (só são
+  emitidos depois de a palavra-passe estar certa). O limite de 5/h por utilizador e
+  finalidade continua. O `register_attempt_notice` é enviado no máximo 1 vez por
+  endereço a cada 24 h, e a resposta do registo não muda.
+- **Reset (I2)**: a política da palavra-passe (com o username) e `SAME_AS_CURRENT`
+  correm depois de o código bater certo e antes de o consumir. Uma palavra-passe
+  rejeitada gasta uma tentativa, não o código. O cliente valida também com o
+  username e mostra a mensagem de `CHALLENGE_NOT_FOUND` no ecrã para onde volta.
+- **Outbox (I3)**: `markSent`/`markFailed` substituem `payload.code` por
+  `[redacted]`. A limpeza horária apaga as linhas `sent`/`failed` com mais de
+  7 dias. Os backups feitos antes desta correção podem conter códigos em claro,
+  todos expirados há muito (validade de 30 min).
+- **Teto de tentativas (I4)**: no máximo 30 tentativas falhadas em 24 h (janela
+  móvel) por (endereço normalizado, finalidade). Depois disso a verificação
+  responde `TOO_MANY_ATTEMPTS` sem gastar tentativa, até a janela limpar. A conta
+  e as iscas para o mesmo endereço partilham o orçamento, por isso não há oráculo.
+  Esgotar o orçamento do reset não bloqueia `login` nem `verify_email`. Sem
+  migração: o teto é calculado a partir de `auth_challenges.attempts`.
+- **Login sempre com código `login` (N1, re-revisão)**: o `login()` emite sempre um
+  código `login`, também para contas por confirmar (incl. legadas); o `verifyLogin`
+  marca o email como confirmado. Os códigos `verify_email` só vêm do registo — assim
+  falhar 30 iscas de registo para um endereço não bloqueia o login. Risco aceite: um
+  anónimo pode bloquear o reset de um endereço por 24 h (o login continua a funcionar).
+
+## Renomeação do jogo: Fishing Legends (2026-11-12)
+
+Decisão do utilizador: o nome principal do jogo passa a ser **Fishing Legends**.
+Mudado em tudo o que é visível: logótipo do menu (`MainMenu.tsx` `WORDMARK`), `<title>`/meta
+de `index.html`, assuntos e textos dos emails (`backend/src/email/templates.ts`, 6 idiomas),
+remetente `EMAIL_FROM` (default em `config/env.ts` + `.env.*.example`), título da OpenAPI,
+temporada em memória (`Fishing Legends Season 1`), README, `CLAUDE.md`, `backend/docs/ARCHITECTURE.md`.
+**Mantidos de propósito** (identificadores de infraestrutura, não marca): nome do repositório
+GitHub/pasta, utilizador/base `deepbluelure` (compose, CI, `.env` examples), nomes de projeto
+compose e volumes `deep_blue_lure_prod_*` (renomear órfãos os dados de produção), `service:
+'deep-blue-lure-api'` do `/health`, e a semente interna do hash de timing do login. As
+referências históricas neste ficheiro ficam como estão.

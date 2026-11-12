@@ -20,6 +20,12 @@ export function verifyLogin(input: CodeInput): Promise<{ user: ApiUser }> {
 export function resendCode(input: { challengeId: string }): Promise<{ challengeId: string }> {
   return apiFetch('/auth/challenges/resend', { method: 'POST', body: input });
 }
+export function forgotPassword(input: { email: string; locale?: string }): Promise<{ challengeId: string }> {
+  return apiFetch('/auth/password/forgot', { method: 'POST', body: input });
+}
+export function resetPassword(input: { challengeId: string; code: string; newPassword: string }): Promise<void> {
+  return apiFetch('/auth/password/reset', { method: 'POST', body: input });
+}
 export function logout(): Promise<void> {
   return apiFetch('/auth/logout', { method: 'POST' });
 }

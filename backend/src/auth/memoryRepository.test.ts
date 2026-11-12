@@ -37,7 +37,8 @@ describe('memory auth repository (verification + challenges)', () => {
     expect((await repo.findChallenge(other))?.invalidatedAt).toBeNull();
     expect((await repo.findChallenge(b))?.invalidatedAt).toBeNull();
     expect(await repo.consumeChallenge(a)).toBe(false);
-    expect(await repo.countChallengesSince(u.id, new Date(Date.now() - 1000))).toBe(3);
+    expect(await repo.countChallengesSince(u.id, 'verify_email', new Date(Date.now() - 1000))).toBe(2);
+    expect(await repo.countChallengesSince(u.id, 'login', new Date(Date.now() - 1000))).toBe(1);
     expect(await repo.countEmailsTo(u.email, new Date(Date.now() - 1000))).toBe(3);
   });
 
@@ -66,7 +67,8 @@ describe('memory auth repository (verification + challenges)', () => {
     const live = await repo.findChallenge(second);
     expect(live?.userId).toBeNull();
     expect(live?.decoyEmail).toBe('ghost@example.com');
-    expect(await repo.countDecoyChallengesSince('GHOST@example.com', new Date(Date.now() - 1000))).toBe(2);
+    expect(await repo.countDecoyChallengesSince('GHOST@example.com', 'login', new Date(Date.now() - 1000))).toBe(2);
+    expect(await repo.countDecoyChallengesSince('GHOST@example.com', 'password_reset', new Date(Date.now() - 1000))).toBe(0);
   });
 
   it('consumeChallenge is true only once', async () => {
@@ -112,5 +114,27 @@ describe('memory auth repository (createChallenge guard)', () => {
   it('throws for an unknown user', async () => {
     const r = createMemoryAuthRepository(createMemoryOutbox());
     await expect(r.createChallenge(input(crypto.randomUUID(), 'x@example.com'))).rejects.toThrow('USER_NOT_FOUND');
+  });
+  it('countFailedAttemptsSince sums failed attempts per (address, purpose): its account and decoys to it', async () => {
+    const u = await repo.createUser(newUser());
+    const real = await repo.createChallenge(input(u.id, u.email, 'login'));
+    await repo.reserveAttempt(real, 5);
+    await repo.reserveAttempt(real, 5);
+    const ok = await repo.createChallenge(input(u.id, u.email));
+    await repo.reserveAttempt(ok, 5);
+    await repo.reserveAttempt(ok, 5);
+    await repo.consumeChallenge(ok); // the last attempt succeeded: 1 failure here
+    const decoy = await repo.createDecoyChallenge({ email: u.email.toUpperCase(), purpose: 'password_reset', codeHash: 'x', expiresAt: later() });
+    await repo.reserveAttempt(decoy, 5);
+    const ghost = await repo.createDecoyChallenge({ email: 'ghost@example.com', purpose: 'login', codeHash: 'x', expiresAt: later() });
+    await repo.reserveAttempt(ghost, 5);
+
+    const since = new Date(Date.now() - 60_000);
+    expect(await repo.countFailedAttemptsSince(u.email, 'login', since)).toBe(2);
+    expect(await repo.countFailedAttemptsSince(u.email, 'verify_email', since)).toBe(1);
+    expect(await repo.countFailedAttemptsSince(u.email, 'password_reset', since)).toBe(1);
+    expect(await repo.countFailedAttemptsSince('GHOST@example.com', 'login', since)).toBe(1);
+    expect(await repo.countFailedAttemptsSince('GHOST@example.com', 'password_reset', since)).toBe(0);
+    expect(await repo.countFailedAttemptsSince(u.email, 'login', new Date(Date.now() + 60_000))).toBe(0);
   });
 });

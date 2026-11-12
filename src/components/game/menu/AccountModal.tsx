@@ -11,6 +11,7 @@ import { COUNTRIES, flagToIso2 } from '@/game/auth/countries';
 import { TUTORIAL_KEY } from './account';
 import CodeStep from './CodeStep';
 import PasswordStrength from './PasswordStrength';
+import ForgotPassword from './ForgotPassword';
 
 type Mode = 'signup' | 'login';
 
@@ -26,7 +27,9 @@ export default function AccountModal({ open, onClose }: Props) {
   const [flag, setFlag] = useState('🌍');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [challenge, setChallenge] = useState<{ id: string; kind: 'register' | 'login'; resendAvailableAt: number } | null>(null);
+  const [challenge, setChallenge] = useState<{ id: string; kind: 'register' | 'login' | 'reset'; resendAvailableAt: number } | null>(null);
+  const [forgotOpen, setForgotOpen] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
   const [tutorialVisible, setTutorialVisible] = useState(() => localStorage.getItem(TUTORIAL_KEY) !== '1');
 
   const dismissTutorial = () => { localStorage.setItem(TUTORIAL_KEY, '1'); setTutorialVisible(false); };
@@ -110,14 +113,32 @@ export default function AccountModal({ open, onClose }: Props) {
               </div>
             ) : challenge ? (
               <CodeStep
-                challengeId={challenge.id} kind={challenge.kind} resendAvailableAt={challenge.resendAvailableAt}
+                challengeId={challenge.id} kind={challenge.kind} email={emailTrimmed}
+                username={usernameValid ? usernameTrimmed : undefined} resendAvailableAt={challenge.resendAvailableAt}
                 onResent={(id, at) => setChallenge(c => c && { ...c, id, resendAvailableAt: at })}
-                onDone={() => { setChallenge(null); setPassword(''); onClose(); }}
-                onBack={() => { setChallenge(null); setError(null); }}
+                onDone={() => {
+                  const wasReset = challenge.kind === 'reset';
+                  setChallenge(null); setPassword('');
+                  if (wasReset) {
+                    // Recovery never logs in: back to the login form, email kept.
+                    setForgotOpen(false); setMode('login'); setNotice(t('auth.reset.done'));
+                  } else {
+                    onClose();
+                  }
+                }}
+                onBack={message => { setChallenge(null); setError(message ?? null); if (challenge.kind !== 'reset') setForgotOpen(false); }}
+              />
+            ) : forgotOpen ? (
+              <ForgotPassword
+                initialEmail={email}
+                initialError={error}
+                onSent={(sentEmail, id) => { setEmail(sentEmail); setError(null); setChallenge({ id, kind: 'reset', resendAvailableAt: Date.now() + 60_000 }); }}
+                onBack={() => { setForgotOpen(false); setError(null); }}
               />
             ) : (
               <div className="space-y-3">
-                {error && <p className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p>}
+                {notice && <p role="status" className="rounded-lg bg-lure/10 px-3 py-2 text-sm text-foreground">{notice}</p>}
+                {error &&<p className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p>}
 
                 <label className="block text-xs text-muted-foreground" htmlFor="acc-email">{t('auth.emailLabel')}</label>
                 <Input id="acc-email" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="email@exemplo.com" />
@@ -154,7 +175,13 @@ export default function AccountModal({ open, onClose }: Props) {
                 <Button onClick={submit} disabled={busy || !email || !password || (mode === 'signup' && !signupValid)} className="w-full">
                   {mode === 'signup' ? t('auth.signupCta') : t('auth.loginCta')}
                 </Button>
-                <button type="button" onClick={() => { setMode(mode === 'signup' ? 'login' : 'signup'); setError(null); }}
+                {mode === 'login' && (
+                  <button type="button" onClick={() => { setForgotOpen(true); setError(null); setNotice(null); }}
+                    className="block w-full text-center text-sm text-muted-foreground hover:text-foreground hover:underline">
+                    {t('auth.forgot.link')}
+                  </button>
+                )}
+                <button type="button" onClick={() => { setMode(mode === 'signup' ? 'login' : 'signup'); setError(null); setNotice(null); }}
                   className="mt-1 flex w-full items-center justify-center gap-1.5 text-sm text-lure hover:underline">
                   <LogIn className="h-3.5 w-3.5" />
                   {mode === 'signup' ? t('auth.haveAccount') : t('auth.needAccount')}

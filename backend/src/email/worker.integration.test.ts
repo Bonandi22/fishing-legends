@@ -31,7 +31,7 @@ describe.skipIf(!rabbitmqUrl || !mailpitUrl)('email worker (RabbitMQ + Mailpit)'
     const sender = createSmtpSender({
       rabbitmqUrl,
       smtp: { host: process.env.SMTP_HOST ?? 'localhost', port: Number(process.env.SMTP_PORT ?? 1025), secure: false },
-      from: 'Deep Blue Lure <no-reply@example.com>',
+      from: 'Fishing Legends <no-reply@example.com>',
     });
     const worker = createEmailWorker({ sender, outbox, isCodeStillValid: async () => true, ttlMinutes: 30 });
     const consumer = await startEmailConsumer({ url: rabbitmqUrl!, worker });

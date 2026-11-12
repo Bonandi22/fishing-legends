@@ -10,6 +10,7 @@ describe('memory email outbox', () => {
     return {
       outbox,
       setCreatedAt: async (id, at) => outbox.setCreatedAt(id, at),
+      payloadOf: async id => outbox.messages().find(m => m.id === id)?.payload,
       expireLeases: async () => {
         offsetMs += (OUTBOX_CLAIM_LEASE_SECONDS + 1) * 1000;
       },

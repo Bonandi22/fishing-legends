@@ -170,10 +170,10 @@ describe('Ranking (authenticated, server leaderboard)', () => {
   it('shows the active season name when one is returned', async () => {
     vi.mocked(endpoints.getLeaderboard).mockResolvedValue({ season: 'all-time', total: 0, entries: [] });
     vi.mocked(endpoints.getCurrentSeason).mockResolvedValue({
-      season: { id: 's1', seasonKey: 'season-1', name: 'Deep Blue Season 1', status: 'active', startsAt: '2026-01-01T00:00:00.000Z', endsAt: '2099-01-01T00:00:00.000Z', rulesetVersion: 'v1', minimumLevel: 1 },
+      season: { id: 's1', seasonKey: 'season-1', name: 'Fishing Legends Season 1', status: 'active', startsAt: '2026-01-01T00:00:00.000Z', endsAt: '2099-01-01T00:00:00.000Z', rulesetVersion: 'v1', minimumLevel: 1 },
     });
 
     renderRanking();
-    await waitFor(() => expect(screen.getByText((_, el) => el?.textContent === 'Deep Blue Season 1 · Temporada ativa')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText((_, el) => el?.textContent === 'Fishing Legends Season 1 · Temporada ativa')).toBeInTheDocument());
   });
 });

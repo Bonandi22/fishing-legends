@@ -23,7 +23,7 @@ const envSchema = z.object({
   SMTP_SECURE: z.enum(['true', 'false']).default('false'),
   SMTP_USER: z.string().trim().optional(),
   SMTP_PASSWORD: z.string().optional(),
-  EMAIL_FROM: z.string().trim().min(1).default('Deep Blue Lure <no-reply@localhost>'),
+  EMAIL_FROM: z.string().trim().min(1).default('Fishing Legends <no-reply@localhost>'),
   AUTH_CODE_SECRET: z.string().min(32).optional(),
   AUTH_CODE_TTL_SECONDS: z.coerce.number().int().positive().default(1800),
   AUTH_CODE_MAX_ATTEMPTS: z.coerce.number().int().positive().default(5),

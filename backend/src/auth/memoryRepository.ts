@@ -135,9 +135,9 @@ export function createMemoryAuthRepository(outbox: EmailOutbox = createMemoryOut
       });
       return id;
     },
-    async countDecoyChallengesSince(email, since) {
+    async countDecoyChallengesSince(email, purpose, since) {
       const target = email.toLowerCase();
-      return [...challenges.values()].filter(c => c.decoyEmail === target && c.createdAt >= since).length;
+      return [...challenges.values()].filter(c => c.decoyEmail === target && c.purpose === purpose && c.createdAt >= since).length;
     },
     async consumeChallenge(id) {
       const c = challenges.get(id);
@@ -145,10 +145,20 @@ export function createMemoryAuthRepository(outbox: EmailOutbox = createMemoryOut
       challenges.set(id, { ...c, consumedAt: new Date() });
       return true;
     },
-    async countChallengesSince(userId, since) {
-      return [...challenges.values()].filter(c => c.userId === userId && c.createdAt >= since).length;
+    async countChallengesSince(userId, purpose, since) {
+      return [...challenges.values()].filter(c => c.userId === userId && c.purpose === purpose && c.createdAt >= since).length;
     },
-    countEmailsTo: (address, since) => outbox.countRecipientSince(address, since),
+    countEmailsTo: (address, since, kind) => outbox.countRecipientSince(address, since, kind),
+    async countFailedAttemptsSince(email, purpose, since) {
+      const target = email.toLowerCase();
+      let failed = 0;
+      for (const c of challenges.values()) {
+        if (c.createdAt < since || c.purpose !== purpose) continue;
+        const owner = c.userId ? users.get(c.userId)?.email : c.decoyEmail;
+        if (owner === target) failed += c.attempts - (c.consumedAt ? 1 : 0);
+      }
+      return failed;
+    },
     async markEmailVerified(userId) {
       const user = users.get(userId);
       if (user) users.set(userId, { ...user, emailVerifiedAt: new Date() });
@@ -179,6 +189,17 @@ export function createMemoryAuthRepository(outbox: EmailOutbox = createMemoryOut
       }
       return deleted;
     },
+    async deleteExpiredChallenges(olderThan) {
+      let deleted = 0;
+      for (const [id, c] of [...challenges]) {
+        if (c.expiresAt < olderThan) {
+          challenges.delete(id);
+          deleted += 1;
+        }
+      }
+      return deleted;
+    },
+    deleteFinishedEmails: olderThan => outbox.deleteFinishedBefore(olderThan),
     async enqueueEmail(msg) {
       await outbox.enqueue(msg);
     },
