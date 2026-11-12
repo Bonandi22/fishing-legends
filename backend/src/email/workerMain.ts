@@ -7,6 +7,7 @@ import { startEmailConsumer } from './consumer.js';
 import { codeValidityCheck } from './codeValidity.js';
 import { createPgAuthRepository } from '../auth/pgRepository.js';
 import { createChallengeService } from '../auth/challenges.js';
+import { runAuthCleanup } from '../auth/cleanup.js';
 
 // Never log payloads, codes or credentials: only error names.
 async function main() {
@@ -22,7 +23,8 @@ async function main() {
   const db = createDatabase(databaseUrl);
   const sender = createSmtpSender(config.email);
   const outbox = createPgOutbox(db);
-  const challenges = createChallengeService(createPgAuthRepository(db, outbox), config.authCodes);
+  const authRepo = createPgAuthRepository(db, outbox);
+  const challenges = createChallengeService(authRepo, config.authCodes);
   const worker = createEmailWorker({
     sender,
     outbox,
@@ -42,9 +44,23 @@ async function main() {
   });
   console.log('email-worker: consuming email.send');
 
+  // Purge never-confirmed accounts and long-expired challenges: at startup, then hourly.
+  const cleanup = async () => {
+    try {
+      const { unverified, challenges: expired } = await runAuthCleanup(authRepo, new Date());
+      console.log(`email-worker: cleanup removed ${unverified} unverified accounts, ${expired} challenges`);
+    } catch (err) {
+      console.error('email-worker: cleanup failed:', err instanceof Error ? err.name : 'unknown');
+    }
+  };
+  void cleanup();
+  const cleanupTimer = setInterval(() => void cleanup(), 3_600_000);
+  cleanupTimer.unref();
+
   const shutdown = async (signal: string) => {
     if (shuttingDown) return;
     shuttingDown = true;
+    clearInterval(cleanupTimer);
     console.log(`email-worker: ${signal} received, shutting down`);
     await consumer.stop();
     await sender.close?.();

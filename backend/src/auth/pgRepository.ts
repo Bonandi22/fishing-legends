@@ -271,6 +271,12 @@ export function createPgAuthRepository(db: Database, outbox: EmailOutbox = creat
         .returning({ id: users.id });
       return rows.length;
     },
+    async deleteExpiredChallenges(olderThan) {
+      const rows = await db.delete(authChallenges)
+        .where(lt(authChallenges.expiresAt, olderThan))
+        .returning({ id: authChallenges.id });
+      return rows.length;
+    },
     async enqueueEmail(msg) {
       await outbox.enqueue(msg);
     },

@@ -179,6 +179,16 @@ export function createMemoryAuthRepository(outbox: EmailOutbox = createMemoryOut
       }
       return deleted;
     },
+    async deleteExpiredChallenges(olderThan) {
+      let deleted = 0;
+      for (const [id, c] of [...challenges]) {
+        if (c.expiresAt < olderThan) {
+          challenges.delete(id);
+          deleted += 1;
+        }
+      }
+      return deleted;
+    },
     async enqueueEmail(msg) {
       await outbox.enqueue(msg);
     },

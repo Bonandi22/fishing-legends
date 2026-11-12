@@ -388,4 +388,18 @@ describe('pg auth repository (integration)', () => {
     expect(await repo.findUserById(legacy.id)).not.toBeNull();
     expect(await harness.db.select().from(authChallenges)).toHaveLength(0);
   });
+  it('deleteExpiredChallenges removes real and decoy challenges expired before the cutoff only', async () => {
+    const user = await repo.createUser(newUser());
+    await repo.markEmailVerified(user.id);
+    const oldExpiry = new Date(Date.now() - 25 * 3_600_000);
+    const recentExpiry = new Date(Date.now() - 3_600_000);
+    const oldReal = await repo.createChallenge({ userId: user.id, purpose: 'login', codeHash: 'x', expiresAt: oldExpiry, email: null });
+    const oldDecoy = await repo.createDecoyChallenge({ email: 'ghost@example.com', purpose: 'password_reset', codeHash: 'x', expiresAt: oldExpiry });
+    const recent = await repo.createChallenge({ userId: user.id, purpose: 'verify_email', codeHash: 'x', expiresAt: recentExpiry, email: null });
+
+    expect(await repo.deleteExpiredChallenges(new Date(Date.now() - 24 * 3_600_000))).toBe(2);
+    expect(await repo.findChallenge(oldReal)).toBeNull();
+    expect(await repo.findChallenge(oldDecoy)).toBeNull();
+    expect(await repo.findChallenge(recent)).not.toBeNull();
+  });
 });

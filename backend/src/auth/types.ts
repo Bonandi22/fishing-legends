@@ -106,6 +106,8 @@ export type AuthRepository = {
   revokeAllSessions(userId: string): Promise<void>;
   /** Deletes unverified accounts whose verification window started before `olderThan`. Returns the count. */
   deleteStaleUnverified(olderThan: Date): Promise<number>;
+  /** Deletes challenges (real and decoy) that expired before `olderThan`. Returns the count. */
+  deleteExpiredChallenges(olderThan: Date): Promise<number>;
   /** Enqueue a notice that has no challenge. */
   enqueueEmail(msg: Omit<EmailMessage, 'id' | 'createdAt'>): Promise<void>;
   /** In-memory only — backs the leaderboard's dev/test listing. */
