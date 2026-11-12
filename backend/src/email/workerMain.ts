@@ -47,8 +47,8 @@ async function main() {
   // Purge never-confirmed accounts and long-expired challenges: at startup, then hourly.
   const cleanup = async () => {
     try {
-      const { unverified, challenges: expired } = await runAuthCleanup(authRepo, new Date());
-      console.log(`email-worker: cleanup removed ${unverified} unverified accounts, ${expired} challenges`);
+      const { unverified, challenges: expired, emails } = await runAuthCleanup(authRepo, new Date());
+      console.log(`email-worker: cleanup removed ${unverified} unverified accounts, ${expired} challenges, ${emails} outbox rows`);
     } catch (err) {
       console.error('email-worker: cleanup failed:', err instanceof Error ? err.name : 'unknown');
     }

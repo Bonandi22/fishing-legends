@@ -189,4 +189,51 @@ describe('password recovery', () => {
     expect((await a.inject({ method: 'POST', url: '/api/v1/auth/refresh', cookies: { dbl_rt: refreshToken } })).statusCode).toBe(401);
     expect((await post(a, '/api/v1/auth/login', { email: creds.email, password: creds.password })).statusCode).toBe(202);
   });
+  it('a password the server rejects does not burn the code: the same challenge then succeeds', async () => {
+    const a = await app();
+    await registerSession(a, creds);
+    const f = await forgot(a, creds.email);
+    const code = latestCodeFor(a, creds.email);
+    const same = await reset(a, { challengeId: f.json().challengeId, code, newPassword: creds.password });
+    expect(same.json().error).toMatchObject({ code: 'WEAK_PASSWORD', reason: 'SAME_AS_CURRENT' });
+    const personal = await reset(a, { challengeId: f.json().challengeId, code, newPassword: `my-${creds.username}-pass-77` });
+    expect(personal.json().error).toMatchObject({ code: 'WEAK_PASSWORD', reason: 'CONTAINS_PERSONAL_INFO' });
+    expect((await handles(a).authRepository.findChallenge(f.json().challengeId))?.attempts).toBe(2);
+    const ok = await reset(a, { challengeId: f.json().challengeId, code, newPassword: NEW_PASSWORD });
+    expect(ok.statusCode).toBe(204);
+    expect((await post(a, '/api/v1/auth/login', { email: creds.email, password: NEW_PASSWORD })).statusCode).toBe(202);
+  });
+});
+
+describe('per-address email cap', () => {
+  it('5 resets + 5 register attempts to an address do not stop the owner login code', async () => {
+    const a = await app();
+    await registerSession(a, creds);
+    for (let i = 0; i < 5; i++) expect((await forgot(a, creds.email)).statusCode).toBe(202);
+    for (let i = 0; i < 5; i++) {
+      const res = await post(a, '/api/v1/auth/register', { ...creds, username: `squatter_${i}` });
+      expect(res.statusCode).toBe(202);
+    }
+    // The notice throttle keeps those 10 requests to 7 emails; top the address up to the cap.
+    const repo = handles(a).authRepository;
+    while ((await repo.countEmailsTo(creds.email, new Date(Date.now() - 3_600_000))) < 10) {
+      await repo.enqueueEmail({ kind: 'register_attempt_notice', to: creds.email, locale: 'en', payload: {} });
+    }
+    const before = kindsTo(a, creds.email).length;
+    const login = await post(a, '/api/v1/auth/login', { email: creds.email, password: creds.password });
+    expect(login.statusCode).toBe(202);
+    expect(kindsTo(a, creds.email)).toHaveLength(before + 1);
+    expect(latestEmailTo(a, creds.email)).toMatchObject({ kind: 'login_code', challengeId: login.json().challengeId });
+  });
+
+  it('register_attempt_notice is sent at most once per address per 24h, with an unchanged response', async () => {
+    const a = await app();
+    await registerSession(a, creds);
+    const answers: number[] = [];
+    for (let i = 0; i < 3; i++) {
+      answers.push((await post(a, '/api/v1/auth/register', { ...creds, username: `squatter_${i}` })).statusCode);
+    }
+    expect(answers).toEqual([202, 202, 202]);
+    expect(kindsTo(a, creds.email).filter(k => k === 'register_attempt_notice')).toHaveLength(1);
+  });
 });

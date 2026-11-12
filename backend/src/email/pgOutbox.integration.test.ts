@@ -22,6 +22,10 @@ describe('pg email outbox', () => {
     setCreatedAt: async (id, at) => {
       await harness.db.update(emailOutbox).set({ createdAt: at }).where(eq(emailOutbox.id, id));
     },
+    payloadOf: async id => {
+      const [row] = await harness.db.select({ payload: emailOutbox.payload }).from(emailOutbox).where(eq(emailOutbox.id, id));
+      return row?.payload as Record<string, string> | undefined;
+    },
   }));
 
   it('concurrent claimPending calls return disjoint sets covering all pending rows', async () => {

@@ -1,4 +1,4 @@
-import type { EmailMessage, Locale } from '../email/types.js';
+import type { EmailKind, EmailMessage, Locale } from '../email/types.js';
 
 export type AuthUser = {
   id: string;
@@ -99,8 +99,14 @@ export type AuthRepository = {
   /** Atomic: true only for the single caller that consumed a live challenge. */
   consumeChallenge(id: string): Promise<boolean>;
   countChallengesSince(userId: string, purpose: ChallengePurpose, since: Date): Promise<number>;
-  /** Emails (any kind/status) addressed to the address since `since`. */
-  countEmailsTo(address: string, since: Date): Promise<number>;
+  /** Emails (any status; any kind unless `kind` is given) addressed to the address since `since`. */
+  countEmailsTo(address: string, since: Date, kind?: EmailKind): Promise<number>;
+  /**
+   * Failed code attempts on challenges created since `since` that belong to the
+   * address: the account registered with it (any purpose) and decoys issued for it.
+   * Every reserved attempt counts as failed except the one that consumed a challenge.
+   */
+  countFailedAttemptsSince(email: string, since: Date): Promise<number>;
   markEmailVerified(userId: string): Promise<void>;
   setLocale(userId: string, locale: Locale): Promise<void>;
   revokeAllSessions(userId: string): Promise<void>;
@@ -108,6 +114,8 @@ export type AuthRepository = {
   deleteStaleUnverified(olderThan: Date): Promise<number>;
   /** Deletes challenges (real and decoy) that expired before `olderThan`. Returns the count. */
   deleteExpiredChallenges(olderThan: Date): Promise<number>;
+  /** Retention: deletes sent/failed outbox rows created before `olderThan`. Returns the count. */
+  deleteFinishedEmails(olderThan: Date): Promise<number>;
   /** Enqueue a notice that has no challenge. */
   enqueueEmail(msg: Omit<EmailMessage, 'id' | 'createdAt'>): Promise<void>;
   /** In-memory only — backs the leaderboard's dev/test listing. */

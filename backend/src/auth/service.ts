@@ -7,6 +7,8 @@ import { WeakPasswordError } from '../http/errors.js';
 import { checkPassword } from '../../../src/game/passwordPolicy.js';
 
 const ACCESS_ALGORITHM = 'HS256';
+/** At most one register_attempt_notice per address in this window. */
+const NOTICE_INTERVAL_MS = 24 * 60 * 60 * 1000;
 
 export type AuthServiceConfig = {
   accessTokenSecret: Uint8Array;
@@ -55,11 +57,15 @@ export function createAuthService(repository: AuthRepository, config: AuthServic
   /**
    * The answer for an address that already has an account: indistinguishable from a
    * fresh registration (a challenge id that never verifies), while the owner gets a
-   * notice instead of a code. The notice is skipped silently at the address cap.
+   * notice instead of a code. The notice is skipped silently at the address cap,
+   * and after the first one in 24h: repeats tell the owner nothing new and would
+   * only help fill the address cap.
    */
   async function existingEmailResponse(email: string, locale: Locale): Promise<{ challengeId: string }> {
     const challengeId = await challenges.issueDecoy(email, 'verify_email');
-    if (!(await challenges.addressAtCap(email))) {
+    const noticeSentRecently =
+      (await repository.countEmailsTo(email, new Date(Date.now() - NOTICE_INTERVAL_MS), 'register_attempt_notice')) > 0;
+    if (!noticeSentRecently && !(await challenges.addressAtCap(email))) {
       await repository.enqueueEmail({ kind: 'register_attempt_notice', to: email, locale, payload: {} });
     }
     return { challengeId };
@@ -123,7 +129,7 @@ export function createAuthService(repository: AuthRepository, config: AuthServic
       // An account that never confirmed its email (including every pre-existing
       // one) confirms it now, with the same code screen.
       const purpose = user.emailVerifiedAt ? 'login' : 'verify_email';
-      return { challengeId: await challenges.issue(user, purpose) };
+      return { challengeId: await challenges.issue(user, purpose, { afterPasswordCheck: true }) };
     },
 
     async verifyLogin(input: { challengeId: string; code: string }) {
@@ -150,11 +156,14 @@ export function createAuthService(repository: AuthRepository, config: AuthServic
 
     async resetPassword(input: { challengeId: string; code: string; newPassword: string }) {
       // The code is checked first: a wrong code costs an attempt and nothing else leaks.
-      // A decoy challenge never verifies, so it can never reach the lines below.
-      const user = await challenges.verify(input.challengeId, input.code, ['password_reset']);
-      const issue = checkPassword(input.newPassword, { email: user.email, username: user.username });
-      if (issue) throw new WeakPasswordError(issue);
-      if (await verifyPassword(input.newPassword, user.passwordHash)) throw new WeakPasswordError('SAME_AS_CURRENT');
+      // A decoy challenge never verifies, so it can never reach the policy check. The
+      // policy runs before the code is consumed, so a rejected password costs one
+      // attempt, not the code.
+      const user = await challenges.verify(input.challengeId, input.code, ['password_reset'], async u => {
+        const issue = checkPassword(input.newPassword, { email: u.email, username: u.username });
+        if (issue) throw new WeakPasswordError(issue);
+        if (await verifyPassword(input.newPassword, u.passwordHash)) throw new WeakPasswordError('SAME_AS_CURRENT');
+      });
 
       // No transaction spans these writes and the code is already consumed, so the order
       // decides the worst case: sessions revoked but password unchanged (the user simply

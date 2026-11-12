@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { OUTBOX_CLAIM_LEASE_SECONDS, type EmailOutbox } from './types.js';
+import { OUTBOX_CLAIM_LEASE_SECONDS, REDACTED_CODE, type EmailOutbox } from './types.js';
 
 const base = { kind: 'login_code', to: 'Ana@Example.com', locale: 'pt', payload: { code: '123456' } } as const;
 
@@ -9,6 +9,8 @@ export type OutboxHarness = {
   setCreatedAt(id: string, at: Date): Promise<void>;
   /** Make every outstanding claim lease expire (advance the clock / backdate claimed_until). */
   expireLeases(): Promise<void>;
+  /** The stored payload of a row, whatever its status. */
+  payloadOf(id: string): Promise<Record<string, string> | undefined>;
 };
 
 /** Behavioural cases shared by the memory and PostgreSQL outboxes. */
@@ -81,5 +83,47 @@ export function outboxContract(make: () => OutboxHarness) {
     expect(await outbox.countRecipientSince('ana@EXAMPLE.com', since)).toBe(2);
     expect(await outbox.countRecipientSince('ana@example.com', new Date(Date.now() - 3 * 3600_000))).toBe(3);
     expect(await outbox.countRecipientSince('nobody@example.com', since)).toBe(0);
+  });
+  it('markSent and markFailed redact the code and keep the rest of the payload', async () => {
+    const { outbox, payloadOf } = make();
+    const a = await outbox.enqueue({ ...base, payload: { code: '123456', minutes: '30' } });
+    const b = await outbox.enqueue({ ...base, payload: { code: '654321', minutes: '30' } });
+    const c = await outbox.enqueue({ ...base, kind: 'register_attempt_notice', payload: {} });
+    await outbox.markSent(a);
+    await outbox.markFailed(b, 'smtp down');
+    await outbox.markSent(c);
+    expect(await payloadOf(a)).toEqual({ code: REDACTED_CODE, minutes: '30' });
+    expect(await payloadOf(b)).toEqual({ code: REDACTED_CODE, minutes: '30' });
+    expect(await payloadOf(c)).toEqual({});
+  });
+
+  it('deleteFinishedBefore removes only sent/failed rows created before the cutoff', async () => {
+    const { outbox, setCreatedAt } = make();
+    const old = new Date(Date.now() - 8 * 86_400_000);
+    const oldSent = await outbox.enqueue({ ...base });
+    const oldFailed = await outbox.enqueue({ ...base });
+    const oldPending = await outbox.enqueue({ ...base });
+    const oldPublished = await outbox.enqueue({ ...base });
+    const recentSent = await outbox.enqueue({ ...base });
+    await outbox.markSent(oldSent);
+    await outbox.markFailed(oldFailed, 'x');
+    await outbox.markPublished([oldPublished]);
+    await outbox.markSent(recentSent);
+    for (const id of [oldSent, oldFailed, oldPending, oldPublished]) await setCreatedAt(id, old);
+    expect(await outbox.deleteFinishedBefore(new Date(Date.now() - 7 * 86_400_000))).toBe(2);
+    expect(await outbox.status(oldSent)).toBeNull();
+    expect(await outbox.status(oldFailed)).toBeNull();
+    expect(await outbox.status(oldPending)).toBe('pending');
+    expect(await outbox.status(oldPublished)).toBe('published');
+    expect(await outbox.status(recentSent)).toBe('sent');
+  });
+
+  it('countRecipientSince can be narrowed to one kind', async () => {
+    const { outbox } = make();
+    await outbox.enqueue({ ...base });
+    await outbox.enqueue({ ...base, kind: 'register_attempt_notice', payload: {} });
+    const since = new Date(Date.now() - 3600_000);
+    expect(await outbox.countRecipientSince('ana@example.com', since, 'register_attempt_notice')).toBe(1);
+    expect(await outbox.countRecipientSince('ana@example.com', since)).toBe(2);
   });
 }

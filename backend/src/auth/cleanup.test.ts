@@ -1,13 +1,15 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { createMemoryOutbox } from '../email/outbox.js';
+import { createMemoryOutbox, type MemoryOutbox } from '../email/outbox.js';
 import { createMemoryAuthRepository } from './memoryRepository.js';
 import { runAuthCleanup } from './cleanup.js';
 
 const DAY = 86_400_000;
 let repo: ReturnType<typeof createMemoryAuthRepository>;
+let outbox: MemoryOutbox;
 
 beforeEach(() => {
-  repo = createMemoryAuthRepository(createMemoryOutbox());
+  outbox = createMemoryOutbox();
+  repo = createMemoryAuthRepository(outbox);
 });
 
 const newUser = () => ({
@@ -52,5 +54,23 @@ describe('runAuthCleanup', () => {
     expect(late.challenges).toBe(2);
     expect(await repo.findChallenge(realId)).toBeNull();
     expect(await repo.findChallenge(decoyId)).toBeNull();
+  });
+  it('deletes sent/failed outbox rows older than 7 days only', async () => {
+    const msg = { kind: 'login_code', to: 'a@example.com', locale: 'en', payload: { code: '123456' } } as const;
+    const oldSent = await outbox.enqueue(msg);
+    const oldFailed = await outbox.enqueue(msg);
+    const oldPending = await outbox.enqueue(msg);
+    const recentSent = await outbox.enqueue(msg);
+    await outbox.markSent(oldSent);
+    await outbox.markFailed(oldFailed, 'x');
+    await outbox.markSent(recentSent);
+    for (const id of [oldSent, oldFailed, oldPending]) outbox.setCreatedAt(id, new Date(Date.now() - 8 * DAY));
+
+    const result = await runAuthCleanup(repo, new Date());
+    expect(result.emails).toBe(2);
+    expect(await outbox.status(oldSent)).toBeNull();
+    expect(await outbox.status(oldFailed)).toBeNull();
+    expect(await outbox.status(oldPending)).toBe('pending');
+    expect(await outbox.status(recentSent)).toBe('sent');
   });
 });

@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { OUTBOX_CLAIM_LEASE_SECONDS, type EmailMessage, type EmailOutbox, type OutboxStatus } from './types.js';
+import { OUTBOX_CLAIM_LEASE_SECONDS, REDACTED_CODE, type EmailMessage, type EmailOutbox, type OutboxStatus } from './types.js';
 
 type Row = { msg: EmailMessage; status: OutboxStatus; attempts: number; lastError: string | null; claimedUntil: Date | null };
 
@@ -12,6 +12,9 @@ export type MemoryOutbox = EmailOutbox & {
 
 export function createMemoryOutbox({ now = () => new Date() }: { now?: () => Date } = {}): MemoryOutbox {
   const rows = new Map<string, Row>();
+  const redact = (r: Row) => {
+    if ('code' in r.msg.payload) r.msg.payload = { ...r.msg.payload, code: REDACTED_CODE };
+  };
 
   return {
     async enqueue(msg) {
@@ -43,7 +46,10 @@ export function createMemoryOutbox({ now = () => new Date() }: { now?: () => Dat
     },
     async markSent(id) {
       const r = rows.get(id);
-      if (r) r.status = 'sent';
+      if (r) {
+        r.status = 'sent';
+        redact(r);
+      }
     },
     async markFailed(id, reason) {
       const r = rows.get(id);
@@ -51,16 +57,27 @@ export function createMemoryOutbox({ now = () => new Date() }: { now?: () => Dat
         r.status = 'failed';
         r.attempts += 1;
         r.lastError = reason;
+        redact(r);
       }
     },
     async status(id) {
       return rows.get(id)?.status ?? null;
     },
-    async countRecipientSince(to, since) {
+    async countRecipientSince(to, since, kind) {
       const target = to.toLowerCase();
       return [...rows.values()].filter(
-        r => r.msg.to === target && r.msg.createdAt.getTime() >= since.getTime(),
+        r => r.msg.to === target && r.msg.createdAt.getTime() >= since.getTime() && (!kind || r.msg.kind === kind),
       ).length;
+    },
+    async deleteFinishedBefore(olderThan) {
+      let deleted = 0;
+      for (const [id, r] of [...rows]) {
+        if ((r.status === 'sent' || r.status === 'failed') && r.msg.createdAt.getTime() < olderThan.getTime()) {
+          rows.delete(id);
+          deleted += 1;
+        }
+      }
+      return deleted;
     },
     setCreatedAt(id, at) {
       const r = rows.get(id);

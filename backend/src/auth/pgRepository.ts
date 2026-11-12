@@ -244,7 +244,18 @@ export function createPgAuthRepository(db: Database, outbox: EmailOutbox = creat
         .where(and(eq(authChallenges.userId, userId), eq(authChallenges.purpose, purpose), gte(authChallenges.createdAt, since)));
       return row?.n ?? 0;
     },
-    countEmailsTo: (address, since) => outbox.countRecipientSince(address, since),
+    countEmailsTo: (address, since, kind) => outbox.countRecipientSince(address, since, kind),
+    async countFailedAttemptsSince(email, since) {
+      const target = email.toLowerCase();
+      const [row] = await db.select({
+        n: sql<number>`coalesce(sum(${authChallenges.attempts} - (${authChallenges.consumedAt} IS NOT NULL)::int), 0)::int`,
+      }).from(authChallenges).where(and(
+        gte(authChallenges.createdAt, since),
+        sql`(${authChallenges.decoyEmail} = ${target}
+          OR ${authChallenges.userId} IN (SELECT ${users.id} FROM ${users} WHERE ${users.email} = ${target}))`,
+      ));
+      return row?.n ?? 0;
+    },
     async markEmailVerified(userId) {
       await db.update(users).set({ emailVerifiedAt: sql`now()`, updatedAt: new Date() }).where(eq(users.id, userId));
     },
@@ -277,6 +288,7 @@ export function createPgAuthRepository(db: Database, outbox: EmailOutbox = creat
         .returning({ id: authChallenges.id });
       return rows.length;
     },
+    deleteFinishedEmails: olderThan => outbox.deleteFinishedBefore(olderThan),
     async enqueueEmail(msg) {
       await outbox.enqueue(msg);
     },

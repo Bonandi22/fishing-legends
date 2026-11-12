@@ -6,6 +6,9 @@ import type { AuthRepository, AuthUser, ChallengePurpose } from './types.js';
 const HOUR_MS = 60 * 60 * 1000;
 const MAX_CHALLENGES_PER_HOUR = 5;
 const MAX_EMAILS_PER_ADDRESS_PER_HOUR = 10;
+/** Rolling ceiling on failed code attempts per address, across all purposes. */
+const MAX_FAILED_ATTEMPTS_PER_WINDOW = 30;
+const FAILED_ATTEMPTS_WINDOW_MS = 24 * HOUR_MS;
 
 const KIND_BY_PURPOSE: Record<ChallengePurpose, EmailKind> = {
   verify_email: 'verify_email_code',
@@ -38,13 +41,26 @@ export function createChallengeService(
     return (await repo.countEmailsTo(address, new Date(now().getTime() - HOUR_MS))) >= MAX_EMAILS_PER_ADDRESS_PER_HOUR;
   }
 
-  async function issue(user: AuthUser, purpose: ChallengePurpose): Promise<string> {
+  /**
+   * `afterPasswordCheck`: the caller has just verified the account's password.
+   * Such codes (and every `login` code, which is only ever issued or resent after
+   * that check) skip the per-address cap: a stranger cannot trigger them, so they
+   * cannot flood the inbox, and capping them would let anyone who fills the address
+   * with resets and notices keep its owner from logging in. The per-user hourly cap
+   * still applies.
+   */
+  async function issue(
+    user: AuthUser,
+    purpose: ChallengePurpose,
+    opts: { afterPasswordCheck?: boolean } = {},
+  ): Promise<string> {
     const since = new Date(now().getTime() - HOUR_MS);
     if ((await repo.countChallengesSince(user.id, purpose, since)) >= MAX_CHALLENGES_PER_HOUR) {
       throw new Error('RESEND_TOO_SOON');
     }
     const code = newCode();
-    const suppressEmail = await addressAtCap(user.email);
+    const passwordGated = purpose === 'login' || opts.afterPasswordCheck === true;
+    const suppressEmail = !passwordGated && (await addressAtCap(user.email));
     return repo.createChallenge({
       userId: user.id,
       purpose,
@@ -72,12 +88,34 @@ export function createChallengeService(
     return repo.createDecoyChallenge({ email, purpose, codeHash: hash(newCode()), expiresAt: expiry() });
   }
 
-  async function verify(challengeId: string, code: string, purposes: ChallengePurpose[]): Promise<AuthUser> {
+  /**
+   * `beforeConsume` runs after the code matched and before the challenge is
+   * consumed; if it throws, the challenge stays usable (the attempt still counts).
+   */
+  async function verify(
+    challengeId: string,
+    code: string,
+    purposes: ChallengePurpose[],
+    beforeConsume?: (user: AuthUser) => Promise<void>,
+  ): Promise<AuthUser> {
     const challenge = await repo.findChallenge(challengeId);
     if (!challenge || challenge.invalidatedAt || challenge.consumedAt || !purposes.includes(challenge.purpose)) {
       throw new Error('CHALLENGE_NOT_FOUND');
     }
     if (now().getTime() >= challenge.expiresAt.getTime()) throw new Error('CHALLENGE_EXPIRED');
+
+    const user = challenge.userId === null ? null : await repo.findUserById(challenge.userId);
+    if (challenge.userId !== null && !user) throw new Error('CHALLENGE_NOT_FOUND');
+
+    // Long-horizon ceiling, keyed on the address so a decoy issued for a registered
+    // address shares that account's budget (otherwise the two would diverge and
+    // reveal that the address exists). Checked before reserving: a refused guess
+    // costs nothing, and the right code is refused too until the window clears.
+    const subject = user ? user.email : challenge.decoyEmail ?? '';
+    const windowStart = new Date(now().getTime() - FAILED_ATTEMPTS_WINDOW_MS);
+    if ((await repo.countFailedAttemptsSince(subject, windowStart)) >= MAX_FAILED_ATTEMPTS_PER_WINDOW) {
+      throw new Error('TOO_MANY_ATTEMPTS');
+    }
 
     // Reserve the guess atomically before comparing, so concurrent requests cannot
     // exceed the attempt cap.
@@ -90,13 +128,12 @@ export function createChallengeService(
 
     const candidate = code.trim();
     const codeOk = /^\d{6}$/.test(candidate) && matches(candidate, challenge.codeHash);
-    if (!codeOk || challenge.userId === null) {
+    if (!codeOk || !user) {
       throw new Error(reserved >= cfg.maxAttempts ? 'TOO_MANY_ATTEMPTS' : 'INVALID_CODE');
     }
 
+    if (beforeConsume) await beforeConsume(user);
     if (!(await repo.consumeChallenge(challengeId))) throw new Error('CHALLENGE_NOT_FOUND');
-    const user = await repo.findUserById(challenge.userId);
-    if (!user) throw new Error('CHALLENGE_NOT_FOUND');
     return user;
   }
 

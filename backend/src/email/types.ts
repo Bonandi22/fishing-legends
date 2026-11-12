@@ -27,9 +27,18 @@ export interface EmailOutbox {
   markSent(id: string): Promise<void>;
   markFailed(id: string, reason: string): Promise<void>;
   status(id: string): Promise<OutboxStatus | null>;
-  /** Rows (any status/kind) addressed to `to` (case-insensitive) created at or after `since`. */
-  countRecipientSince(to: string, since: Date): Promise<number>;
+  /** Rows (any status; any kind unless `kind` is given) addressed to `to` (case-insensitive) created at or after `since`. */
+  countRecipientSince(to: string, since: Date, kind?: EmailKind): Promise<number>;
+  /** Retention: deletes `sent`/`failed` rows created before `olderThan`. Returns the count. */
+  deleteFinishedBefore(olderThan: Date): Promise<number>;
 }
+
+/**
+ * Replaces the code in a row's payload once the row is sent or failed: the code is
+ * only needed to render the email, and kept at rest it would let anyone with read
+ * access to the database (or a backup) complete a login or a reset.
+ */
+export const REDACTED_CODE = '[redacted]';
 
 /** How long a claimPending() claim holds a row before another relay may take it. */
 export const OUTBOX_CLAIM_LEASE_SECONDS = 30;

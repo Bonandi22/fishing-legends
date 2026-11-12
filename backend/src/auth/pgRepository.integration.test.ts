@@ -229,6 +229,76 @@ describe('pg auth repository (integration)', () => {
       expect((await repo.findUserByEmail(data.email))?.locale).toBe('fr');
     });
 
+    it('a rejected new password keeps the reset challenge usable; the same code then resets', async () => {
+      const svc = service();
+      const data = input();
+      await svc.register(data);
+      const { challengeId } = await svc.forgotPassword({ email: data.email });
+      const code = await codeFor(challengeId);
+      await expect(svc.resetPassword({ challengeId, code, newPassword: data.password })).rejects.toMatchObject({ reason: 'SAME_AS_CURRENT' });
+      await expect(svc.resetPassword({ challengeId, code, newPassword: `x-${data.username}-yz-123` })).rejects.toMatchObject({ reason: 'CONTAINS_PERSONAL_INFO' });
+      expect((await repo.findChallenge(challengeId))?.attempts).toBe(2);
+      await svc.resetPassword({ challengeId, code, newPassword: 'a-brand-new-password-987' });
+      expect((await repo.findChallenge(challengeId))?.consumedAt).toBeInstanceOf(Date);
+      await expect(svc.login({ email: data.email, password: 'a-brand-new-password-987' })).resolves.toHaveProperty('challengeId');
+    });
+
+    it('a login code is sent even when the address is at its hourly cap', async () => {
+      const svc = service();
+      const data = input();
+      const { challengeId: verifyId } = await svc.register(data);
+      await svc.verifyEmail({ challengeId: verifyId, code: await codeFor(verifyId) });
+      for (let i = 0; i < 5; i++) await svc.forgotPassword({ email: data.email });
+      for (let i = 0; i < 5; i++) await svc.register({ ...data, username: `s${i}_${crypto.randomUUID().slice(0, 8)}` });
+      const notices = await harness.db.select().from(emailOutbox)
+        .where(sql`${emailOutbox.recipient} = ${data.email} AND ${emailOutbox.kind} = 'register_attempt_notice'`);
+      expect(notices).toHaveLength(1);
+      // The notice throttle keeps those requests under the cap; top the address up to it.
+      while ((await repo.countEmailsTo(data.email, new Date(Date.now() - 3_600_000))) < 10) {
+        await repo.enqueueEmail({ kind: 'register_attempt_notice', to: data.email, locale: 'en', payload: {} });
+      }
+      const { challengeId } = await svc.login({ email: data.email, password: data.password });
+      const rows = await harness.db.select().from(emailOutbox).where(eq(emailOutbox.challengeId, challengeId));
+      expect(rows.map(r => r.kind)).toEqual(['login_code']);
+    });
+
+    it('30 failed code attempts in 24h lock code verification for the account, and for a decoy address', async () => {
+      const svc = service();
+      const data = input();
+      await svc.register(data);
+      const login = () => svc.login({ email: data.email, password: data.password });
+      // 3 x verify_email (login of an unverified account) + 3 x password_reset = 6 challenges x 5 wrong guesses
+      for (let i = 0; i < 3; i++) {
+        const { challengeId } = await login();
+        for (let k = 0; k < 5; k++) await svc.verifyLogin({ challengeId, code: 'abcdef' }).catch(() => undefined);
+        const reset = await svc.forgotPassword({ email: data.email });
+        for (let k = 0; k < 5; k++) {
+          await svc.resetPassword({ challengeId: reset.challengeId, code: 'abcdef', newPassword: 'a-brand-new-password-987' }).catch(() => undefined);
+        }
+      }
+      const { challengeId } = await login();
+      await expect(svc.verifyLogin({ challengeId, code: await codeFor(challengeId) })).rejects.toThrow('TOO_MANY_ATTEMPTS');
+      expect((await repo.findChallenge(challengeId))?.attempts).toBe(0);
+
+      const ghost = `ghost-${crypto.randomUUID()}@example.com`;
+      for (let i = 0; i < 6; i++) {
+        const purpose = i % 2 === 0 ? 'password_reset' : 'login';
+        const id = purpose === 'password_reset'
+          ? (await svc.forgotPassword({ email: ghost })).challengeId
+          : (await createChallengeService(repo, authCodes).issueDecoy(ghost, 'login'));
+        for (let k = 0; k < 5; k++) {
+          const attempt = purpose === 'password_reset'
+            ? svc.resetPassword({ challengeId: id, code: 'abcdef', newPassword: 'a-brand-new-password-987' })
+            : svc.verifyLogin({ challengeId: id, code: 'abcdef' });
+          await attempt.catch(() => undefined);
+        }
+      }
+      const last = await svc.forgotPassword({ email: ghost });
+      await expect(svc.resetPassword({ challengeId: last.challengeId, code: 'abcdef', newPassword: 'a-brand-new-password-987' }))
+        .rejects.toThrow('TOO_MANY_ATTEMPTS');
+      expect((await repo.findChallenge(last.challengeId))?.attempts).toBe(0);
+    });
+
     it('password recovery for an unknown email stores a decoy that never resets anything', async () => {
       const svc = service();
       const email = `ghost-${crypto.randomUUID()}@example.com`;
@@ -401,5 +471,40 @@ describe('pg auth repository (integration)', () => {
     expect(await repo.findChallenge(oldReal)).toBeNull();
     expect(await repo.findChallenge(oldDecoy)).toBeNull();
     expect(await repo.findChallenge(recent)).not.toBeNull();
+  });
+  it('countFailedAttemptsSince sums failed attempts for an address: its account and decoys to it', async () => {
+    const user = await repo.createUser(newUser());
+    const real = await repo.createChallenge({ userId: user.id, purpose: 'login', codeHash: 'x', expiresAt: later(), email: null });
+    await repo.reserveAttempt(real, 5);
+    await repo.reserveAttempt(real, 5);
+    const ok = await repo.createChallenge({ userId: user.id, purpose: 'verify_email', codeHash: 'x', expiresAt: later(), email: null });
+    await repo.reserveAttempt(ok, 5);
+    await repo.reserveAttempt(ok, 5);
+    await repo.consumeChallenge(ok);
+    const decoy = await repo.createDecoyChallenge({ email: user.email.toUpperCase(), purpose: 'password_reset', codeHash: 'x', expiresAt: later() });
+    await repo.reserveAttempt(decoy, 5);
+    const ghost = await repo.createDecoyChallenge({ email: 'ghost@example.com', purpose: 'login', codeHash: 'x', expiresAt: later() });
+    await repo.reserveAttempt(ghost, 5);
+
+    const since = new Date(Date.now() - 60_000);
+    expect(await repo.countFailedAttemptsSince(user.email, since)).toBe(4);
+    expect(await repo.countFailedAttemptsSince('GHOST@example.com', since)).toBe(1);
+    expect(await repo.countFailedAttemptsSince(user.email, new Date(Date.now() + 60_000))).toBe(0);
+  });
+
+  it('deleteFinishedEmails removes only sent/failed outbox rows older than the cutoff', async () => {
+    const outbox = createPgOutbox(harness.db);
+    const msg = { kind: 'login_code', to: 'a@example.com', locale: 'en', payload: { code: '123456' } } as const;
+    const oldSent = await outbox.enqueue(msg);
+    const oldPending = await outbox.enqueue(msg);
+    const recentSent = await outbox.enqueue(msg);
+    await outbox.markSent(oldSent);
+    await outbox.markSent(recentSent);
+    const old = new Date(Date.now() - 8 * 86_400_000);
+    await harness.db.execute(sql`UPDATE email_outbox SET created_at = ${old} WHERE id IN (${oldSent}, ${oldPending})`);
+    expect(await repo.deleteFinishedEmails(new Date(Date.now() - 7 * 86_400_000))).toBe(1);
+    expect(await outbox.status(oldSent)).toBeNull();
+    expect(await outbox.status(oldPending)).toBe('pending');
+    expect(await outbox.status(recentSent)).toBe('sent');
   });
 });

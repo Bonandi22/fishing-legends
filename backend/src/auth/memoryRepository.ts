@@ -148,7 +148,17 @@ export function createMemoryAuthRepository(outbox: EmailOutbox = createMemoryOut
     async countChallengesSince(userId, purpose, since) {
       return [...challenges.values()].filter(c => c.userId === userId && c.purpose === purpose && c.createdAt >= since).length;
     },
-    countEmailsTo: (address, since) => outbox.countRecipientSince(address, since),
+    countEmailsTo: (address, since, kind) => outbox.countRecipientSince(address, since, kind),
+    async countFailedAttemptsSince(email, since) {
+      const target = email.toLowerCase();
+      let failed = 0;
+      for (const c of challenges.values()) {
+        if (c.createdAt < since) continue;
+        const owner = c.userId ? users.get(c.userId)?.email : c.decoyEmail;
+        if (owner === target) failed += c.attempts - (c.consumedAt ? 1 : 0);
+      }
+      return failed;
+    },
     async markEmailVerified(userId) {
       const user = users.get(userId);
       if (user) users.set(userId, { ...user, emailVerifiedAt: new Date() });
@@ -189,6 +199,7 @@ export function createMemoryAuthRepository(outbox: EmailOutbox = createMemoryOut
       }
       return deleted;
     },
+    deleteFinishedEmails: olderThan => outbox.deleteFinishedBefore(olderThan),
     async enqueueEmail(msg) {
       await outbox.enqueue(msg);
     },
