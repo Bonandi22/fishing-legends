@@ -126,13 +126,17 @@ export function createAuthService(repository: AuthRepository, config: AuthServic
         user = { ...user, locale: input.locale };
       }
 
-      // An account that never confirmed its email (including every pre-existing
-      // one) confirms it now, with the same code screen.
-      const purpose = user.emailVerifiedAt ? 'login' : 'verify_email';
-      return { challengeId: await challenges.issue(user, purpose, { afterPasswordCheck: true }) };
+      // Always a `login` code, even for an account that never confirmed its email
+      // (including every pre-existing one): verifyLogin marks it verified, since the
+      // code proves the mailbox. Not `verify_email`, whose failed-attempt budget is
+      // shared with the decoys anyone can create by registering the address, which
+      // would let a stranger lock the owner out of login.
+      return { challengeId: await challenges.issue(user, 'login') };
     },
 
     async verifyLogin(input: { challengeId: string; code: string }) {
+      // Still accepts `verify_email`: challenges issued by login before it switched to
+      // `login` codes stay usable until they expire.
       const user = await challenges.verify(input.challengeId, input.code, ['login', 'verify_email']);
       return startSession(await markVerified(user));
     },

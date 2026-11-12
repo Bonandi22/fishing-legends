@@ -193,12 +193,14 @@ describe('pg auth repository (integration)', () => {
       expect(await harness.db.select().from(users).where(eq(users.email, data.email))).toHaveLength(1);
     });
 
-    it('login of an unverified account -> verify_email challenge; login/verify marks it verified', async () => {
+    it('login of an unverified account -> login challenge; login/verify marks it verified', async () => {
       const svc = service();
       const data = input();
       await svc.register(data);
       const { challengeId } = await svc.login({ email: data.email, password: data.password, locale: 'fr' });
-      expect((await repo.findChallenge(challengeId))?.purpose).toBe('verify_email');
+      expect((await repo.findChallenge(challengeId))?.purpose).toBe('login');
+      const [mail] = await harness.db.select().from(emailOutbox).where(eq(emailOutbox.challengeId, challengeId));
+      expect(mail.kind).toBe('login_code');
       await svc.verifyLogin({ challengeId, code: await codeFor(challengeId) });
       const stored = await repo.findUserByEmail(data.email);
       expect(stored?.emailVerifiedAt).toBeInstanceOf(Date);
@@ -298,6 +300,23 @@ describe('pg auth repository (integration)', () => {
       expect((await repo.findChallenge(last.challengeId))?.attempts).toBe(0);
       const ghostLogin = await createChallengeService(repo, authCodes).issueDecoy(ghost, 'login');
       await expect(svc.verifyLogin({ challengeId: ghostLogin, code: 'abcdef' })).rejects.toThrow('INVALID_CODE');
+    });
+
+    it('30 failed verify_email guesses on decoys for an address do not block its unverified owner from logging in', async () => {
+      const svc = service();
+      const data = input();
+      await svc.register(data); // never verified
+      const decoy = () => repo.createDecoyChallenge({ email: data.email, purpose: 'verify_email', codeHash: 'x', expiresAt: new Date(Date.now() + 600_000) });
+      for (let i = 0; i < 6; i++) {
+        const challengeId = await decoy();
+        for (let k = 0; k < 5; k++) await svc.verifyEmail({ challengeId, code: '000000' }).catch(() => undefined);
+      }
+      await expect(svc.verifyEmail({ challengeId: await decoy(), code: '000000' })).rejects.toThrow('TOO_MANY_ATTEMPTS');
+
+      const { challengeId } = await svc.login({ email: data.email, password: data.password });
+      const session = await svc.verifyLogin({ challengeId, code: await codeFor(challengeId) });
+      expect(session.accessToken).toEqual(expect.any(String));
+      expect((await repo.findUserByEmail(data.email))?.emailVerifiedAt).toBeInstanceOf(Date);
     });
 
     it('password recovery for an unknown email stores a decoy that never resets anything', async () => {

@@ -175,12 +175,14 @@ describe('two-step login', () => {
     expect(handles(a).outbox.messages()).toHaveLength(before);
   });
 
-  it('an unverified user logging in gets a verify_email challenge; verifying marks the account verified', async () => {
+  it('an unverified user logging in gets a login challenge; verifying marks the account verified', async () => {
     const a = await app();
     await post(a, '/api/v1/auth/register', creds); // never verified
     const login = await post(a, '/api/v1/auth/login', { email: creds.email, password: creds.password });
     expect(login.statusCode).toBe(202);
-    expect(latestEmailTo(a, creds.email)?.kind).toBe('verify_email_code');
+    expect(Object.keys(login.json())).toEqual(['challengeId']);
+    expect(latestEmailTo(a, creds.email)?.kind).toBe('login_code');
+    expect((await handles(a).authRepository.findChallenge(login.json().challengeId))?.purpose).toBe('login');
 
     const verified = await post(a, '/api/v1/auth/login/verify', { challengeId: login.json().challengeId, code: latestCodeFor(a, creds.email) });
     expect(verified.statusCode).toBe(200);
@@ -188,6 +190,27 @@ describe('two-step login', () => {
 
     await post(a, '/api/v1/auth/login', { email: creds.email, password: creds.password });
     expect(latestEmailTo(a, creds.email)?.kind).toBe('login_code');
+  });
+
+  // N1: register-existing decoys share the address's verify_email budget. Login of an
+  // unverified account must not depend on that budget.
+  it('30 failed verify_email guesses on decoys for an address do not block its unverified owner from logging in', async () => {
+    const a = await app();
+    await post(a, '/api/v1/auth/register', creds); // never verified
+    const repo = handles(a).authRepository;
+    const decoy = () => repo.createDecoyChallenge({ email: creds.email, purpose: 'verify_email', codeHash: 'x', expiresAt: new Date(Date.now() + 600_000) });
+    for (let i = 0; i < 6; i++) {
+      const challengeId = await decoy();
+      for (let k = 0; k < 5; k++) await post(a, '/api/v1/auth/verify-email', { challengeId, code: '000000' });
+    }
+    const tripped = await post(a, '/api/v1/auth/verify-email', { challengeId: await decoy(), code: '000000' });
+    expect(tripped.json().error.code).toBe('TOO_MANY_ATTEMPTS');
+
+    const login = await post(a, '/api/v1/auth/login', { email: creds.email, password: creds.password });
+    expect(login.statusCode).toBe(202);
+    const verified = await post(a, '/api/v1/auth/login/verify', { challengeId: login.json().challengeId, code: latestCodeFor(a, creds.email) });
+    expect(verified.statusCode).toBe(200);
+    expect((await repo.findUserByEmail(creds.email))?.emailVerifiedAt).toBeInstanceOf(Date);
   });
 
   it('verify-email does not accept a login challenge', async () => {
