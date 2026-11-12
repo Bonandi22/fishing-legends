@@ -113,7 +113,8 @@ export default function AccountModal({ open, onClose }: Props) {
               </div>
             ) : challenge ? (
               <CodeStep
-                challengeId={challenge.id} kind={challenge.kind} email={emailTrimmed} resendAvailableAt={challenge.resendAvailableAt}
+                challengeId={challenge.id} kind={challenge.kind} email={emailTrimmed}
+                username={usernameValid ? usernameTrimmed : undefined} resendAvailableAt={challenge.resendAvailableAt}
                 onResent={(id, at) => setChallenge(c => c && { ...c, id, resendAvailableAt: at })}
                 onDone={() => {
                   const wasReset = challenge.kind === 'reset';
@@ -125,12 +126,13 @@ export default function AccountModal({ open, onClose }: Props) {
                     onClose();
                   }
                 }}
-                onBack={() => { setChallenge(null); setError(null); if (challenge.kind !== 'reset') setForgotOpen(false); }}
+                onBack={message => { setChallenge(null); setError(message ?? null); if (challenge.kind !== 'reset') setForgotOpen(false); }}
               />
             ) : forgotOpen ? (
               <ForgotPassword
                 initialEmail={email}
-                onSent={(sentEmail, id) => { setEmail(sentEmail); setChallenge({ id, kind: 'reset', resendAvailableAt: Date.now() + 60_000 }); }}
+                initialError={error}
+                onSent={(sentEmail, id) => { setEmail(sentEmail); setError(null); setChallenge({ id, kind: 'reset', resendAvailableAt: Date.now() + 60_000 }); }}
                 onBack={() => { setForgotOpen(false); setError(null); }}
               />
             ) : (

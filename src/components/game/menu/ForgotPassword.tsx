@@ -7,17 +7,19 @@ import { ApiError } from '@/api/client';
 
 interface Props {
   initialEmail: string;
+  /** Shown on open, e.g. why the code step sent the player back here. */
+  initialError?: string | null;
   /** The modal owns the challenge: called with the trimmed email and the new challenge id. */
   onSent(email: string, challengeId: string): void;
   onBack(): void;
 }
 
 /** Step 1 of password recovery: ask for the email; the code step is CodeStep with kind="reset". */
-export default function ForgotPassword({ initialEmail, onSent, onBack }: Props) {
+export default function ForgotPassword({ initialEmail, initialError = null, onSent, onBack }: Props) {
   const { t, lang } = useI18n();
   const { forgotPassword } = useAuth();
   const [email, setEmail] = useState(initialEmail);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(initialError);
   const [busy, setBusy] = useState(false);
 
   const trimmed = email.trim();

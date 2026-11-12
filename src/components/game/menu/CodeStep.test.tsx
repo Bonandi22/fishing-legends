@@ -7,8 +7,9 @@ import CodeStep from './CodeStep';
 
 const completeChallenge = vi.fn();
 const resendCode = vi.fn();
+const resetPassword = vi.fn();
 vi.mock('@/game/auth/AuthProvider', () => ({
-  useAuth: () => ({ completeChallenge, resendCode }),
+  useAuth: () => ({ completeChallenge, resendCode, resetPassword }),
 }));
 
 // Stateful owner, like AccountModal: keeps the current id and cooldown across remounts.
@@ -31,7 +32,7 @@ const submitBtn = () => screen.getByRole('button', { name: /confirmar/i });
 const resendBtn = () => screen.getByRole('button', { name: /enviar novo código/i });
 
 beforeEach(() => {
-  cleanup(); localStorage.clear(); completeChallenge.mockReset(); resendCode.mockReset();
+  cleanup(); localStorage.clear(); completeChallenge.mockReset(); resendCode.mockReset(); resetPassword.mockReset();
   vi.useFakeTimers();
 });
 afterEach(() => { vi.useRealTimers(); });
@@ -136,5 +137,36 @@ describe('CodeStep', () => {
     act(() => { vi.advanceTimersByTime(10_000); });
     reshow();
     expect(resendBtn().textContent).toMatch(/\(25s\)/);
+  });
+  describe('reset', () => {
+    function renderReset(onBack = vi.fn()) {
+      render(
+        <I18nProvider>
+          <CodeStep challengeId="ch-r" kind="reset" email="skipper@example.com" username="CaptainAna"
+            resendAvailableAt={Date.now() + 60_000} onResent={vi.fn()} onDone={vi.fn()} onBack={onBack} />
+        </I18nProvider>,
+      );
+      return onBack;
+    }
+    const newPw = () => screen.getByLabelText(/nova palavra-passe/i) as HTMLInputElement;
+    const saveBtn = () => screen.getByRole('button', { name: /guardar nova palavra-passe/i });
+
+    it('checks the new password against the username, so it never reaches the server', () => {
+      renderReset();
+      fireEvent.change(input(), { target: { value: '123456' } });
+      fireEvent.change(newPw(), { target: { value: 'my-captainana-boat-77' } });
+      expect(saveBtn()).toBeDisabled();
+      fireEvent.change(newPw(), { target: { value: 'a-brand-new-password-987' } });
+      expect(saveBtn()).toBeEnabled();
+    });
+
+    it('CHALLENGE_NOT_FOUND on submit goes back with the localized message', async () => {
+      resetPassword.mockRejectedValue(new ApiError(404, 'CHALLENGE_NOT_FOUND', 'x'));
+      const onBack = renderReset();
+      fireEvent.change(input(), { target: { value: '123456' } });
+      fireEvent.change(newPw(), { target: { value: 'a-brand-new-password-987' } });
+      await act(async () => { fireEvent.click(saveBtn()); });
+      expect(onBack).toHaveBeenCalledWith(expect.stringMatching(/já não existe/i));
+    });
   });
 });

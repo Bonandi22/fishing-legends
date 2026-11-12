@@ -11,24 +11,27 @@ const RESEND_SECONDS = 60;
 
 interface Props {
   challengeId: string;
-  /** `reset` also asks for the new password (and needs `email` for the personal-info check). */
+  /** `reset` also asks for the new password (and needs `email`/`username` for the personal-info check). */
   kind: 'register' | 'login' | 'reset';
   email?: string;
+  /** Known only if the player typed it in this modal; the server checks it regardless. */
+  username?: string;
   /** Epoch ms when resend becomes available; owned by the parent so a remount resumes it. */
   resendAvailableAt: number;
   /** The parent owns the current challenge: called with the new id and the new cooldown deadline. */
   onResent(challengeId: string, resendAvailableAt: number): void;
   onDone(): void;
-  onBack(): void;
+  /** `message`: why the step was left (the challenge is gone), to show on the screen returned to. */
+  onBack(message?: string): void;
 }
 
-export default function CodeStep({ challengeId, kind, email = '', resendAvailableAt, onResent, onDone, onBack }: Props) {
+export default function CodeStep({ challengeId, kind, email = '', username, resendAvailableAt, onResent, onDone, onBack }: Props) {
   const { t } = useI18n();
   const { completeChallenge, resendCode, resetPassword } = useAuth();
   const [code, setCode] = useState('');
   const [newPassword, setNewPassword] = useState('');
   // Checked here so a weak password never spends the (single-use) code.
-  const passwordIssue = kind === 'reset' ? checkPassword(newPassword, { email }) : null;
+  const passwordIssue = kind === 'reset' ? checkPassword(newPassword, { email, username }) : null;
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -67,8 +70,9 @@ export default function CodeStep({ challengeId, kind, email = '', resendAvailabl
       else await completeChallenge(kind, challengeId, code);
       onDone();
     } catch (e) {
+      // The challenge is gone: leave the step, carrying the message to the next screen.
+      if (e instanceof ApiError && e.code === 'CHALLENGE_NOT_FOUND') { onBack(errText(e)); return; }
       setError(errText(e));
-      if (e instanceof ApiError && e.code === 'CHALLENGE_NOT_FOUND') onBack();
     } finally {
       setBusy(false);
     }
@@ -84,7 +88,7 @@ export default function CodeStep({ challengeId, kind, email = '', resendAvailabl
       onResent(nextId, Date.now() + RESEND_SECONDS * 1000);
       setNotice(t('auth.code.sent'));
     } catch (e) {
-      if (e instanceof ApiError && e.code === 'CHALLENGE_NOT_FOUND') { onBack(); return; }
+      if (e instanceof ApiError && e.code === 'CHALLENGE_NOT_FOUND') { onBack(errText(e)); return; }
       setError(errText(e));
       if (e instanceof ApiError && e.code === 'RESEND_TOO_SOON' && seconds === 0) {
         setNow(Date.now());
@@ -121,7 +125,7 @@ export default function CodeStep({ challengeId, kind, email = '', resendAvailabl
           <Input id="acc-newpw" type="password" autoComplete="new-password" value={newPassword} placeholder="••••••••"
             onChange={e => setNewPassword(e.target.value)} />
           <p className="text-xs text-muted-foreground">{t('auth.passwordHint')}</p>
-          <PasswordStrength password={newPassword} email={email} />
+          <PasswordStrength password={newPassword} email={email} username={username} />
         </>
       )}
 
@@ -131,7 +135,7 @@ export default function CodeStep({ challengeId, kind, email = '', resendAvailabl
       <Button type="button" variant="outline" disabled={busy || seconds > 0} onClick={() => void resend()} className="w-full">
         {resendLabel}
       </Button>
-      <button type="button" onClick={onBack} className="block w-full text-center text-sm text-lure hover:underline">
+      <button type="button" onClick={() => onBack()} className="block w-full text-center text-sm text-lure hover:underline">
         {t('auth.code.back')}
       </button>
     </form>
