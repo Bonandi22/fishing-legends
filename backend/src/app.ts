@@ -73,7 +73,7 @@ export async function createApp({ config }: AppDependencies): Promise<FastifyIns
   await app.register(fastifySwagger, {
     openapi: {
       openapi: '3.0.3',
-      info: { title: 'Deep Blue Lure API', version: '0.1.0' },
+      info: { title: 'Fishing Legends API', version: '0.1.0' },
       tags: [
         { name: 'system' }, { name: 'auth' }, { name: 'players' }, { name: 'catalog' },
         { name: 'fishing' }, { name: 'migration' }, { name: 'leaderboard' }, { name: 'seasons' },

@@ -34,7 +34,7 @@ interface Props {
   onSetWorld: (w: 1 | 2 | 3) => void;
 }
 
-const WORDMARK = ['DEEP', 'BLUE', 'LURE'];
+const WORDMARK = ['FISHING', 'LEGENDS'];
 
 export default function MainMenu({
   player,

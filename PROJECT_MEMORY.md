@@ -2484,8 +2484,7 @@ Confirmação de email, login em 2 passos e recuperação de palavra-passe, em 3
 
 ### Fase 11 — correções da revisão final (I1–I4)
 
-- **Limite por endereço (I1)**: os códigos `login`, e `verify_email` emitidos a
-  partir do login, já não contam para o limite de 10 emails/h por endereço (só são
+- **Limite por endereço (I1)**: os códigos `login` já não contam para o limite de 10 emails/h por endereço (só são
   emitidos depois de a palavra-passe estar certa). O limite de 5/h por utilizador e
   finalidade continua. O `register_attempt_notice` é enviado no máximo 1 vez por
   endereço a cada 24 h, e a resposta do registo não muda.
@@ -2503,3 +2502,21 @@ Confirmação de email, login em 2 passos e recuperação de palavra-passe, em 3
   e as iscas para o mesmo endereço partilham o orçamento, por isso não há oráculo.
   Esgotar o orçamento do reset não bloqueia `login` nem `verify_email`. Sem
   migração: o teto é calculado a partir de `auth_challenges.attempts`.
+- **Login sempre com código `login` (N1, re-revisão)**: o `login()` emite sempre um
+  código `login`, também para contas por confirmar (incl. legadas); o `verifyLogin`
+  marca o email como confirmado. Os códigos `verify_email` só vêm do registo — assim
+  falhar 30 iscas de registo para um endereço não bloqueia o login. Risco aceite: um
+  anónimo pode bloquear o reset de um endereço por 24 h (o login continua a funcionar).
+
+## Renomeação do jogo: Fishing Legends (2026-11-12)
+
+Decisão do utilizador: o nome principal do jogo passa a ser **Fishing Legends**.
+Mudado em tudo o que é visível: logótipo do menu (`MainMenu.tsx` `WORDMARK`), `<title>`/meta
+de `index.html`, assuntos e textos dos emails (`backend/src/email/templates.ts`, 6 idiomas),
+remetente `EMAIL_FROM` (default em `config/env.ts` + `.env.*.example`), título da OpenAPI,
+temporada em memória (`Fishing Legends Season 1`), README, `CLAUDE.md`, `backend/docs/ARCHITECTURE.md`.
+**Mantidos de propósito** (identificadores de infraestrutura, não marca): nome do repositório
+GitHub/pasta, utilizador/base `deepbluelure` (compose, CI, `.env` examples), nomes de projeto
+compose e volumes `deep_blue_lure_prod_*` (renomear órfãos os dados de produção), `service:
+'deep-blue-lure-api'` do `/health`, e a semente interna do hash de timing do login. As
+referências históricas neste ficheiro ficam como estão.

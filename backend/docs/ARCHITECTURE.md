@@ -1,4 +1,4 @@
-# Deep Blue Lure Backend Architecture
+# Fishing Legends Backend Architecture
 
 Status: design baseline, 2026-09-04
 

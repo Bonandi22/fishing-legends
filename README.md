@@ -1,6 +1,6 @@
-# Deep Blue Lure
+# Fishing Legends
 
-Deep Blue Lure é um jogo de pesca 3D full-stack. O jogador explora rios, lagos e oceanos, captura peixes de diferentes raridades, evolui de nível, administra moedas e inventário, desbloqueia mundos e mantém uma coleção e um aquário.
+Fishing Legends é um jogo de pesca 3D full-stack. O jogador explora rios, lagos e oceanos, captura peixes de diferentes raridades, evolui de nível, administra moedas e inventário, desbloqueia mundos e mantém uma coleção e um aquário.
 
 O frontend é uma SPA React/Three.js; o backend (Fastify + PostgreSQL) é a autoridade sobre identidade, progresso, economia, capturas, ranking e temporadas.
 

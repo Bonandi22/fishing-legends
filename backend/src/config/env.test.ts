@@ -81,6 +81,6 @@ describe('loadConfig auth codes and email', () => {
   it('defaults smtp to local Mailpit', () => {
     const config = loadConfig({ ...base } as NodeJS.ProcessEnv);
     expect(config.email.smtp).toMatchObject({ host: 'localhost', port: 1025, secure: false });
-    expect(config.email.from).toBe('Deep Blue Lure <no-reply@localhost>');
+    expect(config.email.from).toBe('Fishing Legends <no-reply@localhost>');
   });
 });

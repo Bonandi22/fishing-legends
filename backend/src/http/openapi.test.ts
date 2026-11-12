@@ -36,7 +36,7 @@ afterAll(() => app.close());
 describe('generated OpenAPI contract', () => {
   it('is a valid OpenAPI 3 document', () => {
     expect(doc.openapi).toMatch(/^3\./);
-    expect(doc.info).toMatchObject({ title: 'Deep Blue Lure API' });
+    expect(doc.info).toMatchObject({ title: 'Fishing Legends API' });
   });
 
   it('covers the whole API surface', () => {

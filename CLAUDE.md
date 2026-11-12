@@ -1,4 +1,4 @@
-# CLAUDE.md — Deep Blue Lure
+# CLAUDE.md — Fishing Legends
 
 Instruções para agentes trabalhando neste repositório. Complementa, não substitui,
 o histórico técnico em [`PROJECT_MEMORY.md`](./PROJECT_MEMORY.md), que continua sendo
@@ -6,7 +6,7 @@ a fonte de verdade sobre roadmap, decisões e pontos de parada.
 
 ## O que é o projeto
 
-Deep Blue Lure é um jogo de pesca 3D (React + TypeScript + Three.js). Historicamente
+Fishing Legends é um jogo de pesca 3D (React + TypeScript + Three.js). Historicamente
 uma SPA frontend-only com persistência em `localStorage`. Está em curso a Task 6:
 transformar o frontend num cliente de uma **API backend confiável** (Fastify + PostgreSQL)
 que passa a ser autoridade sobre identidade, progresso, economia, inventário, capturas,
