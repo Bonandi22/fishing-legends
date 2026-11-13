@@ -232,6 +232,18 @@ describe('pg fishing service — hard rules (H0–H3, integration)', () => {
     expect(await eventsOf(userId)).toHaveLength(0);
   });
 
+  it('concurrent same-key rod casts resolve as a replay: same session, no event, one session row', async () => {
+    const userId = await seedUser();
+    await gameState.bootstrap(userId, blob());
+    const [a, b] = await Promise.all([
+      fishing.cast(userId, 'cast-race-int-aaaa', 'atlantic', 'rod', A),
+      fishing.cast(userId, 'cast-race-int-aaaa', 'atlantic', 'rod', A),
+    ]);
+    expect(b.sessionId).toBe(a.sessionId);
+    expect(await eventsOf(userId)).toHaveLength(0);
+    expect(await harness.db.select().from(fishingSessions).where(eq(fishingSessions.userId, userId))).toHaveLength(1);
+  });
+
   it('H2: a rod cast 1 s after the previous (new key, same client) -> CAST_TOO_FAST + 1 committed event', async () => {
     const userId = await seedUser();
     await gameState.bootstrap(userId, blob());

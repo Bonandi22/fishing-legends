@@ -32,15 +32,17 @@ export function createPgFishingService(db: Database, options: FishingServiceOpti
   return {
     async cast(userId, idempotencyKey, locationId, mode = 'rod', clientId): Promise<CastResult> {
       const outcome = await db.transaction(async (tx): Promise<CastResult | Violation> => {
-        const dupe = await tx.select().from(fishingSessions)
-          .where(and(eq(fishingSessions.userId, userId), eq(fishingSessions.idempotencyKey, idempotencyKey)))
-          .limit(1);
-
         const rows = await tx.select().from(playerGameState)
           .where(eq(playerGameState.userId, userId)).limit(1).for('update');
         const row = rows[0];
         if (!row) throw new Error('GAME_STATE_NOT_FOUND');
         const currentPlayer = saveSchema.parse(row.state).player;
+
+        // Replay lookup after the state lock: a concurrent same-key cast has committed by now,
+        // so it resolves as a replay instead of reaching the hard rules.
+        const dupe = await tx.select().from(fishingSessions)
+          .where(and(eq(fishingSessions.userId, userId), eq(fishingSessions.idempotencyKey, idempotencyKey)))
+          .limit(1);
 
         if (dupe[0]) {
           const s = dupe[0];
