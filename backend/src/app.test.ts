@@ -1,6 +1,6 @@
 // @vitest-environment node
 
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createApp } from './app.js';
 import type { AppConfig } from './config/env.js';
 import { registerAndAuth, registerSession } from './testing/authClient.js';
@@ -25,6 +25,7 @@ const testConfig: AppConfig = {
 const apps = new Set<Awaited<ReturnType<typeof createApp>>>();
 
 afterEach(async () => {
+  vi.useRealTimers();
   await Promise.all([...apps].map(app => app.close()));
   apps.clear();
 });
@@ -244,6 +245,7 @@ describe('backend foundation', () => {
   });
 
   it('casts and lands a fish server-side, applying the catch to the game-state blob', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] }); // the rod land floor (H3) reads the wall clock
     const app = await createApp({ config: testConfig });
     apps.add(app);
     const client = await registerAndAuth(app);
@@ -266,6 +268,7 @@ describe('backend foundation', () => {
     expect(first.statusCode).toBe(200);
     expect(second.json().sessionId).toBe(first.json().sessionId);
 
+    vi.setSystemTime(Date.now() + 1_000);
     const landed = await client.request({ method: 'POST', url: '/api/v1/me/fishing/land', payload: { sessionId: first.json().sessionId } });
     expect(landed.statusCode).toBe(200);
     expect(landed.json().caught[0].fishId).toEqual(expect.any(String));

@@ -16,7 +16,7 @@ import { createMemoryPlayerRepository } from './players/memoryRepository.js';
 import { createPgPlayerRepository } from './players/pgRepository.js';
 import { createCatalogService } from './catalog/service.js';
 import { registerCatalogRoutes } from './catalog/routes.js';
-import { createMemoryFishingService } from './fishing/service.js';
+import { createMemoryAntiCheatStore, createMemoryFishingService } from './fishing/service.js';
 import { createPgFishingService } from './fishing/pgRepository.js';
 import { registerFishingRoutes } from './fishing/routes.js';
 import { registerMigrationRoutes } from './migration/routes.js';
@@ -141,7 +141,7 @@ export async function createApp({ config }: AppDependencies): Promise<FastifyIns
   registerCatalogRoutes(app, catalogService);
   const fishingService = database
     ? createPgFishingService(database)
-    : createMemoryFishingService(memoryGameStateStore!);
+    : createMemoryFishingService(memoryGameStateStore!, createMemoryAntiCheatStore());
   registerFishingRoutes(app, fishingService);
 
   if (database && config.email?.rabbitmqUrl) {
