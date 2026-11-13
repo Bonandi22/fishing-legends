@@ -6,7 +6,8 @@ export type AuthUser = {
   passwordHash: string;
   username: string;
   country: string;
-  status: 'active' | 'suspended' | 'deleted';
+  status: 'active' | 'suspended' | 'banned' | 'deleted';
+  isAdmin: boolean;
   emailVerifiedAt: Date | null;
   locale: Locale;
 };
@@ -109,8 +110,14 @@ export type AuthRepository = {
   countFailedAttemptsSince(email: string, purpose: ChallengePurpose, since: Date): Promise<number>;
   markEmailVerified(userId: string): Promise<void>;
   setLocale(userId: string, locale: Locale): Promise<void>;
-  revokeAllSessions(userId: string): Promise<void>;
-  /** Deletes unverified accounts whose verification window started before `olderThan`. Returns the count. */
+  /** `tx` is an implementation-specific transaction handle (a Drizzle transaction in PostgreSQL). */
+  revokeAllSessions(userId: string, tx?: unknown): Promise<void>;
+  /** `tx` as in `revokeAllSessions`: joins the caller's transaction when given. */
+  setStatus(userId: string, status: AuthUser['status'], tx?: unknown): Promise<void>;
+  /**
+   * Deletes unverified accounts whose verification window started before `olderThan`.
+   * Never deletes suspended or banned accounts. Returns the count.
+   */
   deleteStaleUnverified(olderThan: Date): Promise<number>;
   /** Deletes challenges (real and decoy) that expired before `olderThan`. Returns the count. */
   deleteExpiredChallenges(olderThan: Date): Promise<number>;

@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
-import { and, eq, gte, isNull, lt, sql } from 'drizzle-orm';
+import { and, eq, gte, isNull, lt, notInArray, sql } from 'drizzle-orm';
 import type { Database } from '../db/client.js';
+import type { DatabaseTransaction } from '../email/pgOutbox.js';
 import { authChallenges, playerProgress, refreshTokens, sessions, userProfiles, users } from '../db/schema.js';
 import { createPgOutbox } from '../email/pgOutbox.js';
 import type { EmailOutbox, Locale } from '../email/types.js';
@@ -12,7 +13,8 @@ function toAuthUser(row: {
   profile: typeof userProfiles.$inferSelect | null;
 }): AuthUser {
   if (!row.profile) throw new Error('USER_PROFILE_MISSING');
-  if (row.user.status !== 'active' && row.user.status !== 'suspended' && row.user.status !== 'deleted') {
+  const status = row.user.status;
+  if (status !== 'active' && status !== 'suspended' && status !== 'banned' && status !== 'deleted') {
     throw new Error('INVALID_USER_STATUS');
   }
   return {
@@ -21,7 +23,8 @@ function toAuthUser(row: {
     passwordHash: row.user.passwordHash,
     username: row.profile.username,
     country: row.profile.country,
-    status: row.user.status,
+    status,
+    isAdmin: row.user.isAdmin,
     emailVerifiedAt: row.user.emailVerifiedAt,
     locale: row.user.locale as Locale,
   };
@@ -263,14 +266,20 @@ export function createPgAuthRepository(db: Database, outbox: EmailOutbox = creat
     async setLocale(userId, locale) {
       await db.update(users).set({ locale, updatedAt: new Date() }).where(eq(users.id, userId));
     },
-    async revokeAllSessions(userId) {
-      await db.transaction(async tx => {
-        const owned = tx.select({ id: sessions.id }).from(sessions).where(eq(sessions.userId, userId));
-        await tx.update(refreshTokens).set({ revokedAt: new Date() })
+    async revokeAllSessions(userId, tx) {
+      const revoke = async (exec: DatabaseTransaction) => {
+        const owned = exec.select({ id: sessions.id }).from(sessions).where(eq(sessions.userId, userId));
+        await exec.update(refreshTokens).set({ revokedAt: new Date() })
           .where(and(sql`${refreshTokens.sessionId} IN (${owned})`, isNull(refreshTokens.revokedAt)));
-        await tx.update(sessions).set({ revokedAt: new Date() })
+        await exec.update(sessions).set({ revokedAt: new Date() })
           .where(and(eq(sessions.userId, userId), isNull(sessions.revokedAt)));
-      });
+      };
+      if (tx) await revoke(tx as DatabaseTransaction);
+      else await db.transaction(revoke);
+    },
+    async setStatus(userId, status, tx) {
+      const exec: Database | DatabaseTransaction = (tx as DatabaseTransaction | undefined) ?? db;
+      await exec.update(users).set({ status, updatedAt: new Date() }).where(eq(users.id, userId));
     },
     async deleteStaleUnverified(olderThan) {
       // Every table referencing users(id) is ON DELETE CASCADE (profiles,
@@ -279,6 +288,8 @@ export function createPgAuthRepository(db: Database, outbox: EmailOutbox = creat
         .where(and(
           isNull(users.emailVerifiedAt),
           lt(users.verificationRequiredSince, olderThan),
+          // Accounts under review or banned are kept as evidence.
+          notInArray(users.status, ['suspended', 'banned']),
         ))
         .returning({ id: users.id });
       return rows.length;

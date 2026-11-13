@@ -36,11 +36,12 @@ export const users = pgTable('users', {
   emailVerifiedAt: timestamp('email_verified_at', { withTimezone: true }),
   locale: char('locale', { length: 2 }).notNull().default('en'),
   verificationRequiredSince: timestamp('verification_required_since', { withTimezone: true }),
+  isAdmin: boolean('is_admin').notNull().default(false),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 }, table => ({
   emailUnique: uniqueIndex('users_email_unique').on(table.email),
-  statusCheck: check('users_status_check', sql`${table.status} IN ('active', 'suspended', 'deleted')`),
+  statusCheck: check('users_status_check', sql`${table.status} IN ('active', 'suspended', 'banned', 'deleted')`),
   localeCheck: check('users_locale_check', sql`${table.locale} IN ('pt', 'en', 'es', 'fr', 'de', 'ja')`),
 }));
 
@@ -93,7 +94,10 @@ export const fishingSessions = pgTable('fishing_sessions', {
   resultXp: integer('result_xp'),
   resultLucky: boolean('result_lucky').notNull().default(false),
   resultCatches: jsonb('result_catches').$type<Array<{ id?: string; fishId: string; weight: number }>>(),
+  clientId: uuid('client_id'),
+  strengthActive: boolean('strength_active').notNull().default(false),
 }, table => ({
+  userCreatedAtIdx: index('fishing_sessions_user_created_at_idx').on(table.userId, table.createdAt.desc()),
   idempotencyUnique: uniqueIndex('fishing_sessions_idempotency_unique').on(table.userId, table.idempotencyKey),
   statusCheck: check('fishing_sessions_status_check', sql`${table.status} IN ('open', 'completed', 'expired')`),
   modeCheck: check('fishing_sessions_mode_check', sql`${table.mode} IN ('rod', 'net', 'submarine')`),
@@ -233,6 +237,44 @@ export const authChallenges = pgTable('auth_challenges', {
   purposeCheck: check('auth_challenges_purpose_check', sql`${table.purpose} IN ('verify_email', 'login', 'password_reset')`),
 }));
 
+export const fishingLands = pgTable('fishing_lands', {
+  id: uuid('id').primaryKey(),
+  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  sessionId: uuid('session_id').notNull().references(() => fishingSessions.id, { onDelete: 'cascade' }),
+  mode: varchar('mode', { length: 16 }).notNull(),
+  fishId: varchar('fish_id', { length: 120 }).notNull(),
+  landedAt: timestamp('landed_at', { withTimezone: true }).notNull().defaultNow(),
+}, table => ({
+  userLandedAtIdx: index('fishing_lands_user_landed_at_idx').on(table.userId, table.landedAt),
+}));
+
+export const antiCheatEvents = pgTable('anti_cheat_events', {
+  id: uuid('id').primaryKey(),
+  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  type: varchar('type', { length: 32 }).notNull(),
+  sessionId: uuid('session_id'),
+  detail: jsonb('detail').$type<Record<string, unknown>>().notNull().default({}),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+}, table => ({
+  userCreatedAtIdx: index('anti_cheat_events_user_created_at_idx').on(table.userId, table.createdAt),
+  typeCheck: check('anti_cheat_events_type_check', sql`${table.type} IN ('cast_too_fast', 'land_too_fast')`),
+}));
+
+export const fraudCases = pgTable('fraud_cases', {
+  id: uuid('id').primaryKey(),
+  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  status: varchar('status', { length: 16 }).notNull(),
+  evidence: jsonb('evidence').$type<Record<string, unknown>>().notNull(),
+  openedAt: timestamp('opened_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  decidedAt: timestamp('decided_at', { withTimezone: true }),
+  decidedBy: uuid('decided_by').references(() => users.id),
+  note: text('note'),
+}, table => ({
+  oneOpen: uniqueIndex('fraud_cases_one_open').on(table.userId).where(sql`${table.status} IN ('flagged', 'suspended')`),
+  statusCheck: check('fraud_cases_status_check', sql`${table.status} IN ('flagged', 'suspended', 'banned', 'restored', 'dismissed')`),
+}));
+
 export const schema = {
   schemaMigrations,
   users,
@@ -240,6 +282,9 @@ export const schema = {
   sessions,
   refreshTokens,
   fishingSessions,
+  fishingLands,
+  antiCheatEvents,
+  fraudCases,
   localSaveMigrations,
   seasons,
   playerProgress,

@@ -36,6 +36,18 @@ describe('runAuthCleanup', () => {
     expect(await repo.findUserById(verified.id)).not.toBeNull();
   });
 
+  it('never deletes a suspended or banned account, even unverified', async () => {
+    const banned = await repo.createUser(newUser());
+    const suspended = await repo.createUser(newUser());
+    await repo.setStatus(banned.id, 'banned');
+    await repo.setStatus(suspended.id, 'suspended');
+
+    const result = await runAuthCleanup(repo, new Date(Date.now() + 8 * DAY));
+    expect(result.unverified).toBe(0);
+    expect(await repo.findUserById(banned.id)).not.toBeNull();
+    expect(await repo.findUserById(suspended.id)).not.toBeNull();
+  });
+
   it('deletes real and decoy challenges only once they expired more than 24h ago', async () => {
     const user = await repo.createUser(newUser());
     await repo.markEmailVerified(user.id);

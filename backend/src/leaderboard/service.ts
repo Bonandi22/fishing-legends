@@ -7,8 +7,9 @@ export function createMemoryLeaderboardService(authRepository: AuthRepository, g
   return {
     async list(_userId: string, limit: number, offset: number) {
       const users = await authRepository.listUsers?.() ?? [];
-      // Same rule as PostgreSQL: only players with game state rank.
+      // Same rule as PostgreSQL: only active players with game state rank.
       const sources: LeaderboardSource[] = users.flatMap(user => {
+        if (user.status !== 'active') return [];
         const record = gameStateStore.get(user.id);
         if (!record) return [];
         return [{ userId: user.id, username: user.username, country: user.country, stats: extractPlayerStats(record.state) }];

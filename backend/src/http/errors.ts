@@ -34,6 +34,8 @@ type DomainErrorSpec = { status: number; message: string };
 const DOMAIN_ERRORS: Record<string, DomainErrorSpec> = {
   ACCOUNT_ALREADY_EXISTS: { status: 409, message: 'An account with that email already exists' },
   INVALID_CREDENTIALS: { status: 401, message: 'Invalid email or password' },
+  ACCOUNT_SUSPENDED: { status: 403, message: 'This account is under review' },
+  ACCOUNT_BANNED: { status: 403, message: 'This account has been banned' },
   INVALID_REFRESH_TOKEN: { status: 401, message: 'The refresh token is invalid or has expired' },
   REFRESH_TOKEN_REUSED: { status: 401, message: 'The refresh token was already used; the session has been revoked' },
   INVALID_ACCESS_TOKEN: { status: 401, message: 'The access token is missing or invalid' },
@@ -59,6 +61,9 @@ const DOMAIN_ERRORS: Record<string, DomainErrorSpec> = {
   INVALID_FISHING_SESSION: { status: 422, message: 'The fishing session is not valid' },
   FISHING_SESSION_EXPIRED: { status: 410, message: 'The fishing session expired; start a new one' },
   NO_FISH_AVAILABLE: { status: 422, message: 'No fish are available at that location' },
+  FISHING_ELSEWHERE: { status: 409, message: 'You are already fishing in another window' },
+  CAST_TOO_FAST: { status: 429, message: 'Casting too fast' },
+  LAND_TOO_FAST: { status: 409, message: 'The fish got away' },
   USERNAME_TAKEN: { status: 409, message: 'That username is already taken' },
   CSRF_FAILED: { status: 403, message: 'CSRF token missing or invalid' },
   STATE_VERSION_CONFLICT: { status: 409, message: 'The game state was modified elsewhere; reload before saving' },

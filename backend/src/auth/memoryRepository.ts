@@ -42,7 +42,7 @@ export function createMemoryAuthRepository(outbox: EmailOutbox = createMemoryOut
       if ([...users.values()].some(u => u.username.toLowerCase() === input.username.toLowerCase())) {
         throw new Error('USERNAME_TAKEN');
       }
-      const user: AuthUser = { id: randomUUID(), status: 'active', emailVerifiedAt: null, ...input };
+      const user: AuthUser = { id: randomUUID(), status: 'active', isAdmin: false, emailVerifiedAt: null, ...input };
       users.set(user.id, user);
       verificationRequiredSince.set(user.id, new Date());
       return user;
@@ -172,11 +172,16 @@ export function createMemoryAuthRepository(outbox: EmailOutbox = createMemoryOut
         if (session.userId === userId) revokeFamily(session.id);
       }
     },
+    async setStatus(userId, status) {
+      const user = users.get(userId);
+      if (user) users.set(userId, { ...user, status });
+    },
     async deleteStaleUnverified(olderThan) {
       let deleted = 0;
       for (const user of [...users.values()]) {
         const since = verificationRequiredSince.get(user.id);
         if (user.emailVerifiedAt || !since || since >= olderThan) continue;
+        if (user.status === 'suspended' || user.status === 'banned') continue;
         users.delete(user.id);
         verificationRequiredSince.delete(user.id);
         for (const [id, c] of challenges) if (c.userId === user.id) challenges.delete(id);

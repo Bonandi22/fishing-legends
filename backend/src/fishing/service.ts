@@ -6,6 +6,7 @@ import { applyCatch, resolveLuckyMode } from '../../../src/game/stateRules.js';
 import { rollNet } from '../../../src/game/netTypes.js';
 import { FISH, LOCATIONS, getFishForLocation, SUBMARINE_LOCATION_ID } from '../../../src/game/data.js';
 import { isSessionExpired } from './session.js';
+import { checkCastAllowed, checkLandAllowed, type LastCast } from '../anticheat/hardRules.js';
 
 /** Server RNG in [0, 1). Not audited this slice (matches slice 5's roulettes). */
 const random = () => randomInt(1_000_000) / 1_000_000;
@@ -30,7 +31,49 @@ export type FishingSessionRow = {
   resultXp: number | null;
   resultLucky: boolean;
   resultCatches: SessionCatch[] | null;
+  clientId: string | null;
+  strengthActive: boolean;
+  completedAt: Date | null;
 };
+
+export type FishingLandRow = {
+  id: string;
+  userId: string;
+  sessionId: string;
+  mode: CastMode;
+  fishId: string;
+  landedAt: Date;
+};
+
+export type AntiCheatEventType = 'cast_too_fast' | 'land_too_fast';
+
+export type AntiCheatEventRow = {
+  id: string;
+  userId: string;
+  type: AntiCheatEventType;
+  sessionId: string | null;
+  detail: Record<string, unknown>;
+  createdAt: Date;
+};
+
+/** In-memory anti-cheat tables (sessions, landing log, events). Read by the anti-cheat analysis. */
+export type MemoryAntiCheatStore = {
+  lands: FishingLandRow[];
+  events: AntiCheatEventRow[];
+  sessions: Map<string, FishingSessionRow>;
+};
+
+export function createMemoryAntiCheatStore(): MemoryAntiCheatStore {
+  return { lands: [], events: [], sessions: new Map() };
+}
+
+/** Injectable clock for the fishing services (tests drive it; production uses the wall clock). */
+export type FishingServiceOptions = { now?: () => Date };
+
+/** Whether the player's strength boost is active at `now` (recorded on the session for the analysis). */
+export function isStrengthActive(player: SaveEnvelope['player'], now: Date): boolean {
+  return player.strengthMultiplierEnd != null && player.strengthMultiplierEnd > now.getTime();
+}
 
 type CastBase = { sessionId: string; lucky: boolean; state: SaveEnvelope; version: number };
 export type CastResult =
@@ -42,7 +85,7 @@ export type Caught = { fishId: string; weight: number; location: string };
 export type LandResult = { state: SaveEnvelope; version: number; caught: Caught[] };
 
 export interface FishingService {
-  cast(userId: string, idempotencyKey: string, locationId: string, mode?: CastMode): Promise<CastResult>;
+  cast(userId: string, idempotencyKey: string, locationId: string, mode?: CastMode, clientId?: string): Promise<CastResult>;
   land(userId: string, idempotencyKey: string, sessionId: string, catchId?: string): Promise<LandResult>;
 }
 
@@ -168,10 +211,10 @@ function castResultFor(roll: CastRoll, sessionId: string, state: SaveEnvelope, v
   return { ...base, mode: 'rod', fishId: roll.fishId, weight: roll.weight, xp: roll.xp };
 }
 
-function sessionRowFor(roll: CastRoll, id: string, userId: string, locationId: string, idempotencyKey: string): FishingSessionRow {
-  const common = {
-    id, userId, locationId, idempotencyKey, status: 'open' as const, createdAt: new Date(),
-  };
+type SessionMeta = { userId: string; locationId: string; idempotencyKey: string; clientId: string | null; strengthActive: boolean; createdAt: Date };
+
+function sessionRowFor(roll: CastRoll, id: string, meta: SessionMeta): FishingSessionRow {
+  const common = { id, ...meta, status: 'open' as const, completedAt: null };
   if (roll.mode === 'submarine') {
     return { ...common, mode: 'submarine', resultLucky: false, resultFishId: null, resultWeight: null, resultXp: null, resultCatches: roll.catches };
   }
@@ -189,15 +232,32 @@ export function castPlayerPatch(player: SaveEnvelope['player'], roll: CastRoll):
   return next;
 }
 
-export function createMemoryFishingService(store: MemoryGameStateStore): FishingService {
-  const sessions = new Map<string, FishingSessionRow>();
+export function createMemoryFishingService(
+  store: MemoryGameStateStore,
+  anticheat: MemoryAntiCheatStore,
+  options: FishingServiceOptions = {},
+): FishingService {
+  const clock = options.now ?? (() => new Date());
+  const sessions = anticheat.sessions;
   const castByKey = new Map<string, string>();
   const landByKey = new Map<string, LandResult>();
 
   const envelopeOf = (state: unknown): SaveEnvelope => saveSchema.parse(state);
 
+  const lastCastOf = (userId: string): LastCast => {
+    let last: FishingSessionRow | null = null;
+    for (const s of sessions.values()) {
+      if (s.userId === userId && (last === null || s.createdAt > last.createdAt)) last = s;
+    }
+    return last && { clientId: last.clientId, createdAt: last.createdAt, mode: last.mode };
+  };
+
+  const recordEvent = (userId: string, type: AntiCheatEventType, sessionId: string | null, detail: Record<string, unknown>, at: Date) => {
+    anticheat.events.push({ id: randomUUID(), userId, type, sessionId, detail, createdAt: at });
+  };
+
   return {
-    async cast(userId, idempotencyKey, locationId, mode = 'rod') {
+    async cast(userId, idempotencyKey, locationId, mode = 'rod', clientId) {
       const entry = store.get(userId);
       if (!entry) throw new Error('GAME_STATE_NOT_FOUND');
 
@@ -221,18 +281,39 @@ export function createMemoryFishingService(store: MemoryGameStateStore): Fishing
             };
       }
 
+      const nowDate = clock();
+      const check = checkCastAllowed(lastCastOf(userId), clientId, mode, nowDate);
+      if (!check.ok) {
+        if (check.code === 'CAST_TOO_FAST') {
+          recordEvent(userId, 'cast_too_fast', null, { intervalMs: check.intervalMs }, nowDate);
+        }
+        throw new Error(check.code);
+      }
+
       const player = envelopeOf(entry.state).player;
-      const now = Date.now();
+      const now = nowDate.getTime();
       const roll = rollCast(player, locationId, mode, now);
+
+      // H1: a new rod/net cast abandons any open session of the same mode.
+      if (roll.mode !== 'submarine') {
+        for (const s of sessions.values()) {
+          if (s.userId === userId && s.mode === roll.mode && s.status === 'open') s.status = 'expired';
+        }
+      }
 
       const isSubmarine = roll.mode === 'submarine';
       const version = isSubmarine ? entry.version : entry.version + 1;
       const state: SaveEnvelope = { schemaVersion: SAVE_SCHEMA_VERSION, player: castPlayerPatch(player, roll) };
       if (!isSubmarine) {
-        store.set(userId, { state, updatedAt: new Date().toISOString(), version });
+        store.set(userId, { state, updatedAt: nowDate.toISOString(), version });
       }
 
-      const session = sessionRowFor(roll, randomUUID(), userId, locationId, idempotencyKey);
+      const session = sessionRowFor(roll, randomUUID(), {
+        userId, locationId, idempotencyKey,
+        clientId: clientId ?? null,
+        strengthActive: isStrengthActive(player, nowDate),
+        createdAt: nowDate,
+      });
       sessions.set(session.id, session);
       castByKey.set(dedupeKey, session.id);
 
@@ -265,23 +346,38 @@ export function createMemoryFishingService(store: MemoryGameStateStore): Fishing
         landByKey.set(replayKey, result);
         return result;
       }
-      if (session.status === 'expired' || isSessionExpired(session.createdAt)) {
+      const nowDate = clock();
+      if (session.status === 'expired' || isSessionExpired(session.createdAt, nowDate)) {
         session.status = 'expired';
         throw new Error('FISHING_SESSION_EXPIRED');
       }
 
-      const now = Date.now();
+      const landCheck = checkLandAllowed(session.mode, session.createdAt, nowDate);
+      if (!landCheck.ok) {
+        session.status = 'expired';
+        recordEvent(userId, 'land_too_fast', session.id, { elapsedMs: landCheck.elapsedMs }, nowDate);
+        throw new Error(landCheck.code);
+      }
+
+      const now = nowDate.getTime();
       const applied = applyLand(envelopeOf(entry.state).player, session, now, { catchId });
       const version = entry.version + 1;
       const state: SaveEnvelope = { schemaVersion: SAVE_SCHEMA_VERSION, player: applied.player };
-      store.set(userId, { state, updatedAt: new Date().toISOString(), version });
+      store.set(userId, { state, updatedAt: nowDate.toISOString(), version });
 
       if (session.mode === 'submarine') {
         session.resultCatches = applied.remaining;
-        session.createdAt = new Date(now);
-        if ((applied.remaining ?? []).length === 0) session.status = 'completed';
+        session.createdAt = nowDate;
+        if ((applied.remaining ?? []).length === 0) {
+          session.status = 'completed';
+          session.completedAt = nowDate;
+        }
       } else {
         session.status = 'completed';
+        session.completedAt = nowDate;
+      }
+      for (const c of applied.caught) {
+        anticheat.lands.push({ id: randomUUID(), userId, sessionId: session.id, mode: session.mode, fishId: c.fishId, landedAt: nowDate });
       }
 
       const result: LandResult = { state, version, caught: applied.caught };

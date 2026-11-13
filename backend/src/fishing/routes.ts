@@ -14,6 +14,7 @@ export function registerFishingRoutes(app: FastifyInstance, service: FishingServ
       body: z.object({
         locationId: z.string().min(1).max(120),
         mode: z.enum(['rod', 'net', 'submarine']).default('rod'),
+        clientId: z.string().uuid().optional(),
       }),
     },
     preHandler: app.requireAuth,
@@ -23,6 +24,7 @@ export function registerFishingRoutes(app: FastifyInstance, service: FishingServ
       idempotencyKey(request.headers['idempotency-key']),
       request.body.locationId,
       request.body.mode,
+      request.body.clientId,
     );
   });
 

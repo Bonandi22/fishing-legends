@@ -102,3 +102,63 @@ describe('auth service refresh', () => {
     await expect(service.refresh(token)).resolves.toMatchObject({ user: { id: user!.id } });
   });
 });
+
+describe('auth service account status', () => {
+  const password = 'the-correct-password-123';
+  async function known() {
+    return (await repo.findUserByEmail('known@example.com'))!;
+  }
+
+  it('a correct password on a suspended account reveals ACCOUNT_SUSPENDED and issues no login code', async () => {
+    await repo.setStatus((await known()).id, 'suspended');
+    await expect(service.login({ email: 'known@example.com', password })).rejects.toThrow('ACCOUNT_SUSPENDED');
+    expect(outbox.messages().filter(m => m.kind === 'login_code')).toHaveLength(0);
+  });
+
+  it('a wrong password on a suspended account is still INVALID_CREDENTIALS', async () => {
+    await repo.setStatus((await known()).id, 'suspended');
+    await expect(service.login({ email: 'known@example.com', password: 'a-wrong-password' })).rejects.toThrow('INVALID_CREDENTIALS');
+  });
+
+  it('a correct password on a banned account reveals ACCOUNT_BANNED', async () => {
+    await repo.setStatus((await known()).id, 'banned');
+    await expect(service.login({ email: 'known@example.com', password })).rejects.toThrow('ACCOUNT_BANNED');
+  });
+
+  it('a deleted account keeps answering INVALID_CREDENTIALS', async () => {
+    await repo.setStatus((await known()).id, 'deleted');
+    await expect(service.login({ email: 'known@example.com', password })).rejects.toThrow('INVALID_CREDENTIALS');
+  });
+
+  it('verifyLogin refuses an account suspended after the code was issued', async () => {
+    const { challengeId } = await service.login({ email: 'known@example.com', password });
+    const code = outbox.messages().filter(m => m.kind === 'login_code').at(-1)!.payload.code;
+    await repo.setStatus((await known()).id, 'suspended');
+    await expect(service.verifyLogin({ challengeId, code })).rejects.toThrow('ACCOUNT_SUSPENDED');
+  });
+
+  it('refresh of a banned account answers ACCOUNT_BANNED', async () => {
+    const user = await known();
+    const token = createOpaqueToken();
+    await repo.createSession({ userId: user.id, tokenHash: hashToken(token), expiresAt: new Date(Date.now() + 60_000) });
+    await repo.setStatus(user.id, 'banned');
+    await expect(service.refresh(token)).rejects.toThrow('ACCOUNT_BANNED');
+  });
+
+  it('forgotPassword answers a suspended account with a decoy (no email)', async () => {
+    await repo.setStatus((await known()).id, 'suspended');
+    const result = await service.forgotPassword({ email: 'known@example.com' });
+    expect(Object.keys(result)).toEqual(['challengeId']);
+    expect(outbox.messages().filter(m => m.kind === 'password_reset_code')).toHaveLength(0);
+  });
+
+  it('assertActive returns isAdmin for an active account and the status code otherwise', async () => {
+    const user = await known();
+    await expect(service.assertActive(user.id)).resolves.toEqual({ isAdmin: false });
+    await repo.setStatus(user.id, 'suspended');
+    await expect(service.assertActive(user.id)).rejects.toThrow('ACCOUNT_SUSPENDED');
+    await repo.setStatus(user.id, 'banned');
+    await expect(service.assertActive(user.id)).rejects.toThrow('ACCOUNT_BANNED');
+    await expect(service.assertActive('00000000-0000-0000-0000-000000000000')).rejects.toThrow('INVALID_ACCESS_TOKEN');
+  });
+});
