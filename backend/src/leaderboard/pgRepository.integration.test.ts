@@ -73,4 +73,13 @@ describe('pg leaderboard service (integration)', () => {
     expect(page.total).toBe(1);
     expect(page.entries.map(e => e.userId)).toEqual([legacy]);
   });
+
+  it('lists only active accounts (never suspended or banned ones)', async () => {
+    const active = await seedPlayer(2, 1);
+    await auth.setStatus(await seedPlayer(5, 5), 'suspended');
+    await auth.setStatus(await seedPlayer(7, 7), 'banned');
+    const page = await leaderboard.list('anyone', 50, 0);
+    expect(page.total).toBe(1);
+    expect(page.entries.map(e => e.userId)).toEqual([active]);
+  });
 });

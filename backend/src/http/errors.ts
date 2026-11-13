@@ -34,6 +34,8 @@ type DomainErrorSpec = { status: number; message: string };
 const DOMAIN_ERRORS: Record<string, DomainErrorSpec> = {
   ACCOUNT_ALREADY_EXISTS: { status: 409, message: 'An account with that email already exists' },
   INVALID_CREDENTIALS: { status: 401, message: 'Invalid email or password' },
+  ACCOUNT_SUSPENDED: { status: 403, message: 'This account is under review' },
+  ACCOUNT_BANNED: { status: 403, message: 'This account has been banned' },
   INVALID_REFRESH_TOKEN: { status: 401, message: 'The refresh token is invalid or has expired' },
   REFRESH_TOKEN_REUSED: { status: 401, message: 'The refresh token was already used; the session has been revoked' },
   INVALID_ACCESS_TOKEN: { status: 401, message: 'The access token is missing or invalid' },

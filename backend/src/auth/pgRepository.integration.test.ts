@@ -478,6 +478,30 @@ describe('pg auth repository (integration)', () => {
     expect(await repo.findUserById(legacy.id)).not.toBeNull();
     expect(await harness.db.select().from(authChallenges)).toHaveLength(0);
   });
+  it('deleteStaleUnverified never removes a suspended or banned account', async () => {
+    const banned = await repo.createUser(newUser());
+    const suspended = await repo.createUser(newUser());
+    await repo.setStatus(banned.id, 'banned');
+    await repo.setStatus(suspended.id, 'suspended');
+    const old = new Date(Date.now() - 8 * 86_400_000);
+    await harness.db.execute(sql`UPDATE users SET verification_required_since = ${old} WHERE id IN (${banned.id}, ${suspended.id})`);
+
+    expect(await repo.deleteStaleUnverified(new Date(Date.now() - 7 * 86_400_000))).toBe(0);
+    expect(await repo.findUserById(banned.id)).toMatchObject({ status: 'banned', isAdmin: false });
+    expect(await repo.findUserById(suspended.id)).toMatchObject({ status: 'suspended' });
+  });
+  it('setStatus and revokeAllSessions join a caller transaction', async () => {
+    const user = await repo.createUser(newUser());
+    await repo.createSession({ userId: user.id, tokenHash: 'tx1', expiresAt: later() });
+    await expect(harness.db.transaction(async tx => {
+      await repo.setStatus(user.id, 'banned', tx);
+      await repo.revokeAllSessions(user.id, tx);
+      throw new Error('rollback');
+    })).rejects.toThrow('rollback');
+    expect(await repo.findUserById(user.id)).toMatchObject({ status: 'active' });
+    const rotation = await repo.rotateRefreshToken({ presentedHash: 'tx1', nextHash: 'tx2', nextExpiresAt: later() });
+    expect(rotation.outcome).toBe('rotated');
+  });
   it('deleteExpiredChallenges removes real and decoy challenges expired before the cutoff only', async () => {
     const user = await repo.createUser(newUser());
     await repo.markEmailVerified(user.id);

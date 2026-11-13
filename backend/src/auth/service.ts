@@ -22,6 +22,17 @@ export type AuthServiceDeps = {
   hashPassword?: (password: string) => Promise<string>;
 };
 
+/**
+ * Throws the status-specific code for a suspended or banned account. Any other
+ * non-active status (deleted) throws `fallback`, revealing nothing new.
+ */
+function assertUsable(user: AuthUser, fallback: string): void {
+  if (user.status === 'active') return;
+  if (user.status === 'suspended') throw new Error('ACCOUNT_SUSPENDED');
+  if (user.status === 'banned') throw new Error('ACCOUNT_BANNED');
+  throw new Error(fallback);
+}
+
 export function createAuthService(repository: AuthRepository, config: AuthServiceConfig, deps: AuthServiceDeps) {
   const { challenges } = deps;
   const hash = deps.hashPassword ?? hashPassword;
@@ -38,7 +49,7 @@ export function createAuthService(repository: AuthRepository, config: AuthServic
   }
 
   async function startSession(user: AuthUser) {
-    if (user.status !== 'active') throw new Error('INVALID_CREDENTIALS');
+    assertUsable(user, 'INVALID_CREDENTIALS');
     const refreshToken = createOpaqueToken();
     const session = await repository.createSession({
       userId: user.id,
@@ -113,9 +124,9 @@ export function createAuthService(repository: AuthRepository, config: AuthServic
         input.password,
         user?.passwordHash ?? (await decoyPasswordHash),
       );
-      if (!user || !passwordMatches || user.status !== 'active') {
-        throw new Error('INVALID_CREDENTIALS');
-      }
+      // A wrong password always wins: only someone holding it learns the account's status.
+      if (!user || !passwordMatches) throw new Error('INVALID_CREDENTIALS');
+      assertUsable(user, 'INVALID_CREDENTIALS');
 
       // Transparently migrate a legacy (scrypt) hash to the current scheme.
       if (needsRehash(user.passwordHash)) {
@@ -193,13 +204,22 @@ export function createAuthService(repository: AuthRepository, config: AuthServic
       if (rotation.outcome === 'invalid') throw new Error('INVALID_REFRESH_TOKEN');
 
       const user = await repository.findUserById(rotation.userId);
-      if (!user || user.status !== 'active') throw new Error('INVALID_REFRESH_TOKEN');
+      if (!user) throw new Error('INVALID_REFRESH_TOKEN');
+      assertUsable(user, 'INVALID_REFRESH_TOKEN');
 
       return { accessToken: await issueAccessToken(user.id, rotation.session.id), refreshToken: nextRefreshToken, session: rotation.session, user };
     },
 
     async logout(sessionId: string) {
       await repository.revokeSession(sessionId);
+    },
+
+    /** Runs on every authenticated request: one lookup by primary key. */
+    async assertActive(userId: string): Promise<{ isAdmin: boolean }> {
+      const user = await repository.findUserById(userId);
+      if (!user) throw new Error('INVALID_ACCESS_TOKEN');
+      assertUsable(user, 'INVALID_ACCESS_TOKEN');
+      return { isAdmin: user.isAdmin };
     },
 
     async verifyAccessToken(token: string): Promise<{ userId: string; sessionId?: string }> {
