@@ -53,8 +53,8 @@ em [`backend/docs/ARCHITECTURE.md`](./backend/docs/ARCHITECTURE.md),
 Requisitos: Node.js e npm.
 
 ```bash
-git clone https://github.com/Bonandi22/deep-blue-lure.git
-cd deep-blue-lure
+git clone https://github.com/Bonandi22/fishing-legends.git
+cd fishing-legends
 npm install
 npm run dev
 ```
