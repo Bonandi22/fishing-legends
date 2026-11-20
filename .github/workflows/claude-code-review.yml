@@ -14,7 +14,11 @@ jobs:
     # CLAUDE_CODE_OAUTH_TOKEN is empty) and claude-code-action blocks bot actors.
     # Skip the job on those PRs -> "skipped" (neutral) instead of "failure".
     # The real gates (Code Review workflow) still cover them.
-    if: github.actor != 'dependabot[bot]'
+    # Repositório público: só PRs abertas a partir de branches deste repositório
+    # (PRs de forks não recebem secrets e não devem consumir a subscrição).
+    if: >-
+      github.actor != 'dependabot[bot]' &&
+      github.event.pull_request.head.repo.full_name == github.repository
 
     runs-on: ubuntu-latest
     permissions:
